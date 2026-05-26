@@ -191,6 +191,18 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/invoices"
+          title="Invoices"
+          subtitle="B2B catering + function bookings"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/customers"
+          title="Customers"
+          subtitle="Invoice recipients"
+          cta="Manage →"
+        />
+        <Card
           href="/owner/onboarding"
           title="Company settings"
           subtitle={onboarded ? 'Set up' : 'Not yet configured'}
