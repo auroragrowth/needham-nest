@@ -209,6 +209,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/pl"
+          title="Profit & Loss"
+          subtitle="Period view: takings vs expenses, net after CT"
+          cta="Open →"
+        />
+        <Card
           href="/owner/onboarding"
           title="Company settings"
           subtitle={onboarded ? 'Set up' : 'Not yet configured'}
