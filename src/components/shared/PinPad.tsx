@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 
 type Props = {
   action: (formData: FormData) => Promise<void>
@@ -10,8 +9,6 @@ type Props = {
 export function PinPad({ action }: Props) {
   const [pin, setPin] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [, startTransition] = useTransition()
-  const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
   function press(digit: string) {
@@ -29,24 +26,19 @@ export function PinPad({ action }: Props) {
     setPin('')
   }
 
+  // Auto-submit when 4 digits entered. Use standard form submission so iOS
+  // Safari handles redirects exactly like a posted form.
   useEffect(() => {
     if (pin.length === 4 && !submitting) {
       setSubmitting(true)
-      const fd = new FormData()
-      fd.set('pin', pin)
-      startTransition(async () => {
-        try {
-          await action(fd)
-        } finally {
-          setSubmitting(false)
-          setPin('')
-          router.refresh()
-        }
+      // Small tick so the dot UI paints before submit
+      requestAnimationFrame(() => {
+        formRef.current?.requestSubmit()
       })
     }
-  }, [pin, submitting, action, router])
+  }, [pin, submitting])
 
-  // Capture physical keyboard input.
+  // Physical keyboard fallback for desktop owners.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (submitting) return
@@ -60,10 +52,18 @@ export function PinPad({ action }: Props) {
   }, [pin, submitting])
 
   return (
-    <form ref={formRef} action={action} className="flex flex-col items-center">
-      <input type="hidden" name="pin" value={pin} />
+    <form
+      ref={formRef}
+      action={action}
+      className="flex flex-col items-center"
+      style={{ touchAction: 'manipulation' }}
+    >
+      <input type="hidden" name="pin" value={pin} readOnly />
 
-      <div className="flex gap-3" aria-label={`PIN: ${pin.length} of 4 digits entered`}>
+      <div
+        className="flex gap-3"
+        aria-label={`PIN: ${pin.length} of 4 digits entered`}
+      >
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
@@ -78,22 +78,22 @@ export function PinPad({ action }: Props) {
 
       <div className="mt-8 grid grid-cols-3 gap-3">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
-          <PadButton key={d} onClick={() => press(d)} disabled={submitting}>
+          <PadButton key={d} onPress={() => press(d)} disabled={submitting}>
             {d}
           </PadButton>
         ))}
         <PadButton
-          onClick={clearPin}
+          onPress={clearPin}
           disabled={submitting}
           className="text-sm font-medium"
         >
           Clear
         </PadButton>
-        <PadButton onClick={() => press('0')} disabled={submitting}>
+        <PadButton onPress={() => press('0')} disabled={submitting}>
           0
         </PadButton>
         <PadButton
-          onClick={backspace}
+          onPress={backspace}
           disabled={submitting}
           aria-label="Backspace"
           className="text-2xl"
@@ -109,24 +109,38 @@ export function PinPad({ action }: Props) {
   )
 }
 
+/**
+ * Tap-friendly pad button. We handle pointerdown (fires reliably on iPadOS
+ * and avoids the click delay) AND click (so keyboard and mouse still work).
+ * The handler de-dupes via a ref so a tap doesn't double-fire.
+ */
 function PadButton({
   children,
-  onClick,
+  onPress,
   disabled,
   className = '',
   ...rest
 }: {
   children: React.ReactNode
-  onClick: () => void
+  onPress: () => void
   disabled?: boolean
   className?: string
-} & React.HTMLAttributes<HTMLButtonElement>) {
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'>) {
+  const lastFiredRef = useRef(0)
+  function fire() {
+    const now = Date.now()
+    if (now - lastFiredRef.current < 250) return
+    lastFiredRef.current = now
+    onPress()
+  }
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={fire}
+      onPointerDown={fire}
       disabled={disabled}
-      className={`h-20 w-20 rounded-2xl border border-brand-sage/40 bg-white text-3xl font-medium text-brand-forest shadow-sm transition active:scale-95 hover:bg-brand-sage/10 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+      className={`h-20 w-20 cursor-pointer select-none rounded-2xl border border-brand-sage/40 bg-white text-3xl font-medium text-brand-forest shadow-sm transition active:scale-95 hover:bg-brand-sage/10 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       {...rest}
     >
       {children}
