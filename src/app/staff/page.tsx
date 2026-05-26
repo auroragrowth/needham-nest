@@ -21,6 +21,7 @@ export default async function StaffHub() {
     { data: todaysTemps },
     { data: tasks },
     { data: todaysLogs },
+    { count: stockItemsCount },
   ] = await Promise.all([
     admin
       .from('time_logs')
@@ -38,6 +39,10 @@ export default async function StaffHub() {
       .from('cleaning_log')
       .select('task_id')
       .gte('completed_at', startOfTodayIso()),
+    admin
+      .from('stock_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('active', true),
   ])
 
   const totalAppliances = appliances?.length ?? 0
@@ -93,6 +98,22 @@ export default async function StaffHub() {
           accent={
             totalTasks === 0 || tasksRemaining === 0 ? 'off' : 'pending'
           }
+        />
+        <HubTile
+          href="/staff/stock-count"
+          title="Stock count"
+          status={
+            stockItemsCount && stockItemsCount > 0
+              ? `${stockItemsCount} item${stockItemsCount === 1 ? '' : 's'} to count`
+              : 'No items configured'
+          }
+          accent="off"
+        />
+        <HubTile
+          href="/staff/wastage"
+          title="Wastage"
+          status="Tap to log waste"
+          accent="off"
         />
       </div>
     </main>

@@ -10,6 +10,10 @@ function startOfTodayIso(): string {
 export default async function ManagerDashboard() {
   const admin = createAdminClient()
 
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
+
   const [
     { count: onShiftNow },
     { count: shiftsToday },
@@ -17,6 +21,7 @@ export default async function ManagerDashboard() {
     { data: tempsToday },
     { data: tasks },
     { data: cleanLogsToday },
+    { data: wastageWeek },
   ] = await Promise.all([
     admin
       .from('time_logs')
@@ -36,7 +41,20 @@ export default async function ManagerDashboard() {
       .from('cleaning_log')
       .select('task_id')
       .gte('completed_at', startOfTodayIso()),
+    admin
+      .from('stock_movements')
+      .select('quantity, unit_cost')
+      .not('wastage_reason', 'is', null)
+      .gte('date', sevenDaysAgo),
   ])
+
+  const wastageCostWeek = (wastageWeek ?? []).reduce(
+    (a, r) =>
+      a +
+      (Number(r.quantity ?? 0) || 0) * (Number(r.unit_cost ?? 0) || 0),
+    0,
+  )
+  const wastageEntriesWeek = wastageWeek?.length ?? 0
 
   const totalAppliances = appliances?.length ?? 0
   const loggedAppliances = new Set(
@@ -91,6 +109,16 @@ export default async function ManagerDashboard() {
           href="/manager/cash"
           title="Cash"
           subtitle="End-of-day count + petty cash"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/wastage"
+          title="Wastage"
+          subtitle={
+            wastageEntriesWeek === 0
+              ? 'No wastage in last 7 days'
+              : `£${wastageCostWeek.toFixed(2)} over ${wastageEntriesWeek} entr${wastageEntriesWeek === 1 ? 'y' : 'ies'} (7d)`
+          }
           cta="Open →"
         />
       </div>

@@ -19,6 +19,7 @@ export default async function OwnerDashboard({
     { count: staffCount },
     { count: applianceCount },
     { count: taskCount },
+    { count: stockCount },
   ] = await Promise.all([
     session.authUserId
       ? admin
@@ -38,6 +39,10 @@ export default async function OwnerDashboard({
       .eq('active', true),
     admin
       .from('cleaning_tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('active', true),
+    admin
+      .from('stock_items')
       .select('*', { count: 'exact', head: true })
       .eq('active', true),
   ])
@@ -118,6 +123,12 @@ export default async function OwnerDashboard({
           href="/owner/checklist"
           title="Daily checklist"
           subtitle={`${taskCount ?? 0} active tasks`}
+          cta="Manage →"
+        />
+        <Card
+          href="/owner/stock"
+          title="Stock items"
+          subtitle={`${stockCount ?? 0} active items`}
           cta="Manage →"
         />
         <Card
