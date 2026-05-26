@@ -132,6 +132,12 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
+          href="/owner/compliance/pack"
+          title="EHO compliance pack"
+          subtitle="Printable PDF for inspectors"
+          cta="Generate →"
+        />
+        <Card
           href="/owner/onboarding"
           title="Company settings"
           subtitle={onboarded ? 'Set up' : 'Not yet configured'}
