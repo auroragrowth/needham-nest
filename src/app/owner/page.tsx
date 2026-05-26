@@ -155,6 +155,18 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
+          href="/owner/suppliers"
+          title="Suppliers"
+          subtitle="Vendors, delivery days, terms"
+          cta="Manage →"
+        />
+        <Card
+          href="/owner/deliveries"
+          title="Deliveries"
+          subtitle="Record incoming stock + auto-create expense"
+          cta="Open →"
+        />
+        <Card
           href="/owner/compliance/pack"
           title="EHO compliance pack"
           subtitle="Printable PDF for inspectors"
