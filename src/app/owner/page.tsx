@@ -203,6 +203,12 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
+          href="/owner/bank"
+          title="Bank"
+          subtitle="Monzo CSV import + reconciliation"
+          cta="Open →"
+        />
+        <Card
           href="/owner/onboarding"
           title="Company settings"
           subtitle={onboarded ? 'Set up' : 'Not yet configured'}
