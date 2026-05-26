@@ -87,6 +87,12 @@ export default async function ManagerDashboard() {
           }
           cta="Open →"
         />
+        <Card
+          href="/manager/cash"
+          title="Cash"
+          subtitle="End-of-day count + petty cash"
+          cta="Open →"
+        />
       </div>
     </main>
   )
