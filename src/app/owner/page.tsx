@@ -14,12 +14,18 @@ export default async function OwnerDashboard({
 
   const admin = createAdminClient()
 
+  const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
+
   const [
     { data: settings },
     { count: staffCount },
     { count: applianceCount },
     { count: taskCount },
     { count: stockCount },
+    { data: expenses90 },
+    { data: takings90 },
   ] = await Promise.all([
     session.authUserId
       ? admin
@@ -45,7 +51,18 @@ export default async function OwnerDashboard({
       .from('stock_items')
       .select('*', { count: 'exact', head: true })
       .eq('active', true),
+    admin.from('expenses').select('amount').gte('date', since90),
+    admin.from('takings').select('amount').gte('date', since90),
   ])
+
+  const expenseTotal90 = (expenses90 ?? []).reduce(
+    (a, r) => a + Number(r.amount ?? 0),
+    0,
+  )
+  const takingsTotal90 = (takings90 ?? []).reduce(
+    (a, r) => a + Number(r.amount ?? 0),
+    0,
+  )
 
   const onboarded = Boolean(settings?.company_name)
   const { data: ownerProfile } = await admin
@@ -136,6 +153,30 @@ export default async function OwnerDashboard({
           title="EHO compliance pack"
           subtitle="Printable PDF for inspectors"
           cta="Generate →"
+        />
+      </div>
+
+      <h2 className="mt-8 text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+        Finance
+      </h2>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <Card
+          href="/owner/takings"
+          title="Takings"
+          subtitle={`£${takingsTotal90.toFixed(2)} (90d)`}
+          cta="Open →"
+        />
+        <Card
+          href="/owner/expenses"
+          title="Expenses"
+          subtitle={`£${expenseTotal90.toFixed(2)} (90d)`}
+          cta="Open →"
+        />
+        <Card
+          href="/owner/payees"
+          title="Payees"
+          subtitle="Suppliers + vendors"
+          cta="Manage →"
         />
         <Card
           href="/owner/onboarding"
