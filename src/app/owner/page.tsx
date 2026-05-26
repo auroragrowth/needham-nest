@@ -149,6 +149,12 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
+          href="/owner/menu"
+          title="Menu"
+          subtitle="Items, recipes, allergens, GP%"
+          cta="Manage →"
+        />
+        <Card
           href="/owner/compliance/pack"
           title="EHO compliance pack"
           subtitle="Printable PDF for inspectors"
