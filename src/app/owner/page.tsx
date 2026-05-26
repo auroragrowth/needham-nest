@@ -179,6 +179,18 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
+          href="/owner/director-loan"
+          title="Director's loan"
+          subtitle="DL account balance + entries"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/tax-pot"
+          title="Tax pot"
+          subtitle="CT estimate + allocations"
+          cta="Open →"
+        />
+        <Card
           href="/owner/onboarding"
           title="Company settings"
           subtitle={onboarded ? 'Set up' : 'Not yet configured'}
