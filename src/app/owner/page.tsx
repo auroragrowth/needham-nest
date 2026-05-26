@@ -263,6 +263,18 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/wages"
+          title="Wages"
+          subtitle="Generate gross wages from clock-ins"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/tips"
+          title="Tips (tronc)"
+          subtitle="Pool + auto-distribute by hours"
+          cta="Open →"
+        />
+        <Card
           href="/owner/onboarding"
           title="Company settings"
           subtitle={onboarded ? 'Set up' : 'Not yet configured'}
