@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { notFound } from 'next/navigation'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getSession } from '@/lib/auth/session'
 import {
   deactivateStaff,
   reactivateStaff,
@@ -17,14 +18,10 @@ export default async function EditStaffPage({
 }) {
   const { id } = await params
   const sp = await searchParams
+  const session = await getSession()
+  const admin = createAdminClient()
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: person } = await supabase
+  const { data: person } = await admin
     .from('profiles')
     .select('id, name, role, active, auth_user_id')
     .eq('id', id)
@@ -32,7 +29,7 @@ export default async function EditStaffPage({
 
   if (!person) notFound()
 
-  const isSelf = person.auth_user_id === user.id
+  const isSelf = session?.profileId === person.id
   const isPinHolder = person.role === 'staff' && !person.auth_user_id
 
   const updateName = updateStaffName.bind(null, id)

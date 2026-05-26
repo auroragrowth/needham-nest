@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Owner',
@@ -14,13 +13,9 @@ export default async function StaffListPage({
   searchParams: Promise<{ notice?: string }>
 }) {
   const params = await searchParams
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const admin = createAdminClient()
 
-  const { data: people } = await supabase
+  const { data: people } = await admin
     .from('profiles')
     .select('id, name, role, active, auth_user_id')
     .order('active', { ascending: false })
@@ -35,8 +30,8 @@ export default async function StaffListPage({
             People
           </h1>
           <p className="mt-1 text-sm text-brand-slate">
-            Owner, manager, and staff accounts. Staff use a 4-digit PIN on the
-            kiosk tablet (no email login).
+            Owner, manager, and staff accounts. Everyone signs in with a
+            4-digit PIN. Owner has email recovery as a backup.
           </p>
         </div>
         <Link
@@ -89,7 +84,7 @@ export default async function StaffListPage({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-xs text-brand-slate">
-                  {p.auth_user_id ? 'Email login' : 'PIN only'}
+                  {p.auth_user_id ? 'PIN + email' : 'PIN only'}
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {p.active ? (

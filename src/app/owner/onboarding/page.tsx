@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getSession } from '@/lib/auth/session'
 import { saveSettings } from './actions'
 
 export default async function OwnerOnboardingPage({
@@ -8,16 +9,17 @@ export default async function OwnerOnboardingPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const params = await searchParams
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await getSession()
+  if (!session || session.role !== 'owner') redirect('/login')
+  if (!session.authUserId) {
+    redirect('/login/email?notice=Sign+in+with+email+to+configure+settings')
+  }
 
-  const { data: settings } = await supabase
+  const admin = createAdminClient()
+  const { data: settings } = await admin
     .from('settings')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', session.authUserId)
     .maybeSingle()
 
   return (

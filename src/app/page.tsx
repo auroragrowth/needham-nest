@@ -1,22 +1,11 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getSession } from '@/lib/auth/session'
 
 export default async function Home() {
-  const supabase = await createClient()
+  const session = await getSession()
+  if (!session) redirect('/login')
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  switch (profile?.role) {
+  switch (session.role) {
     case 'owner':
       redirect('/owner')
     case 'manager':
@@ -24,6 +13,6 @@ export default async function Home() {
     case 'staff':
       redirect('/staff')
     default:
-      redirect('/login?error=Profile+not+found+%E2%80%94+contact+the+owner')
+      redirect('/login?error=Unknown+role')
   }
 }

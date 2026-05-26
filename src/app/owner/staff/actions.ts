@@ -2,53 +2,112 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { getSession } from '@/lib/auth/session'
+import { createAdminClient } from '@/lib/supabase/admin'
 
-function pinFromForm(formData: FormData): string {
-  return String(formData.get('pin') ?? '').trim()
+async function requireOwner() {
+  const session = await getSession()
+  if (!session) redirect('/login')
+  if (session.role !== 'owner') redirect('/')
+  return session
+}
+
+async function hashPin(pin: string): Promise<string> {
+  const admin = createAdminClient()
+  const { data, error } = await admin.rpc('hash_pin', { p_pin: pin })
+  if (error || !data) throw new Error(error?.message ?? 'Failed to hash PIN')
+  return String(data)
+}
+
+async function pinIsTaken(
+  pin: string,
+  excludeProfileId?: string,
+): Promise<boolean> {
+  const admin = createAdminClient()
+  const { data } = await admin.rpc('verify_pin', { p_pin: pin })
+  if (!Array.isArray(data) || data.length === 0) return false
+  return data.some(
+    (row: { profile_id: string }) => row.profile_id !== excludeProfileId,
+  )
 }
 
 export async function createStaff(formData: FormData) {
-  const supabase = await createClient()
+  await requireOwner()
   const name = String(formData.get('name') ?? '').trim()
-  const pin = pinFromForm(formData)
+  const pin = String(formData.get('pin') ?? '').trim()
 
-  const { data, error } = await supabase.rpc('create_staff', {
-    p_name: name,
-    p_pin: pin,
-  })
-
-  if (error) {
-    redirect(`/owner/staff/new?error=${encodeURIComponent(error.message)}`)
+  if (!name) {
+    redirect('/owner/staff/new?error=Name+is+required')
   }
+  if (!/^\d{4}$/.test(pin)) {
+    redirect('/owner/staff/new?error=PIN+must+be+exactly+4+digits')
+  }
+  if (await pinIsTaken(pin)) {
+    redirect('/owner/staff/new?error=PIN+already+in+use+%E2%80%94+pick+another')
+  }
+
+  const pinHash = await hashPin(pin)
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('profiles')
+    .insert({ name, role: 'staff', pin_hash: pinHash, active: true })
+    .select('id')
+    .single()
+
+  if (error || !data) {
+    redirect(
+      `/owner/staff/new?error=${encodeURIComponent(error?.message ?? 'Failed to create staff')}`,
+    )
+  }
+
   revalidatePath('/owner/staff')
-  redirect(`/owner/staff/${data}?notice=Staff+added`)
+  redirect(`/owner/staff/${data.id}?notice=Staff+added`)
 }
 
 export async function updateStaffName(profileId: string, formData: FormData) {
-  const supabase = await createClient()
+  await requireOwner()
   const name = String(formData.get('name') ?? '').trim()
-  const { error } = await supabase.rpc('update_staff_name', {
-    p_profile_id: profileId,
-    p_name: name,
-  })
+  if (!name) {
+    redirect(`/owner/staff/${profileId}?error=Name+is+required`)
+  }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ name })
+    .eq('id', profileId)
+
   if (error) {
     redirect(
       `/owner/staff/${profileId}?error=${encodeURIComponent(error.message)}`,
     )
   }
-  revalidatePath(`/owner/staff/${profileId}`)
+
   revalidatePath('/owner/staff')
+  revalidatePath(`/owner/staff/${profileId}`)
   redirect(`/owner/staff/${profileId}?notice=Name+updated`)
 }
 
 export async function updateStaffPin(profileId: string, formData: FormData) {
-  const supabase = await createClient()
-  const pin = pinFromForm(formData)
-  const { error } = await supabase.rpc('update_staff_pin', {
-    p_profile_id: profileId,
-    p_pin: pin,
-  })
+  await requireOwner()
+  const pin = String(formData.get('pin') ?? '').trim()
+
+  if (!/^\d{4}$/.test(pin)) {
+    redirect(`/owner/staff/${profileId}?error=PIN+must+be+exactly+4+digits`)
+  }
+  if (await pinIsTaken(pin, profileId)) {
+    redirect(
+      `/owner/staff/${profileId}?error=PIN+already+in+use+%E2%80%94+pick+another`,
+    )
+  }
+
+  const pinHash = await hashPin(pin)
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ pin_hash: pinHash })
+    .eq('id', profileId)
+
   if (error) {
     redirect(
       `/owner/staff/${profileId}?error=${encodeURIComponent(error.message)}`,
@@ -58,31 +117,35 @@ export async function updateStaffPin(profileId: string, formData: FormData) {
 }
 
 export async function deactivateStaff(profileId: string) {
-  const supabase = await createClient()
-  const { error } = await supabase.rpc('deactivate_staff', {
-    p_profile_id: profileId,
-  })
+  await requireOwner()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ active: false })
+    .eq('id', profileId)
   if (error) {
     redirect(
       `/owner/staff/${profileId}?error=${encodeURIComponent(error.message)}`,
     )
   }
-  revalidatePath(`/owner/staff/${profileId}`)
   revalidatePath('/owner/staff')
+  revalidatePath(`/owner/staff/${profileId}`)
   redirect(`/owner/staff/${profileId}?notice=Staff+deactivated`)
 }
 
 export async function reactivateStaff(profileId: string) {
-  const supabase = await createClient()
-  const { error } = await supabase.rpc('reactivate_staff', {
-    p_profile_id: profileId,
-  })
+  await requireOwner()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ active: true })
+    .eq('id', profileId)
   if (error) {
     redirect(
       `/owner/staff/${profileId}?error=${encodeURIComponent(error.message)}`,
     )
   }
-  revalidatePath(`/owner/staff/${profileId}`)
   revalidatePath('/owner/staff')
+  revalidatePath(`/owner/staff/${profileId}`)
   redirect(`/owner/staff/${profileId}?notice=Staff+reactivated`)
 }

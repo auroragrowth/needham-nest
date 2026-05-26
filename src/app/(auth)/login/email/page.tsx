@@ -1,11 +1,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { signup } from '@/lib/auth/actions'
+import { signInWithEmail } from '@/lib/auth/actions'
 
-export default async function SignupPage({
+export default async function EmailLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; notice?: string }>
 }) {
   const params = await searchParams
 
@@ -15,65 +15,55 @@ export default async function SignupPage({
         <Image
           src="/logo.png"
           alt="Needham Nest Café"
-          width={160}
-          height={160}
+          width={120}
+          height={120}
           priority
           className="rounded-full"
         />
       </div>
 
-      <div className="mt-8 rounded-xl border border-brand-sage/40 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-brand-forest">
-          Create account
+          Sign in with email
         </h2>
-        <p className="mt-1 text-sm text-brand-slate">
-          The first account becomes the café owner. Disable signups in Supabase
-          Dashboard → Authentication afterwards.
+        <p className="mt-1 text-xs text-brand-slate">
+          Owner recovery only. Daily login uses your PIN.
         </p>
 
+        {params.notice && (
+          <p className="mt-4 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
+            {params.notice}
+          </p>
+        )}
         {params.error && (
           <p className="mt-4 rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-sm text-brand-forest">
             {params.error}
           </p>
         )}
 
-        <form action={signup} className="mt-6 space-y-4">
-          <Field
-            label="Your name"
-            name="name"
-            type="text"
-            autoComplete="name"
-          />
-          <Field
-            label="Email"
-            name="email"
-            type="email"
-            autoComplete="email"
-          />
+        <form action={signInWithEmail} className="mt-6 space-y-4">
+          <Field label="Email" name="email" type="email" autoComplete="email" />
           <Field
             label="Password"
             name="password"
             type="password"
-            autoComplete="new-password"
-            minLength={8}
-            hint="At least 8 characters."
+            autoComplete="current-password"
           />
           <button
             type="submit"
-            className="w-full rounded-lg bg-brand-forest px-4 py-2.5 text-sm font-medium text-brand-cream transition-colors hover:bg-brand-olive"
+            className="w-full rounded-lg bg-brand-forest px-4 py-2.5 text-sm font-medium text-brand-cream hover:bg-brand-olive"
           >
-            Create account
+            Sign in
           </button>
         </form>
       </div>
 
       <p className="mt-6 text-center text-sm text-brand-slate">
-        Already have an account?{' '}
         <Link
           href="/login"
           className="font-medium text-brand-amber hover:underline"
         >
-          Sign in
+          ← Back to PIN sign-in
         </Link>
       </p>
     </main>
@@ -85,15 +75,11 @@ function Field({
   name,
   type,
   autoComplete,
-  minLength,
-  hint,
 }: {
   label: string
   name: string
   type: string
   autoComplete: string
-  minLength?: number
-  hint?: string
 }) {
   return (
     <div>
@@ -108,11 +94,9 @@ function Field({
         name={name}
         type={type}
         required
-        minLength={minLength}
         autoComplete={autoComplete}
         className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
       />
-      {hint && <p className="mt-1 text-xs text-brand-slate">{hint}</p>}
     </div>
   )
 }

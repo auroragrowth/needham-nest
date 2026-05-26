@@ -2,20 +2,21 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getSession } from '@/lib/auth/session'
 
 export async function saveSettings(formData: FormData) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await getSession()
+  if (!session || session.role !== 'owner') redirect('/login')
+  if (!session.authUserId) {
+    redirect('/login/email?notice=Sign+in+with+email+to+configure+settings')
+  }
 
   const ctRate = Number(formData.get('ct_rate') ?? 19)
   const invoiceNext = Number(formData.get('invoice_next_number') ?? 1)
 
   const payload = {
-    user_id: user.id,
+    user_id: session.authUserId,
     company_name: String(formData.get('company_name') ?? '').trim() || null,
     company_number: String(formData.get('company_number') ?? '').trim() || null,
     company_address: String(formData.get('company_address') ?? '').trim() || null,
@@ -27,7 +28,8 @@ export async function saveSettings(formData: FormData) {
     invoice_next_number: Number.isFinite(invoiceNext) ? invoiceNext : 1,
   }
 
-  const { error } = await supabase
+  const admin = createAdminClient()
+  const { error } = await admin
     .from('settings')
     .upsert(payload, { onConflict: 'user_id' })
 

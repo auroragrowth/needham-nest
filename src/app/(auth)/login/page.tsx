@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { login } from '@/lib/auth/actions'
+import { signInWithPin } from '@/lib/auth/actions'
+import { PinPad } from '@/components/shared/PinPad'
 
 export default async function LoginPage({
   searchParams,
@@ -10,89 +11,44 @@ export default async function LoginPage({
   const params = await searchParams
 
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center p-8">
-      <div className="flex flex-col items-center">
-        <Image
-          src="/logo.png"
-          alt="Needham Nest Café"
-          width={160}
-          height={160}
-          priority
-          className="rounded-full"
-        />
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center p-6 sm:p-8">
+      <Image
+        src="/logo.png"
+        alt="Needham Nest Café"
+        width={120}
+        height={120}
+        priority
+        className="rounded-full"
+      />
+
+      <h1 className="mt-6 text-lg font-semibold text-brand-forest">
+        Enter your PIN
+      </h1>
+
+      {params.notice && (
+        <p className="mt-3 w-full rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-center text-sm text-brand-teal-deep">
+          {params.notice}
+        </p>
+      )}
+      {params.error && (
+        <p className="mt-3 w-full rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-center text-sm text-brand-forest">
+          {params.error}
+        </p>
+      )}
+
+      <div className="mt-6">
+        <PinPad action={signInWithPin} />
       </div>
 
-      <div className="mt-8 rounded-xl border border-brand-sage/40 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-brand-forest">Sign in</h2>
-
-        {params.notice && (
-          <p className="mt-4 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
-            {params.notice}
-          </p>
-        )}
-        {params.error && (
-          <p className="mt-4 rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-sm text-brand-forest">
-            {params.error}
-          </p>
-        )}
-
-        <form action={login} className="mt-6 space-y-4">
-          <Field label="Email" name="email" type="email" autoComplete="email" />
-          <Field
-            label="Password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-          />
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-brand-forest px-4 py-2.5 text-sm font-medium text-brand-cream transition-colors hover:bg-brand-olive"
-          >
-            Sign in
-          </button>
-        </form>
-      </div>
-
-      <p className="mt-6 text-center text-sm text-brand-slate">
-        First time setting up the café?{' '}
+      <p className="mt-8 text-xs text-brand-slate">
+        Forgot your PIN?{' '}
         <Link
-          href="/signup"
+          href="/login/email"
           className="font-medium text-brand-amber hover:underline"
         >
-          Create the owner account
+          Sign in with email
         </Link>
       </p>
     </main>
-  )
-}
-
-function Field({
-  label,
-  name,
-  type,
-  autoComplete,
-}: {
-  label: string
-  name: string
-  type: string
-  autoComplete: string
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={name}
-        className="block text-sm font-medium text-brand-forest"
-      >
-        {label}
-      </label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        required
-        autoComplete={autoComplete}
-        className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
-      />
-    </div>
   )
 }

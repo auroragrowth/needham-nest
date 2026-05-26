@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getSession } from '@/lib/auth/session'
 
 export default async function OwnerDashboard({
   searchParams,
@@ -8,19 +9,20 @@ export default async function OwnerDashboard({
   searchParams: Promise<{ notice?: string }>
 }) {
   const params = await searchParams
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await getSession()
+  if (!session || session.role !== 'owner') redirect('/login')
+
+  const admin = createAdminClient()
 
   const [{ data: settings }, { count: staffCount }] = await Promise.all([
-    supabase
-      .from('settings')
-      .select('company_name')
-      .eq('user_id', user.id)
-      .maybeSingle(),
-    supabase
+    session.authUserId
+      ? admin
+          .from('settings')
+          .select('company_name')
+          .eq('user_id', session.authUserId)
+          .maybeSingle()
+      : Promise.resolve({ data: null } as { data: null }),
+    admin
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('role', 'staff')
@@ -28,6 +30,12 @@ export default async function OwnerDashboard({
   ])
 
   const onboarded = Boolean(settings?.company_name)
+  const { data: ownerProfile } = await admin
+    .from('profiles')
+    .select('pin_hash')
+    .eq('id', session.profileId)
+    .maybeSingle()
+  const hasPin = Boolean(ownerProfile?.pin_hash)
 
   return (
     <main className="mx-auto max-w-4xl">
@@ -42,6 +50,24 @@ export default async function OwnerDashboard({
         <p className="mt-4 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
           {params.notice}
         </p>
+      )}
+
+      {!hasPin && (
+        <section className="mt-6 rounded-xl border border-brand-amber/50 bg-brand-amber/10 p-5">
+          <h2 className="text-sm font-semibold text-brand-forest">
+            Set your PIN for daily sign-in
+          </h2>
+          <p className="mt-1 text-sm text-brand-forest/80">
+            You signed in with email this time. Set a 4-digit PIN and you can
+            tap straight in from now on.
+          </p>
+          <Link
+            href="/owner/me"
+            className="mt-4 inline-block rounded-lg bg-brand-amber px-4 py-2 text-sm font-semibold text-brand-forest transition-colors hover:bg-brand-amber/90"
+          >
+            Set my PIN →
+          </Link>
+        </section>
       )}
 
       {!onboarded && (
