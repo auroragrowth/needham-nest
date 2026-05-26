@@ -15,6 +15,8 @@ export default async function ManagerDashboard() {
     { count: shiftsToday },
     { data: appliances },
     { data: tempsToday },
+    { data: tasks },
+    { data: cleanLogsToday },
   ] = await Promise.all([
     admin
       .from('time_logs')
@@ -29,6 +31,11 @@ export default async function ManagerDashboard() {
       .from('temperature_logs')
       .select('appliance_id, in_range')
       .gte('recorded_at', startOfTodayIso()),
+    admin.from('cleaning_tasks').select('id').eq('active', true),
+    admin
+      .from('cleaning_log')
+      .select('task_id')
+      .gte('completed_at', startOfTodayIso()),
   ])
 
   const totalAppliances = appliances?.length ?? 0
@@ -36,6 +43,10 @@ export default async function ManagerDashboard() {
     (tempsToday ?? []).map((t) => t.appliance_id),
   ).size
   const outOfRangeToday = (tempsToday ?? []).filter((t) => !t.in_range).length
+
+  const totalTasks = tasks?.length ?? 0
+  const doneTasks = new Set((cleanLogsToday ?? []).map((l) => l.task_id)).size
+  const tasksRemaining = Math.max(0, totalTasks - doneTasks)
 
   return (
     <main className="mx-auto max-w-4xl">
@@ -63,6 +74,18 @@ export default async function ManagerDashboard() {
           }
           cta="Open →"
           warn={outOfRangeToday > 0}
+        />
+        <Card
+          href="/manager/compliance"
+          title="Checklist"
+          subtitle={
+            totalTasks === 0
+              ? 'No tasks configured'
+              : tasksRemaining === 0
+                ? `All ${totalTasks} done today`
+                : `${doneTasks}/${totalTasks} done today`
+          }
+          cta="Open →"
         />
       </div>
     </main>

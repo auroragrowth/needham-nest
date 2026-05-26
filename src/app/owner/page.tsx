@@ -14,25 +14,33 @@ export default async function OwnerDashboard({
 
   const admin = createAdminClient()
 
-  const [{ data: settings }, { count: staffCount }, { count: applianceCount }] =
-    await Promise.all([
-      session.authUserId
-        ? admin
-            .from('settings')
-            .select('company_name')
-            .eq('user_id', session.authUserId)
-            .maybeSingle()
-        : Promise.resolve({ data: null } as { data: null }),
-      admin
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'staff')
-        .eq('active', true),
-      admin
-        .from('appliances')
-        .select('*', { count: 'exact', head: true })
-        .eq('active', true),
-    ])
+  const [
+    { data: settings },
+    { count: staffCount },
+    { count: applianceCount },
+    { count: taskCount },
+  ] = await Promise.all([
+    session.authUserId
+      ? admin
+          .from('settings')
+          .select('company_name')
+          .eq('user_id', session.authUserId)
+          .maybeSingle()
+      : Promise.resolve({ data: null } as { data: null }),
+    admin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'staff')
+      .eq('active', true),
+    admin
+      .from('appliances')
+      .select('*', { count: 'exact', head: true })
+      .eq('active', true),
+    admin
+      .from('cleaning_tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('active', true),
+  ])
 
   const onboarded = Boolean(settings?.company_name)
   const { data: ownerProfile } = await admin
@@ -104,6 +112,12 @@ export default async function OwnerDashboard({
           href="/owner/appliances"
           title="Appliances"
           subtitle={`${applianceCount ?? 0} active fridges, freezers, hot-holds`}
+          cta="Manage →"
+        />
+        <Card
+          href="/owner/checklist"
+          title="Daily checklist"
+          subtitle={`${taskCount ?? 0} active tasks`}
           cta="Manage →"
         />
         <Card

@@ -15,23 +15,30 @@ export default async function StaffHub() {
 
   const admin = createAdminClient()
 
-  const [{ data: openShift }, { data: appliances }, { data: todaysTemps }] =
-    await Promise.all([
-      admin
-        .from('time_logs')
-        .select('id, clock_in')
-        .eq('user_id', session.profileId)
-        .is('clock_out', null)
-        .maybeSingle(),
-      admin
-        .from('appliances')
-        .select('id')
-        .eq('active', true),
-      admin
-        .from('temperature_logs')
-        .select('appliance_id')
-        .gte('recorded_at', startOfTodayIso()),
-    ])
+  const [
+    { data: openShift },
+    { data: appliances },
+    { data: todaysTemps },
+    { data: tasks },
+    { data: todaysLogs },
+  ] = await Promise.all([
+    admin
+      .from('time_logs')
+      .select('id, clock_in')
+      .eq('user_id', session.profileId)
+      .is('clock_out', null)
+      .maybeSingle(),
+    admin.from('appliances').select('id').eq('active', true),
+    admin
+      .from('temperature_logs')
+      .select('appliance_id')
+      .gte('recorded_at', startOfTodayIso()),
+    admin.from('cleaning_tasks').select('id').eq('active', true),
+    admin
+      .from('cleaning_log')
+      .select('task_id')
+      .gte('completed_at', startOfTodayIso()),
+  ])
 
   const totalAppliances = appliances?.length ?? 0
   const loggedApplianceIds = new Set(
@@ -39,6 +46,10 @@ export default async function StaffHub() {
   )
   const tempsLogged = loggedApplianceIds.size
   const tempsRemaining = Math.max(0, totalAppliances - tempsLogged)
+
+  const totalTasks = tasks?.length ?? 0
+  const doneTaskIds = new Set((todaysLogs ?? []).map((l) => l.task_id))
+  const tasksRemaining = Math.max(0, totalTasks - doneTaskIds.size)
 
   const isOnShift = Boolean(openShift)
 
@@ -67,6 +78,20 @@ export default async function StaffHub() {
           }
           accent={
             totalAppliances === 0 || tempsRemaining === 0 ? 'off' : 'pending'
+          }
+        />
+        <HubTile
+          href="/staff/checklist"
+          title="Checklist"
+          status={
+            totalTasks === 0
+              ? 'No tasks'
+              : tasksRemaining === 0
+                ? 'All done today'
+                : `${tasksRemaining}/${totalTasks} to tick off`
+          }
+          accent={
+            totalTasks === 0 || tasksRemaining === 0 ? 'off' : 'pending'
           }
         />
       </div>
