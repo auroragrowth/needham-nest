@@ -10,12 +10,17 @@ type Props = {
  * Tap-friendly PIN entry. A real text input is rendered (focused on mount)
  * so iPadOS shows its native number pad. Below that, a visible button grid
  * works as backup for any device where the soft keyboard doesn't appear.
+ *
+ * Auto-submit uses a hidden submit button rather than form.requestSubmit()
+ * because requestSubmit only landed in Safari 16 — older iPads silently
+ * fail.
  */
 export function PinPad({ action }: Props) {
   const [pin, setPin] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const submitBtnRef = useRef<HTMLButtonElement>(null)
 
   function append(digit: string) {
     if (pin.length >= 4 || submitting) return
@@ -32,7 +37,7 @@ export function PinPad({ action }: Props) {
     setPin('')
   }
 
-  // Autofocus the input on mount so iPad shows its number pad immediately.
+  // Autofocus the input on mount so iPad shows its number pad.
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
@@ -41,11 +46,22 @@ export function PinPad({ action }: Props) {
   useEffect(() => {
     if (pin.length === 4 && !submitting) {
       setSubmitting(true)
-      // tiny delay so the 4th dot paints first
-      const t = setTimeout(() => formRef.current?.requestSubmit(), 50)
+      const t = setTimeout(() => {
+        submitBtnRef.current?.click()
+      }, 50)
       return () => clearTimeout(t)
     }
   }, [pin, submitting])
+
+  // Defensive: if we haven't navigated after 10s, reset so user can retry.
+  useEffect(() => {
+    if (!submitting) return
+    const t = setTimeout(() => {
+      setSubmitting(false)
+      setPin('')
+    }, 10000)
+    return () => clearTimeout(t)
+  }, [submitting])
 
   return (
     <form ref={formRef} action={action} className="flex flex-col items-center">
@@ -64,13 +80,21 @@ export function PinPad({ action }: Props) {
           setPin(digits)
         }}
         aria-label="PIN"
-        // Visually hidden but still focusable. Pops the iPadOS number pad.
         className="absolute h-px w-px overflow-hidden border-0 p-0 opacity-0"
-        // Some iPads ignore autoFocus on the prop; this is an extra nudge.
         autoFocus
       />
 
-      {/* Dots showing progress */}
+      {/* Hidden submit button — clicked programmatically when 4 digits land */}
+      <button
+        ref={submitBtnRef}
+        type="submit"
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      >
+        Submit
+      </button>
+
       <button
         type="button"
         onClick={() => inputRef.current?.focus()}
@@ -89,7 +113,6 @@ export function PinPad({ action }: Props) {
         ))}
       </button>
 
-      {/* Visible keypad backup. Standard onClick — no pointer tricks. */}
       <div className="mt-8 grid grid-cols-3 gap-3">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
           <PadButton key={d} onClick={() => append(d)} disabled={submitting}>
@@ -116,9 +139,14 @@ export function PinPad({ action }: Props) {
         </PadButton>
       </div>
 
-      {submitting && (
-        <p className="mt-6 text-sm text-brand-slate">Signing in…</p>
-      )}
+      {/* Visible Sign in button as ultimate fallback */}
+      <button
+        type="submit"
+        disabled={submitting || pin.length !== 4}
+        className="mt-6 rounded-lg bg-brand-forest px-6 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {submitting ? 'Signing in…' : 'Sign in'}
+      </button>
     </form>
   )
 }
