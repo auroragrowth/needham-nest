@@ -1,0 +1,42 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
+
+export async function saveSettings(formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const ctRate = Number(formData.get('ct_rate') ?? 19)
+  const invoiceNext = Number(formData.get('invoice_next_number') ?? 1)
+
+  const payload = {
+    user_id: user.id,
+    company_name: String(formData.get('company_name') ?? '').trim() || null,
+    company_number: String(formData.get('company_number') ?? '').trim() || null,
+    company_address: String(formData.get('company_address') ?? '').trim() || null,
+    bank_name: String(formData.get('bank_name') ?? '').trim() || null,
+    bank_account: String(formData.get('bank_account') ?? '').trim() || null,
+    ct_rate: Number.isFinite(ctRate) ? ctRate : 19,
+    invoice_prefix:
+      String(formData.get('invoice_prefix') ?? '').trim() || 'INV-',
+    invoice_next_number: Number.isFinite(invoiceNext) ? invoiceNext : 1,
+  }
+
+  const { error } = await supabase
+    .from('settings')
+    .upsert(payload, { onConflict: 'user_id' })
+
+  if (error) {
+    redirect(
+      `/owner/onboarding?error=${encodeURIComponent(error.message)}`,
+    )
+  }
+
+  revalidatePath('/owner')
+  redirect('/owner?notice=Settings+saved')
+}

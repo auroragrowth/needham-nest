@@ -1,8 +1,25 @@
 @import "tailwindcss";
 
+/*
+  Needham Nest brand palette.
+  Use as Tailwind utilities, e.g. bg-brand-forest, text-brand-amber, border-brand-sage.
+*/
+@theme {
+  --color-brand-forest: #17443f;     /* deep forest — primary surface, logo bg */
+  --color-brand-olive: #3f5847;      /* secondary green */
+  --color-brand-slate: #5f7581;      /* neutral blue-grey, muted text */
+  --color-brand-amber: #e6a251;      /* accent / CTA — logo bird */
+  --color-brand-sage: #89ac9e;       /* soft sage */
+  --color-brand-teal-deep: #4d7d79;  /* muted teal */
+  --color-brand-teal: #43a9a0;       /* brighter teal */
+  --color-brand-cream: #f9f6ef;      /* off-white background */
+  --color-brand-ink: #000000;
+  --color-brand-graphite: #555555;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: var(--color-brand-cream);
+  --foreground: var(--color-brand-forest);
 }
 
 @theme inline {
@@ -12,15 +29,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 }
