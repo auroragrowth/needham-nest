@@ -1,0 +1,26 @@
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm 14mm;
+  }
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .pack {
+    padding: 0 !important;
+  }
+  .pack-section {
+    break-inside: avoid;
+  }
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}

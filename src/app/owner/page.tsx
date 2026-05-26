@@ -167,6 +167,18 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/order-pad"
+          title="Order pad"
+          subtitle="Below-par items grouped by supplier"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/allergen-sheet"
+          title="Allergen sheet"
+          subtitle="Printable menu × allergen matrix"
+          cta="Open →"
+        />
+        <Card
           href="/owner/compliance/pack"
           title="EHO compliance pack"
           subtitle="Printable PDF for inspectors"

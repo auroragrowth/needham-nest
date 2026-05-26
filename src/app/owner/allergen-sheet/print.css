@@ -1,0 +1,24 @@
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm 10mm;
+  }
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .pack {
+    padding: 0 !important;
+  }
+  table {
+    page-break-inside: auto;
+    font-size: 9pt;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
