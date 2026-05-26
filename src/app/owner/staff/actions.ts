@@ -89,6 +89,44 @@ export async function updateStaffName(profileId: string, formData: FormData) {
   redirect(`/owner/staff/${profileId}?notice=Name+updated`)
 }
 
+export async function updateStaffDetails(
+  profileId: string,
+  formData: FormData,
+) {
+  await requireOwner()
+
+  const hourlyStr = String(formData.get('hourly_rate') ?? '').trim()
+  const startStr = String(formData.get('start_date') ?? '').trim()
+
+  const payload = {
+    phone: String(formData.get('phone') ?? '').trim() || null,
+    emergency_contact_name:
+      String(formData.get('emergency_contact_name') ?? '').trim() || null,
+    emergency_contact_phone:
+      String(formData.get('emergency_contact_phone') ?? '').trim() || null,
+    right_to_work_ref:
+      String(formData.get('right_to_work_ref') ?? '').trim() || null,
+    start_date: startStr || null,
+    hourly_rate: hourlyStr === '' ? null : Number(hourlyStr),
+  }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update(payload)
+    .eq('id', profileId)
+
+  if (error) {
+    redirect(
+      `/owner/staff/${profileId}?error=${encodeURIComponent(error.message)}`,
+    )
+  }
+
+  revalidatePath('/owner/staff')
+  revalidatePath(`/owner/staff/${profileId}`)
+  redirect(`/owner/staff/${profileId}?notice=Details+updated`)
+}
+
 export async function updateStaffPin(profileId: string, formData: FormData) {
   await requireOwner()
   const pin = String(formData.get('pin') ?? '').trim()

@@ -68,6 +68,10 @@ export default async function CompliancePackPage({
     { data: wastage },
     { data: stockItems },
     { data: staff },
+    { data: training },
+    { data: riskAssessments },
+    { data: accidents },
+    { data: pestVisits },
   ] = await Promise.all([
     session.authUserId
       ? admin
@@ -109,6 +113,25 @@ export default async function CompliancePackPage({
       .eq('active', true)
       .order('name'),
     admin.from('profiles').select('id, name'),
+    admin
+      .from('training_records')
+      .select('id, user_id, type, certificate_ref, issued_at, expires_at, notes'),
+    admin
+      .from('risk_assessments')
+      .select('id, title, reviewed_at, next_review_at, notes')
+      .order('next_review_at', { ascending: true, nullsFirst: false }),
+    admin
+      .from('accident_log')
+      .select('id, occurred_at, person, description, action_taken, riddor_reportable')
+      .gte('occurred_at', fromIso)
+      .lt('occurred_at', toIso)
+      .order('occurred_at', { ascending: false }),
+    admin
+      .from('pest_control_visits')
+      .select('id, date, company, inspector, findings, actions')
+      .gte('date', from)
+      .lte('date', to)
+      .order('date', { ascending: false }),
   ])
 
   const applianceById = new Map((appliances ?? []).map((a) => [a.id, a]))
@@ -464,28 +487,194 @@ export default async function CompliancePackPage({
         )}
       </section>
 
-      {/* Pending sections — placeholders */}
+      {/* Training records */}
+      <section className="pack-section mt-8 pack-page-break">
+        <h2 className="text-lg font-semibold">Training records</h2>
+        {(training?.length ?? 0) === 0 ? (
+          <p className="mt-2 text-xs text-black/60">
+            No training records on file.
+          </p>
+        ) : (
+          <table className="mt-2 w-full border-collapse text-xs">
+            <thead className="bg-black/5 text-left">
+              <tr>
+                <th className="border border-black/20 px-2 py-1">Staff</th>
+                <th className="border border-black/20 px-2 py-1">Course</th>
+                <th className="border border-black/20 px-2 py-1">Cert ref</th>
+                <th className="border border-black/20 px-2 py-1">Issued</th>
+                <th className="border border-black/20 px-2 py-1">Expires</th>
+                <th className="border border-black/20 px-2 py-1">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(training ?? []).map((t) => {
+                const expired = t.expires_at
+                  ? new Date(t.expires_at) < new Date()
+                  : false
+                return (
+                  <tr key={t.id}>
+                    <td className="border border-black/20 px-2 py-1">
+                      {staffById.get(t.user_id) ?? '—'}
+                    </td>
+                    <td className="border border-black/20 px-2 py-1">
+                      {t.type}
+                    </td>
+                    <td className="border border-black/20 px-2 py-1">
+                      {t.certificate_ref ?? ''}
+                    </td>
+                    <td className="border border-black/20 px-2 py-1">
+                      {t.issued_at ?? ''}
+                    </td>
+                    <td className="border border-black/20 px-2 py-1">
+                      {t.expires_at ?? ''}
+                    </td>
+                    <td className="border border-black/20 px-2 py-1">
+                      {expired ? 'EXPIRED' : 'Valid'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Risk assessments */}
       <section className="pack-section mt-8">
-        <h2 className="text-lg font-semibold">Other records (pending build)</h2>
+        <h2 className="text-lg font-semibold">Risk assessments</h2>
+        {(riskAssessments?.length ?? 0) === 0 ? (
+          <p className="mt-2 text-xs text-black/60">
+            No risk assessments on file.
+          </p>
+        ) : (
+          <table className="mt-2 w-full border-collapse text-xs">
+            <thead className="bg-black/5 text-left">
+              <tr>
+                <th className="border border-black/20 px-2 py-1">Title</th>
+                <th className="border border-black/20 px-2 py-1">Reviewed</th>
+                <th className="border border-black/20 px-2 py-1">Next review</th>
+                <th className="border border-black/20 px-2 py-1">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(riskAssessments ?? []).map((r) => (
+                <tr key={r.id}>
+                  <td className="border border-black/20 px-2 py-1">{r.title}</td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {r.reviewed_at ?? ''}
+                  </td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {r.next_review_at ?? ''}
+                  </td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {r.notes ?? ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Accident log */}
+      <section className="pack-section mt-8">
+        <h2 className="text-lg font-semibold">Accident log</h2>
+        {(accidents?.length ?? 0) === 0 ? (
+          <p className="mt-2 text-xs text-black/60">
+            No accidents recorded in this period.
+          </p>
+        ) : (
+          <table className="mt-2 w-full border-collapse text-xs">
+            <thead className="bg-black/5 text-left">
+              <tr>
+                <th className="border border-black/20 px-2 py-1">When</th>
+                <th className="border border-black/20 px-2 py-1">Person</th>
+                <th className="border border-black/20 px-2 py-1">Description</th>
+                <th className="border border-black/20 px-2 py-1">Action</th>
+                <th className="border border-black/20 px-2 py-1">RIDDOR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(accidents ?? []).map((a) => (
+                <tr key={a.id}>
+                  <td className="border border-black/20 px-2 py-1">
+                    {new Date(a.occurred_at).toLocaleString([], {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </td>
+                  <td className="border border-black/20 px-2 py-1">{a.person}</td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {a.description}
+                  </td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {a.action_taken ?? ''}
+                  </td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {a.riddor_reportable ? 'YES' : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Pest control */}
+      <section className="pack-section mt-8">
+        <h2 className="text-lg font-semibold">Pest control visits</h2>
+        {(pestVisits?.length ?? 0) === 0 ? (
+          <p className="mt-2 text-xs text-black/60">
+            No visits in this period.
+          </p>
+        ) : (
+          <table className="mt-2 w-full border-collapse text-xs">
+            <thead className="bg-black/5 text-left">
+              <tr>
+                <th className="border border-black/20 px-2 py-1">Date</th>
+                <th className="border border-black/20 px-2 py-1">Company</th>
+                <th className="border border-black/20 px-2 py-1">Inspector</th>
+                <th className="border border-black/20 px-2 py-1">Findings</th>
+                <th className="border border-black/20 px-2 py-1">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(pestVisits ?? []).map((v) => (
+                <tr key={v.id}>
+                  <td className="border border-black/20 px-2 py-1">{v.date}</td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {v.company ?? ''}
+                  </td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {v.inspector ?? ''}
+                  </td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {v.findings ?? ''}
+                  </td>
+                  <td className="border border-black/20 px-2 py-1">
+                    {v.actions ?? ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {/* Still-pending items */}
+      <section className="pack-section mt-8">
+        <h2 className="text-lg font-semibold">Still to capture</h2>
         <ul className="ml-5 mt-2 list-disc text-xs text-black/60">
           <li>
-            <strong>Staff training certificates.</strong> Tracked from Phase 4 —
-            Staff &amp; Compliance.
+            <strong>FHRS rating &amp; last inspection</strong> — record in
+            company settings.
           </li>
           <li>
-            <strong>Pest control visits.</strong> Tracked from Phase 4.
-          </li>
-          <li>
-            <strong>Risk assessments &amp; accident book.</strong> Tracked from
-            Phase 4.
-          </li>
-          <li>
-            <strong>FHRS rating &amp; last inspection.</strong> Will be added to
-            company settings once recorded.
-          </li>
-          <li>
-            <strong>HACCP plan attachments.</strong> Stored in the
-            <em> compliance-docs</em> bucket once Phase 3 lands.
+            <strong>HACCP plan attachments</strong> — file uploads land with the
+            compliance-docs bucket in a follow-up.
           </li>
         </ul>
       </section>

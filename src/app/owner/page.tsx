@@ -179,6 +179,24 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/risk-assessments"
+          title="Risk assessments"
+          subtitle="Fire, COSHH, slips/trips, manual handling"
+          cta="Manage →"
+        />
+        <Card
+          href="/owner/accidents"
+          title="Accident book"
+          subtitle="Digital accident log + RIDDOR flag"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/pest-control"
+          title="Pest control"
+          subtitle="Visit log for EHO"
+          cta="Open →"
+        />
+        <Card
           href="/owner/compliance/pack"
           title="EHO compliance pack"
           subtitle="Printable PDF for inspectors"
