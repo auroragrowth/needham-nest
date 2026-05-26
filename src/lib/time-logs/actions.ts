@@ -31,14 +31,15 @@ export async function clockIn() {
     // The partial unique index will catch double-clock-in; surface a tidy
     // message instead of the raw constraint error.
     if (error.code === '23505') {
-      redirect('/staff?error=You%20are%20already%20clocked%20in')
+      redirect('/staff/clock?error=You%20are%20already%20clocked%20in')
     }
-    redirect(`/staff?error=${encodeURIComponent(error.message)}`)
+    redirect(`/staff/clock?error=${encodeURIComponent(error.message)}`)
   }
 
   revalidatePath('/staff')
+  revalidatePath('/staff/clock')
   revalidatePath('/manager/timesheets')
-  redirect('/staff?notice=Clocked+in')
+  redirect('/staff/clock?notice=Clocked+in')
 }
 
 export async function clockOut() {
@@ -58,7 +59,7 @@ export async function clockOut() {
     .maybeSingle()
 
   if (!openShift) {
-    redirect('/staff?error=No%20open%20shift%20to%20clock%20out%20of')
+    redirect('/staff/clock?error=No%20open%20shift%20to%20clock%20out%20of')
   }
 
   const { error } = await admin
@@ -67,10 +68,11 @@ export async function clockOut() {
     .eq('id', openShift.id)
 
   if (error) {
-    redirect(`/staff?error=${encodeURIComponent(error.message)}`)
+    redirect(`/staff/clock?error=${encodeURIComponent(error.message)}`)
   }
 
   revalidatePath('/staff')
+  revalidatePath('/staff/clock')
   revalidatePath('/manager/timesheets')
-  redirect('/staff?notice=Clocked+out')
+  redirect('/staff/clock?notice=Clocked+out')
 }
