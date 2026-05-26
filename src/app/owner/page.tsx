@@ -14,21 +14,28 @@ export default async function OwnerDashboard({
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('company_name')
-    .eq('user_id', user.id)
-    .maybeSingle()
+  const [{ data: settings }, { count: staffCount }] = await Promise.all([
+    supabase
+      .from('settings')
+      .select('company_name')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'staff')
+      .eq('active', true),
+  ])
 
   const onboarded = Boolean(settings?.company_name)
 
   return (
-    <main className="mx-auto max-w-3xl">
+    <main className="mx-auto max-w-4xl">
       <h1 className="text-2xl font-semibold tracking-tight text-brand-forest">
-        Owner dashboard
+        {settings?.company_name ?? 'Needham Nest'}
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        Phase 0 placeholder — financials, P&amp;L, and tax pot land in Phase 2.
+        Owner control panel. More sections appear as later phases come online.
       </p>
 
       {params.notice && (
@@ -55,24 +62,45 @@ export default async function OwnerDashboard({
         </section>
       )}
 
-      {onboarded && (
-        <section className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-5">
-          <h2 className="text-sm font-semibold text-brand-forest">Settings</h2>
-          <p className="mt-1 text-sm text-brand-slate">
-            Company set up as{' '}
-            <strong className="text-brand-forest">
-              {settings!.company_name}
-            </strong>
-            .{' '}
-            <Link
-              href="/owner/onboarding"
-              className="font-medium text-brand-amber hover:underline"
-            >
-              Edit
-            </Link>
-          </p>
-        </section>
-      )}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <Card
+          href="/owner/staff"
+          title="People"
+          subtitle={`${staffCount ?? 0} active staff`}
+          cta="Manage →"
+        />
+        <Card
+          href="/owner/onboarding"
+          title="Company settings"
+          subtitle={onboarded ? 'Set up' : 'Not yet configured'}
+          cta="Edit →"
+        />
+      </div>
     </main>
+  )
+}
+
+function Card({
+  href,
+  title,
+  subtitle,
+  cta,
+}: {
+  href: string
+  title: string
+  subtitle: string
+  cta: string
+}) {
+  return (
+    <Link
+      href={href}
+      className="block rounded-xl border border-brand-sage/40 bg-white p-5 transition-colors hover:border-brand-teal/60 hover:bg-brand-teal/5"
+    >
+      <h3 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+        {title}
+      </h3>
+      <p className="mt-2 text-brand-forest">{subtitle}</p>
+      <p className="mt-3 text-sm font-medium text-brand-amber">{cta}</p>
+    </Link>
   )
 }
