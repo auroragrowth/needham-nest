@@ -61,8 +61,18 @@ export async function signInWithEmail(formData: FormData) {
     .eq('auth_user_id', authData.user!.id)
     .maybeSingle()
 
-  if (profileError || !profile) {
-    redirect('/login/email?error=Profile+not+found')
+  if (profileError) {
+    redirect(
+      `/login/email?error=${encodeURIComponent('DB error: ' + profileError.message)}`,
+    )
+  }
+  if (!profile) {
+    // The profile lookup ran successfully but returned nothing.
+    // 99% of the time this means SUPABASE_SERVICE_ROLE_KEY is wrong or
+    // missing on the server — the lookup ran as anon, RLS blocked it.
+    redirect(
+      '/login/email?error=Profile+lookup+returned+empty.+Likely+SUPABASE_SERVICE_ROLE_KEY+is+wrong+on+the+server.',
+    )
   }
 
   await createSession({
