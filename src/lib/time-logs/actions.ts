@@ -3,11 +3,10 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
+import { requireStaffFeature } from '@/lib/permissions'
 
 export async function clockIn() {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireStaffFeature('clock')
   if (session.role !== 'staff') {
     redirect('/?error=Only+staff+clock+in')
   }
@@ -43,8 +42,7 @@ export async function clockIn() {
 }
 
 export async function clockOut() {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireStaffFeature('clock')
   if (session.role !== 'staff') {
     redirect('/?error=Only+staff+clock+out')
   }

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { requireStaffFeature } from '@/lib/permissions'
 
 const WASTAGE_REASONS = [
   'out_of_date',
@@ -117,8 +118,7 @@ export async function reactivateItem(id: string) {
 
 /** Staff logs wastage for a specific item. */
 export async function recordWastage(itemId: string, formData: FormData) {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireStaffFeature('wastage')
   if (session.role !== 'staff') {
     redirect('/?error=Only+staff+log+wastage')
   }
@@ -170,8 +170,7 @@ export async function recordWastage(itemId: string, formData: FormData) {
  * We insert one stock_counts row per item that has a value entered.
  */
 export async function recordStockCount(formData: FormData) {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireStaffFeature('stock_count')
   if (session.role !== 'staff') {
     redirect('/?error=Only+staff+count+stock')
   }

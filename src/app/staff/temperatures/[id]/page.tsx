@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStaffFeature } from '@/lib/permissions'
 import { logTemperature } from '@/lib/temperatures/actions'
 
 const KIND_LABEL: Record<string, string> = {
@@ -25,6 +26,7 @@ export default async function LogTemperaturePage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ error?: string; t?: string }>
 }) {
+  await requireStaffFeature('temperatures')
   const { id } = await params
   const sp = await searchParams
   const admin = createAdminClient()

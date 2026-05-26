@@ -3,11 +3,10 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
+import { requireStaffFeature } from '@/lib/permissions'
 
 export async function logTemperature(applianceId: string, formData: FormData) {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireStaffFeature('temperatures')
   if (session.role !== 'staff') {
     redirect('/?error=Only+staff+log+temperatures')
   }

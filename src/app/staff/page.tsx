@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { hasPermission } from '@/lib/permissions'
 
 function startOfTodayIso(): string {
   const d = new Date()
@@ -9,7 +10,12 @@ function startOfTodayIso(): string {
   return d.toISOString()
 }
 
-export default async function StaffHub() {
+export default async function StaffHub({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; notice?: string }>
+}) {
+  const params = await searchParams
   const session = await getSession()
   if (!session) redirect('/login')
 
@@ -22,6 +28,7 @@ export default async function StaffHub() {
     { data: tasks },
     { data: todaysLogs },
     { count: stockItemsCount },
+    { data: profile },
   ] = await Promise.all([
     admin
       .from('time_logs')
@@ -43,7 +50,14 @@ export default async function StaffHub() {
       .from('stock_items')
       .select('*', { count: 'exact', head: true })
       .eq('active', true),
+    admin
+      .from('profiles')
+      .select('permissions')
+      .eq('id', session.profileId)
+      .maybeSingle(),
   ])
+
+  const perms = (profile?.permissions ?? null) as Record<string, boolean> | null
 
   const totalAppliances = appliances?.length ?? 0
   const loggedApplianceIds = new Set(
@@ -64,57 +78,78 @@ export default async function StaffHub() {
         Hi {session.name}. Tap a section to log activity.
       </p>
 
+      {params.notice && (
+        <p className="mt-3 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
+          {params.notice}
+        </p>
+      )}
+      {params.error && (
+        <p className="mt-3 rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-sm text-brand-forest">
+          {params.error}
+        </p>
+      )}
+
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <HubTile
-          href="/staff/clock"
-          title="Clock in/out"
-          status={isOnShift ? 'On shift' : 'Off shift'}
-          accent={isOnShift ? 'on' : 'off'}
-        />
-        <HubTile
-          href="/staff/temperatures"
-          title="Temperatures"
-          status={
-            totalAppliances === 0
-              ? 'No appliances'
-              : tempsRemaining === 0
-                ? 'All logged today'
-                : `${tempsRemaining}/${totalAppliances} to log`
-          }
-          accent={
-            totalAppliances === 0 || tempsRemaining === 0 ? 'off' : 'pending'
-          }
-        />
-        <HubTile
-          href="/staff/checklist"
-          title="Checklist"
-          status={
-            totalTasks === 0
-              ? 'No tasks'
-              : tasksRemaining === 0
-                ? 'All done today'
-                : `${tasksRemaining}/${totalTasks} to tick off`
-          }
-          accent={
-            totalTasks === 0 || tasksRemaining === 0 ? 'off' : 'pending'
-          }
-        />
-        <HubTile
-          href="/staff/stock-count"
-          title="Stock count"
-          status={
-            stockItemsCount && stockItemsCount > 0
-              ? `${stockItemsCount} item${stockItemsCount === 1 ? '' : 's'} to count`
-              : 'No items configured'
-          }
-          accent="off"
-        />
-        <HubTile
-          href="/staff/wastage"
-          title="Wastage"
-          status="Tap to log waste"
-          accent="off"
-        />
+        {hasPermission(session.role, perms, 'clock') && (
+          <HubTile
+            href="/staff/clock"
+            title="Clock in/out"
+            status={isOnShift ? 'On shift' : 'Off shift'}
+            accent={isOnShift ? 'on' : 'off'}
+          />
+        )}
+        {hasPermission(session.role, perms, 'temperatures') && (
+          <HubTile
+            href="/staff/temperatures"
+            title="Temperatures"
+            status={
+              totalAppliances === 0
+                ? 'No appliances'
+                : tempsRemaining === 0
+                  ? 'All logged today'
+                  : `${tempsRemaining}/${totalAppliances} to log`
+            }
+            accent={
+              totalAppliances === 0 || tempsRemaining === 0 ? 'off' : 'pending'
+            }
+          />
+        )}
+        {hasPermission(session.role, perms, 'checklist') && (
+          <HubTile
+            href="/staff/checklist"
+            title="Checklist"
+            status={
+              totalTasks === 0
+                ? 'No tasks'
+                : tasksRemaining === 0
+                  ? 'All done today'
+                  : `${tasksRemaining}/${totalTasks} to tick off`
+            }
+            accent={
+              totalTasks === 0 || tasksRemaining === 0 ? 'off' : 'pending'
+            }
+          />
+        )}
+        {hasPermission(session.role, perms, 'stock_count') && (
+          <HubTile
+            href="/staff/stock-count"
+            title="Stock count"
+            status={
+              stockItemsCount && stockItemsCount > 0
+                ? `${stockItemsCount} item${stockItemsCount === 1 ? '' : 's'} to count`
+                : 'No items configured'
+            }
+            accent="off"
+          />
+        )}
+        {hasPermission(session.role, perms, 'wastage') && (
+          <HubTile
+            href="/staff/wastage"
+            title="Wastage"
+            status="Tap to log waste"
+            accent="off"
+          />
+        )}
       </div>
     </main>
   )

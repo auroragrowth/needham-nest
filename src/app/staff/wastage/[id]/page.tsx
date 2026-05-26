@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStaffFeature } from '@/lib/permissions'
 import { recordWastage } from '@/lib/stock/actions'
 
 const REASONS = [
@@ -20,6 +21,7 @@ export default async function WastagePage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ error?: string }>
 }) {
+  await requireStaffFeature('wastage')
   const { id } = await params
   const sp = await searchParams
   const admin = createAdminClient()

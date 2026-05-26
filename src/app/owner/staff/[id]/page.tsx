@@ -2,10 +2,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { STAFF_FEATURES } from '@/lib/permissions'
 import {
   deactivateStaff,
   reactivateStaff,
   updateStaffName,
+  updateStaffPermissions,
   updateStaffPin,
 } from '../actions'
 
@@ -23,7 +25,7 @@ export default async function EditStaffPage({
 
   const { data: person } = await admin
     .from('profiles')
-    .select('id, name, role, active, auth_user_id')
+    .select('id, name, role, active, auth_user_id, permissions')
     .eq('id', id)
     .maybeSingle()
 
@@ -34,6 +36,9 @@ export default async function EditStaffPage({
 
   const updateName = updateStaffName.bind(null, id)
   const updatePin = updateStaffPin.bind(null, id)
+  const updatePerms = updateStaffPermissions.bind(null, id)
+
+  const currentPerms = (person.permissions ?? {}) as Record<string, boolean>
 
   return (
     <main className="mx-auto max-w-2xl">
@@ -119,6 +124,43 @@ export default async function EditStaffPage({
               className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
             >
               Set PIN
+            </button>
+          </form>
+        </section>
+      )}
+
+      {person.role === 'staff' && (
+        <section className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+            Tablet permissions
+          </h2>
+          <p className="mt-1 text-xs text-brand-slate">
+            Toggle which sections this staff member can use. Unchecked sections
+            are hidden from their tablet hub and their actions are rejected.
+          </p>
+          <form action={updatePerms} className="mt-4 space-y-3">
+            {STAFF_FEATURES.map((f) => {
+              const enabled = currentPerms[f.key] !== false
+              return (
+                <label
+                  key={f.key}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg border border-brand-sage/40 px-4 py-3 hover:bg-brand-sage/5"
+                >
+                  <input
+                    type="checkbox"
+                    name={`perm_${f.key}`}
+                    defaultChecked={enabled}
+                    className="h-5 w-5 rounded border-brand-sage/60 accent-brand-teal-deep"
+                  />
+                  <span className="text-sm text-brand-forest">{f.label}</span>
+                </label>
+              )
+            })}
+            <button
+              type="submit"
+              className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
+            >
+              Save permissions
             </button>
           </form>
         </section>

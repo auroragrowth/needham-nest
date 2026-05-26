@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStaffFeature } from '@/lib/permissions'
 import { recordStockCount } from '@/lib/stock/actions'
 
 export default async function StockCountPage({
@@ -7,6 +8,7 @@ export default async function StockCountPage({
 }: {
   searchParams: Promise<{ notice?: string; error?: string }>
 }) {
+  await requireStaffFeature('stock_count')
   const params = await searchParams
   const admin = createAdminClient()
   const { data: items } = await admin

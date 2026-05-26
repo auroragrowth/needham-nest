@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStaffFeature } from '@/lib/permissions'
 import { completeTask } from '@/lib/checklist/actions'
 
 const FREQ_LABEL: Record<string, string> = {
@@ -40,6 +41,7 @@ export default async function StaffChecklistPage({
 }: {
   searchParams: Promise<{ notice?: string; error?: string }>
 }) {
+  await requireStaffFeature('checklist')
   const params = await searchParams
   const admin = createAdminClient()
 

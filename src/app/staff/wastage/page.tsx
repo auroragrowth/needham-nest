@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStaffFeature } from '@/lib/permissions'
 
 export default async function WastageListPage({
   searchParams,
 }: {
   searchParams: Promise<{ notice?: string; error?: string }>
 }) {
+  await requireStaffFeature('wastage')
   const params = await searchParams
   const admin = createAdminClient()
   const { data: items } = await admin

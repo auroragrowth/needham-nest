@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStaffFeature } from '@/lib/permissions'
 
 function startOfTodayIso(): string {
   const d = new Date()
@@ -38,6 +39,7 @@ export default async function TemperaturesListPage({
 }: {
   searchParams: Promise<{ notice?: string; error?: string }>
 }) {
+  await requireStaffFeature('temperatures')
   const params = await searchParams
   const admin = createAdminClient()
   const now = new Date()

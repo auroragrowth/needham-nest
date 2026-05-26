@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
+import { requireStaffFeature } from '@/lib/permissions'
 import { clockIn, clockOut } from '@/lib/time-logs/actions'
 
 function formatDuration(ms: number): string {
@@ -44,8 +43,7 @@ export default async function StaffDashboard({
   searchParams: Promise<{ notice?: string; error?: string }>
 }) {
   const params = await searchParams
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireStaffFeature('clock')
 
   const admin = createAdminClient()
   const now = new Date()

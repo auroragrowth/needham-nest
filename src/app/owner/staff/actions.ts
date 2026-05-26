@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { STAFF_FEATURES, type StaffFeature } from '@/lib/permissions'
 
 async function requireOwner() {
   const session = await getSession()
@@ -148,4 +149,35 @@ export async function reactivateStaff(profileId: string) {
   revalidatePath('/owner/staff')
   revalidatePath(`/owner/staff/${profileId}`)
   redirect(`/owner/staff/${profileId}?notice=Staff+reactivated`)
+}
+
+export async function updateStaffPermissions(
+  profileId: string,
+  formData: FormData,
+) {
+  await requireOwner()
+
+  const permissions: Record<StaffFeature, boolean> = {} as Record<
+    StaffFeature,
+    boolean
+  >
+  for (const f of STAFF_FEATURES) {
+    permissions[f.key] = formData.get(`perm_${f.key}`) === 'on'
+  }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ permissions })
+    .eq('id', profileId)
+
+  if (error) {
+    redirect(
+      `/owner/staff/${profileId}?error=${encodeURIComponent(error.message)}`,
+    )
+  }
+
+  revalidatePath(`/owner/staff/${profileId}`)
+  revalidatePath('/staff')
+  redirect(`/owner/staff/${profileId}?notice=Permissions+updated`)
 }

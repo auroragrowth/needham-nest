@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { requireStaffFeature } from '@/lib/permissions'
 
 const VALID_FREQ = ['open', 'mid', 'close', 'daily'] as const
 type Frequency = (typeof VALID_FREQ)[number]
@@ -103,8 +104,7 @@ export async function reactivateTask(id: string) {
  * by the unique index and surfaced as a friendly message.
  */
 export async function completeTask(taskId: string) {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireStaffFeature('checklist')
   if (session.role !== 'staff') {
     redirect('/?error=Only+staff+complete+checklist+tasks')
   }
