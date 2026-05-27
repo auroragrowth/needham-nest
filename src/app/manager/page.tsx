@@ -83,6 +83,18 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/manager/rota"
+          title="Rota"
+          subtitle="Weekly grid + publish to staff"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/leave"
+          title="Leave"
+          subtitle="Approve holiday / sick / unpaid"
+          cta="Open →"
+        />
+        <Card
           href="/manager/compliance"
           title="Temperatures"
           subtitle={

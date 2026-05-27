@@ -150,6 +150,18 @@ export default async function StaffHub({
             accent="off"
           />
         )}
+        <HubTile
+          href="/staff/rota"
+          title="Your shifts"
+          status="Upcoming rota"
+          accent="off"
+        />
+        <HubTile
+          href="/staff/leave"
+          title="Leave"
+          status="Request holiday / sick"
+          accent="off"
+        />
       </div>
     </main>
   )
