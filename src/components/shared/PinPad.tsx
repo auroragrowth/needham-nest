@@ -12,25 +12,28 @@ type Props = {
  * relying on JS event handling for digit buttons.
  *
  * Submits when 4 digits are entered (via JS if available) OR when the
- * user taps the visible Sign in button.
+ * user clicks the visible Sign in button.
  */
 export function PinPad({ action }: Props) {
   const [pin, setPin] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const submitBtnRef = useRef<HTMLButtonElement>(null)
+  const hiddenSubmitRef = useRef<HTMLButtonElement>(null)
 
-  // Auto-submit when 4 digits entered.
+  // Auto-submit when 4 digits entered. Click the hidden (never disabled)
+  // submit button so the form posts even though the visible button has
+  // already gone disabled.
   useEffect(() => {
     if (pin.length === 4 && !submitting) {
       setSubmitting(true)
       const t = setTimeout(() => {
-        submitBtnRef.current?.click()
+        hiddenSubmitRef.current?.click()
       }, 50)
       return () => clearTimeout(t)
     }
   }, [pin, submitting])
 
-  // Defensive timeout — reset if the submit silently fails.
+  // Defensive: if the submit silently fails, reset after 10s so the UI
+  // never gets permanently stuck.
   useEffect(() => {
     if (!submitting) return
     const t = setTimeout(() => setSubmitting(false), 10000)
@@ -58,8 +61,19 @@ export function PinPad({ action }: Props) {
         className="w-48 rounded-2xl border-2 border-brand-sage/60 bg-white px-4 py-4 text-center font-mono text-4xl tracking-[0.5em] text-brand-forest outline-none focus:border-brand-amber focus:ring-2 focus:ring-brand-amber/30"
       />
 
+      {/* Always-enabled hidden submit button used for auto-submit. */}
       <button
-        ref={submitBtnRef}
+        ref={hiddenSubmitRef}
+        type="submit"
+        aria-hidden="true"
+        tabIndex={-1}
+        className="pointer-events-none absolute h-0 w-0 overflow-hidden border-0 p-0 opacity-0"
+      >
+        Submit
+      </button>
+
+      {/* Visible Sign in button — manual fallback / Enter target. */}
+      <button
         type="submit"
         disabled={submitting || pin.length !== 4}
         className="rounded-lg bg-brand-forest px-8 py-3 text-base font-medium text-brand-cream hover:bg-brand-olive disabled:cursor-not-allowed disabled:opacity-50"
