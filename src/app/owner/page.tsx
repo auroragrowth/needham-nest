@@ -275,6 +275,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/integrations/sumup"
+          title="SumUp"
+          subtitle="Till sync + recipe-driven stock depletion"
+          cta="Open →"
+        />
+        <Card
           href="/owner/onboarding"
           title="Company settings"
           subtitle={onboarded ? 'Set up' : 'Not yet configured'}
