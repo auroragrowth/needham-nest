@@ -34,7 +34,7 @@ export default async function EditStaffPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, hourly_rate',
+        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, hourly_rate, contracted_weekly_hours',
       )
       .eq('id', id)
       .maybeSingle(),
@@ -188,6 +188,13 @@ export default async function EditStaffPage({
             type="number"
             step="0.01"
             defaultValue={person.hourly_rate?.toString() ?? ''}
+          />
+          <Field
+            label="Contracted hrs / week"
+            name="contracted_weekly_hours"
+            type="number"
+            step="0.5"
+            defaultValue={person.contracted_weekly_hours?.toString() ?? ''}
           />
           <div className="col-span-2">
             <button

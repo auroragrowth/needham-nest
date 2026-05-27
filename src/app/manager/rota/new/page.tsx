@@ -9,12 +9,21 @@ export default async function NewShiftPage({
 }) {
   const sp = await searchParams
   const admin = createAdminClient()
-  const { data: staff } = await admin
-    .from('profiles')
-    .select('id, name')
-    .eq('active', true)
-    .neq('role', 'owner')
-    .order('name')
+  const [{ data: staff }, { data: settingsRows }] = await Promise.all([
+    admin
+      .from('profiles')
+      .select('id, name, role')
+      .eq('active', true)
+      .neq('role', 'owner')
+      .order('name'),
+    admin
+      .from('settings')
+      .select('trading_open_time, trading_close_time')
+      .limit(1),
+  ])
+  const settings = settingsRows?.[0]
+  const openTime = settings?.trading_open_time?.slice(0, 5) ?? '08:00'
+  const closeTime = settings?.trading_close_time?.slice(0, 5) ?? '16:00'
 
   return (
     <main className="mx-auto max-w-md">
@@ -27,6 +36,10 @@ export default async function NewShiftPage({
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
         Add shift
       </h1>
+      <p className="mt-1 text-xs text-brand-slate">
+        Defaults to your trading hours ({openTime}–{closeTime}). Edit if it&apos;s
+        a partial shift.
+      </p>
 
       {sp.error && (
         <p className="mt-4 rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-sm text-brand-forest">
@@ -40,7 +53,7 @@ export default async function NewShiftPage({
       >
         <div>
           <label className="block text-xs font-medium text-brand-forest">
-            Staff
+            Person
           </label>
           <select
             name="staff_user_id"
@@ -49,11 +62,12 @@ export default async function NewShiftPage({
             className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
           >
             <option value="" disabled>
-              Pick a staff member
+              Pick a person
             </option>
             {(staff ?? []).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
+                {s.role === 'manager' ? ' (manager)' : ''}
               </option>
             ))}
           </select>
@@ -79,6 +93,7 @@ export default async function NewShiftPage({
               name="start_time"
               type="time"
               required
+              defaultValue={openTime}
               className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
             />
           </div>
@@ -90,6 +105,7 @@ export default async function NewShiftPage({
               name="end_time"
               type="time"
               required
+              defaultValue={closeTime}
               className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
             />
           </div>

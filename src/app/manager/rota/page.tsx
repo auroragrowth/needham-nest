@@ -58,7 +58,7 @@ export default async function RotaPage({
   const [{ data: staff }, { data: shifts }] = await Promise.all([
     admin
       .from('profiles')
-      .select('id, name')
+      .select('id, name, role, contracted_weekly_hours')
       .eq('active', true)
       .neq('role', 'owner')
       .order('name'),
@@ -78,6 +78,24 @@ export default async function RotaPage({
     byStaffDay.set(key, arr)
   }
   const draftCount = (shifts ?? []).filter((s) => !s.published).length
+
+  function shiftHours(s: Shift): number {
+    const [sh, sm] = s.start_time.split(':').map(Number)
+    const [eh, em] = s.end_time.split(':').map(Number)
+    return (eh * 60 + em - (sh * 60 + sm)) / 60
+  }
+
+  const hoursByStaff = new Map<string, number>()
+  const hoursByDay = new Map<string, number>()
+  for (const s of (shifts ?? []) as Shift[]) {
+    const h = shiftHours(s)
+    hoursByStaff.set(
+      s.staff_user_id,
+      (hoursByStaff.get(s.staff_user_id) ?? 0) + h,
+    )
+    hoursByDay.set(s.date, (hoursByDay.get(s.date) ?? 0) + h)
+  }
+  const weekTotal = Array.from(hoursByDay.values()).reduce((a, h) => a + h, 0)
 
   return (
     <main className="mx-auto max-w-6xl">
@@ -158,7 +176,7 @@ export default async function RotaPage({
           <thead>
             <tr>
               <th className="border-b border-brand-sage/40 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-brand-slate">
-                Staff
+                Person
               </th>
               {days.map((d) => (
                 <th
@@ -171,13 +189,23 @@ export default async function RotaPage({
                   })}
                 </th>
               ))}
+              <th className="border-b border-brand-sage/40 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-brand-slate">
+                Week
+              </th>
             </tr>
           </thead>
           <tbody>
-            {(staff ?? []).map((s) => (
+            {(staff ?? []).map((s) => {
+              const scheduled = hoursByStaff.get(s.id) ?? 0
+              const contracted = Number(s.contracted_weekly_hours ?? 0)
+              return (
               <tr key={s.id} className="align-top">
                 <td className="border-b border-brand-sage/30 px-3 py-2 font-medium text-brand-forest">
                   {s.name}
+                  <div className="text-[10px] uppercase tracking-wide text-brand-slate">
+                    {s.role}
+                    {contracted > 0 && ` · ${contracted}h`}
+                  </div>
                 </td>
                 {days.map((d) => {
                   const key = `${s.id}|${isoDate(d)}`
@@ -221,12 +249,25 @@ export default async function RotaPage({
                     </td>
                   )
                 })}
+                <td className="border-b border-brand-sage/30 px-3 py-2 text-right font-mono text-xs">
+                  <span
+                    className={
+                      contracted > 0 && scheduled < contracted
+                        ? 'text-brand-amber'
+                        : 'text-brand-forest'
+                    }
+                  >
+                    {scheduled.toFixed(1)}
+                    {contracted > 0 && ` / ${contracted}`}h
+                  </span>
+                </td>
               </tr>
-            ))}
+              )
+            })}
             {(staff?.length ?? 0) === 0 && (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-3 py-8 text-center text-sm text-brand-slate"
                 >
                   No active staff yet.
@@ -234,6 +275,29 @@ export default async function RotaPage({
               </tr>
             )}
           </tbody>
+          {(staff?.length ?? 0) > 0 && (
+            <tfoot>
+              <tr>
+                <td className="border-t-2 border-brand-sage/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-brand-slate">
+                  Day total
+                </td>
+                {days.map((d) => {
+                  const total = hoursByDay.get(isoDate(d)) ?? 0
+                  return (
+                    <td
+                      key={isoDate(d)}
+                      className="border-t-2 border-brand-sage/40 px-3 py-2 font-mono text-xs text-brand-forest"
+                    >
+                      {total.toFixed(1)}h
+                    </td>
+                  )
+                })}
+                <td className="border-t-2 border-brand-sage/40 px-3 py-2 text-right font-mono text-xs font-semibold text-brand-forest">
+                  {weekTotal.toFixed(1)}h
+                </td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </main>

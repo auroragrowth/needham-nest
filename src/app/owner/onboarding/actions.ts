@@ -15,6 +15,9 @@ export async function saveSettings(formData: FormData) {
   const ctRate = Number(formData.get('ct_rate') ?? 19)
   const invoiceNext = Number(formData.get('invoice_next_number') ?? 1)
 
+  const openTime = String(formData.get('trading_open_time') ?? '').trim()
+  const closeTime = String(formData.get('trading_close_time') ?? '').trim()
+
   const payload = {
     user_id: session.authUserId,
     company_name: String(formData.get('company_name') ?? '').trim() || null,
@@ -26,6 +29,8 @@ export async function saveSettings(formData: FormData) {
     invoice_prefix:
       String(formData.get('invoice_prefix') ?? '').trim() || 'INV-',
     invoice_next_number: Number.isFinite(invoiceNext) ? invoiceNext : 1,
+    trading_open_time: openTime || '08:00',
+    trading_close_time: closeTime || '16:00',
   }
 
   const admin = createAdminClient()

@@ -102,6 +102,30 @@ export default async function OwnerOnboardingPage({
           />
         </Section>
 
+        <Section title="Trading hours">
+          <p className="-mt-2 text-xs text-brand-slate">
+            Used as the default start/end time when adding shifts to the rota.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label="Open"
+              name="trading_open_time"
+              type="time"
+              defaultValue={
+                settings?.trading_open_time?.slice(0, 5) ?? '08:00'
+              }
+            />
+            <Field
+              label="Close"
+              name="trading_close_time"
+              type="time"
+              defaultValue={
+                settings?.trading_close_time?.slice(0, 5) ?? '16:00'
+              }
+            />
+          </div>
+        </Section>
+
         <button
           type="submit"
           className="rounded-lg bg-brand-forest px-5 py-2.5 text-sm font-medium text-brand-cream transition-colors hover:bg-brand-olive"

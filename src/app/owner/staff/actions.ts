@@ -122,6 +122,7 @@ export async function updateStaffDetails(
 
   const hourlyStr = String(formData.get('hourly_rate') ?? '').trim()
   const startStr = String(formData.get('start_date') ?? '').trim()
+  const contractedStr = String(formData.get('contracted_weekly_hours') ?? '').trim()
 
   const payload = {
     phone: String(formData.get('phone') ?? '').trim() || null,
@@ -133,6 +134,8 @@ export async function updateStaffDetails(
       String(formData.get('right_to_work_ref') ?? '').trim() || null,
     start_date: startStr || null,
     hourly_rate: hourlyStr === '' ? null : Number(hourlyStr),
+    contracted_weekly_hours:
+      contractedStr === '' ? null : Number(contractedStr),
   }
 
   const admin = createAdminClient()
