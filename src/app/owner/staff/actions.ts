@@ -36,6 +36,8 @@ export async function createStaff(formData: FormData) {
   await requireOwner()
   const name = String(formData.get('name') ?? '').trim()
   const pin = String(formData.get('pin') ?? '').trim()
+  const roleRaw = String(formData.get('role') ?? 'staff').trim()
+  const role = roleRaw === 'manager' ? 'manager' : 'staff'
 
   if (!name) {
     redirect('/owner/staff/new?error=Name+is+required')
@@ -51,18 +53,41 @@ export async function createStaff(formData: FormData) {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('profiles')
-    .insert({ name, role: 'staff', pin_hash: pinHash, active: true })
+    .insert({ name, role, pin_hash: pinHash, active: true })
     .select('id')
     .single()
 
   if (error || !data) {
     redirect(
-      `/owner/staff/new?error=${encodeURIComponent(error?.message ?? 'Failed to create staff')}`,
+      `/owner/staff/new?error=${encodeURIComponent(error?.message ?? 'Failed to create person')}`,
     )
   }
 
   revalidatePath('/owner/staff')
-  redirect(`/owner/staff/${data.id}?notice=Staff+added`)
+  redirect(
+    `/owner/staff/${data.id}?notice=${role === 'manager' ? 'Manager+added' : 'Staff+added'}`,
+  )
+}
+
+export async function updateStaffRole(profileId: string, formData: FormData) {
+  await requireOwner()
+  const roleRaw = String(formData.get('role') ?? '').trim()
+  if (roleRaw !== 'staff' && roleRaw !== 'manager') {
+    redirect(`/owner/staff/${profileId}?error=Pick+a+valid+role`)
+  }
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('profiles')
+    .update({ role: roleRaw })
+    .eq('id', profileId)
+  if (error) {
+    redirect(
+      `/owner/staff/${profileId}?error=${encodeURIComponent(error.message)}`,
+    )
+  }
+  revalidatePath('/owner/staff')
+  revalidatePath(`/owner/staff/${profileId}`)
+  redirect(`/owner/staff/${profileId}?notice=Role+updated`)
 }
 
 export async function updateStaffName(profileId: string, formData: FormData) {

@@ -10,6 +10,7 @@ import {
   updateStaffName,
   updateStaffPermissions,
   updateStaffPin,
+  updateStaffRole,
 } from '../actions'
 import { TRAINING_TYPES } from '@/lib/training/constants'
 import {
@@ -53,6 +54,7 @@ export default async function EditStaffPage({
   const updateDetails = updateStaffDetails.bind(null, id)
   const updatePin = updateStaffPin.bind(null, id)
   const updatePerms = updateStaffPermissions.bind(null, id)
+  const updateRole = updateStaffRole.bind(null, id)
   const addTraining = addTrainingRecord.bind(null, id)
 
   const currentPerms = (person.permissions ?? {}) as Record<string, boolean>
@@ -117,6 +119,35 @@ export default async function EditStaffPage({
           </button>
         </form>
       </section>
+
+      {person.role !== 'owner' && !isSelf && (
+        <section className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+            Role
+          </h2>
+          <form action={updateRole} className="mt-3 flex items-end gap-2">
+            <select
+              name="role"
+              defaultValue={person.role}
+              className="rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            >
+              <option value="staff">Staff (tablet)</option>
+              <option value="manager">Manager (back-office)</option>
+            </select>
+            <button
+              type="submit"
+              className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
+            >
+              Update
+            </button>
+          </form>
+          <p className="mt-2 text-xs text-brand-slate">
+            Managers don&apos;t see the tablet hub (no clock in/out) but get
+            full access to the back-office (rota, timesheets, compliance,
+            cash, etc.).
+          </p>
+        </section>
+      )}
 
       <section className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-6">
         <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">

@@ -17,11 +17,11 @@ export default async function NewStaffPage({
         ← All people
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
-        Add staff
+        Add person
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        Creates a PIN-only account. The PIN is used on the kiosk tablet to
-        clock in, log temps, and record stock.
+        Creates a PIN-only account. Staff use the PIN on the tablet to
+        clock in / log temps. Managers use the PIN to access the back-office.
       </p>
 
       {params.error && (
@@ -54,6 +54,27 @@ export default async function NewStaffPage({
 
         <div>
           <label
+            htmlFor="role"
+            className="block text-sm font-medium text-brand-forest"
+          >
+            Role
+            <span className="ml-1 text-brand-amber">*</span>
+          </label>
+          <select
+            id="role"
+            name="role"
+            defaultValue="staff"
+            className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+          >
+            <option value="staff">Staff — tablet clock-in / temps / etc.</option>
+            <option value="manager">
+              Manager — back-office access (no clock in/out)
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label
             htmlFor="pin"
             className="block text-sm font-medium text-brand-forest"
           >
@@ -81,7 +102,7 @@ export default async function NewStaffPage({
             type="submit"
             className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
           >
-            Create staff
+            Create
           </button>
           <Link
             href="/owner/staff"
