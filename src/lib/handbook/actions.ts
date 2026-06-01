@@ -90,6 +90,18 @@ export async function publishArticle(id: string) {
 export async function deleteArticle(id: string) {
   await requireOwner()
   const admin = createAdminClient()
+
+  // Storage cleanup before the row goes (cascade handles the rows themselves)
+  const { data: attachments } = await admin
+    .from('handbook_attachments')
+    .select('storage_path')
+    .eq('article_id', id)
+  if (attachments && attachments.length > 0) {
+    await admin.storage
+      .from('handbook-files')
+      .remove(attachments.map((a) => a.storage_path))
+  }
+
   const { error } = await admin
     .from('handbook_articles')
     .delete()
@@ -99,4 +111,130 @@ export async function deleteArticle(id: string) {
   }
   revalidatePath('/handbook')
   redirect('/handbook?notice=Deleted')
+}
+
+export async function uploadAttachment(
+  articleId: string,
+  formData: FormData,
+) {
+  const session = await requireOwner()
+  const file = formData.get('file')
+  const label = String(formData.get('label') ?? '').trim() || null
+
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(`/handbook/${articleId}/edit?error=Pick+a+file+to+upload`)
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    redirect(`/handbook/${articleId}/edit?error=File+too+large+(max+25+MB)`)
+  }
+
+  const admin = createAdminClient()
+  const ext = (file.name.split('.').pop() ?? 'bin').toLowerCase()
+  const storagePath = `${articleId}/${crypto.randomUUID()}.${ext}`
+
+  const { error: uploadError } = await admin.storage
+    .from('handbook-files')
+    .upload(storagePath, file, {
+      contentType: file.type || 'application/octet-stream',
+    })
+  if (uploadError) {
+    redirect(
+      `/handbook/${articleId}/edit?error=${encodeURIComponent(uploadError.message)}`,
+    )
+  }
+
+  const { error: insertError } = await admin
+    .from('handbook_attachments')
+    .insert({
+      article_id: articleId,
+      filename: file.name,
+      mime_type: file.type || null,
+      size_bytes: file.size,
+      storage_path: storagePath,
+      label,
+      uploaded_by: session.profileId,
+    })
+  if (insertError) {
+    await admin.storage.from('handbook-files').remove([storagePath])
+    redirect(
+      `/handbook/${articleId}/edit?error=${encodeURIComponent(insertError.message)}`,
+    )
+  }
+
+  revalidatePath(`/handbook/${articleId}`)
+  revalidatePath(`/handbook/${articleId}/edit`)
+  redirect(`/handbook/${articleId}/edit?notice=File+uploaded`)
+}
+
+export async function deleteAttachment(
+  articleId: string,
+  attachmentId: string,
+) {
+  await requireOwner()
+  const admin = createAdminClient()
+
+  const { data: row } = await admin
+    .from('handbook_attachments')
+    .select('storage_path')
+    .eq('id', attachmentId)
+    .maybeSingle()
+
+  if (row?.storage_path) {
+    await admin.storage.from('handbook-files').remove([row.storage_path])
+  }
+
+  const { error } = await admin
+    .from('handbook_attachments')
+    .delete()
+    .eq('id', attachmentId)
+  if (error) {
+    redirect(
+      `/handbook/${articleId}/edit?error=${encodeURIComponent(error.message)}`,
+    )
+  }
+  revalidatePath(`/handbook/${articleId}`)
+  revalidatePath(`/handbook/${articleId}/edit`)
+  redirect(`/handbook/${articleId}/edit?notice=File+removed`)
+}
+
+/** Returns short-lived signed URLs for the article's attachments. */
+export async function signedAttachmentUrls(articleId: string): Promise<
+  Array<{
+    id: string
+    filename: string
+    mime_type: string | null
+    size_bytes: number | null
+    label: string | null
+    url: string | null
+  }>
+> {
+  const admin = createAdminClient()
+  const { data: rows } = await admin
+    .from('handbook_attachments')
+    .select('id, filename, mime_type, size_bytes, label, storage_path')
+    .eq('article_id', articleId)
+    .order('created_at', { ascending: true })
+
+  const results: Array<{
+    id: string
+    filename: string
+    mime_type: string | null
+    size_bytes: number | null
+    label: string | null
+    url: string | null
+  }> = []
+  for (const r of rows ?? []) {
+    const { data } = await admin.storage
+      .from('handbook-files')
+      .createSignedUrl(r.storage_path, 60 * 60)
+    results.push({
+      id: r.id,
+      filename: r.filename,
+      mime_type: r.mime_type,
+      size_bytes: r.size_bytes,
+      label: r.label,
+      url: data?.signedUrl ?? null,
+    })
+  }
+  return results
 }

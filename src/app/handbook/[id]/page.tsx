@@ -6,7 +6,15 @@ import {
   deleteArticle,
   hideArticle,
   publishArticle,
+  signedAttachmentUrls,
 } from '@/lib/handbook/actions'
+
+function formatSize(bytes: number | null): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 export default async function HandbookArticlePage({
   params,
@@ -31,6 +39,7 @@ export default async function HandbookArticlePage({
   if (!a.active && session.role !== 'owner') notFound()
 
   const isOwner = session.role === 'owner'
+  const attachments = await signedAttachmentUrls(id)
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -80,6 +89,47 @@ export default async function HandbookArticlePage({
           <span className="text-brand-slate">No content yet.</span>
         )}
       </article>
+
+      {attachments.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+            Files
+          </h2>
+          <ul className="mt-2 space-y-2">
+            {attachments.map((f) => (
+              <li
+                key={f.id}
+                className="rounded-xl border border-brand-sage/40 bg-white p-3"
+              >
+                {f.url ? (
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <div>
+                      <p className="font-medium text-brand-forest">
+                        {f.label ?? f.filename}
+                      </p>
+                      <p className="text-xs text-brand-slate">
+                        {f.filename}
+                        {f.size_bytes ? ` · ${formatSize(f.size_bytes)}` : ''}
+                        {f.mime_type ? ` · ${f.mime_type}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-brand-amber">↓ Open</span>
+                  </a>
+                ) : (
+                  <p className="text-sm text-brand-amber">
+                    Couldn&apos;t generate a link for {f.filename}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {isOwner && (
         <section className="mt-6 flex flex-wrap items-center gap-3">
