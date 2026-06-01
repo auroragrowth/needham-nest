@@ -124,8 +124,8 @@ export async function uploadAttachment(
   if (!(file instanceof File) || file.size === 0) {
     redirect(`/handbook/${articleId}/edit?error=Pick+a+file+to+upload`)
   }
-  if (file.size > 25 * 1024 * 1024) {
-    redirect(`/handbook/${articleId}/edit?error=File+too+large+(max+25+MB)`)
+  if (file.size > 50 * 1024 * 1024) {
+    redirect(`/handbook/${articleId}/edit?error=File+too+large+(max+50+MB)`)
   }
 
   const admin = createAdminClient()

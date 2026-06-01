@@ -72,8 +72,9 @@ export default async function EditArticlePage({
           Files
         </h2>
         <p className="mt-1 text-xs text-brand-slate">
-          PDFs, photos, recipe cards — anything up to 25 MB. Staff get a
-          short-lived download link when they open the article.
+          Upload your existing PDFs (recipe cards, machine manuals,
+          supplier sheets), photos, or Word/Excel docs — up to 50 MB each.
+          Staff get a short-lived download link when they open the article.
         </p>
 
         {attachments.length > 0 && (
@@ -135,8 +136,13 @@ export default async function EditArticlePage({
               name="file"
               type="file"
               required
+              accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.heic,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,application/pdf,image/*"
               className="mt-1 w-full text-sm text-brand-forest file:mr-3 file:rounded file:border-0 file:bg-brand-forest file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-cream"
             />
+            <p className="mt-1 text-xs text-brand-slate">
+              PDFs and photos open in the browser. Office docs download to
+              the staff member&apos;s device.
+            </p>
           </div>
           <button
             type="submit"
