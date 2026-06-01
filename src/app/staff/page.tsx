@@ -162,6 +162,12 @@ export default async function StaffHub({
           status="Request holiday / sick"
           accent="off"
         />
+        <HubTile
+          href="/handbook"
+          title="Handbook"
+          status="Crib sheets + manuals"
+          accent="off"
+        />
       </div>
     </main>
   )

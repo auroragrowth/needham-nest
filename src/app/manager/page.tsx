@@ -133,6 +133,12 @@ export default async function ManagerDashboard() {
           }
           cta="Open →"
         />
+        <Card
+          href="/handbook"
+          title="Handbook"
+          subtitle="Crib sheets + manuals"
+          cta="Open →"
+        />
       </div>
     </main>
   )

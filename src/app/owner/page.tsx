@@ -179,6 +179,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/handbook"
+          title="Handbook"
+          subtitle="Crib sheets + manuals (everyone reads)"
+          cta="Open →"
+        />
+        <Card
           href="/owner/risk-assessments"
           title="Risk assessments"
           subtitle="Fire, COSHH, slips/trips, manual handling"
