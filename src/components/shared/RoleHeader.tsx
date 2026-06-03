@@ -39,8 +39,15 @@ export function RoleHeader({ role, name }: { role: Role; name: string }) {
         </span>
         <span className="text-xs text-brand-cream/70">· Dashboard</span>
       </Link>
-      <div className="flex items-center gap-4">
-        <span className="text-sm text-brand-cream/90">{name}</span>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/pick-mix"
+          className="rounded-lg bg-brand-amber px-3 py-1.5 text-sm font-semibold text-brand-forest shadow-sm hover:bg-brand-amber/90"
+          title="Pick & mix calculator"
+        >
+          🍬 Pick &amp; mix
+        </Link>
+        <span className="hidden text-sm text-brand-cream/90 sm:inline">{name}</span>
         <form action={logout}>
           <button
             type="submit"

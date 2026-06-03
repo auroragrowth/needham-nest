@@ -123,6 +123,22 @@ export default async function OwnerDashboard({
         </section>
       )}
 
+      <Link
+        href="/pick-mix"
+        className="mt-6 flex items-center justify-between rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-5 text-brand-forest transition hover:bg-brand-amber/20"
+      >
+        <span className="flex items-center gap-3">
+          <span className="text-3xl" aria-hidden>🍬</span>
+          <span>
+            <span className="block text-lg font-semibold">Pick &amp; mix calculator</span>
+            <span className="block text-sm text-brand-slate">
+              Weigh the bag, get the price (£1.50/100g), enter into till
+            </span>
+          </span>
+        </span>
+        <span className="text-2xl text-brand-amber">→</span>
+      </Link>
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Card
           href="/owner/staff"

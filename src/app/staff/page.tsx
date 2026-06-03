@@ -89,6 +89,22 @@ export default async function StaffHub({
         </p>
       )}
 
+      <Link
+        href="/pick-mix"
+        className="mt-4 flex items-center justify-between rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-5 text-brand-forest transition active:scale-[0.99] hover:bg-brand-amber/20"
+      >
+        <span className="flex items-center gap-3">
+          <span className="text-3xl" aria-hidden>🍬</span>
+          <span>
+            <span className="block text-lg font-semibold">Pick &amp; mix</span>
+            <span className="block text-sm text-brand-slate">
+              Weigh, calculate price, type into till
+            </span>
+          </span>
+        </span>
+        <span className="text-2xl text-brand-amber">→</span>
+      </Link>
+
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {hasPermission(session.role, perms, 'clock') && (
           <HubTile
