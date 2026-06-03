@@ -137,7 +137,7 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
-          href="/owner/checklist"
+          href="/admin/checklist"
           title="Daily checklist"
           subtitle={`${taskCount ?? 0} active tasks`}
           cta="Manage →"

@@ -134,6 +134,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/admin/checklist"
+          title="Checklist admin"
+          subtitle="Build + reorder start-up / close-down lists"
+          cta="Open →"
+        />
+        <Card
           href="/handbook"
           title="Handbook"
           subtitle="Crib sheets + manuals"

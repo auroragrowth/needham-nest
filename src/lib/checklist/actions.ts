@@ -9,10 +9,10 @@ import { requireStaffFeature } from '@/lib/permissions'
 const VALID_FREQ = ['open', 'mid', 'close', 'daily'] as const
 type Frequency = (typeof VALID_FREQ)[number]
 
-async function requireOwner() {
+async function requireOwnerOrManager() {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role !== 'owner') redirect('/')
+  if (session.role !== 'owner' && session.role !== 'manager') redirect('/')
   return session
 }
 
@@ -29,11 +29,11 @@ function parseTaskPayload(formData: FormData) {
 }
 
 export async function createTask(formData: FormData) {
-  await requireOwner()
+  await requireOwnerOrManager()
   const { name, frequency, area, sort_order } = parseTaskPayload(formData)
-  if (!name) redirect('/owner/checklist/new?error=Name+is+required')
+  if (!name) redirect('/admin/checklist/new?error=Name+is+required')
   if (!frequency)
-    redirect('/owner/checklist/new?error=Pick+a+frequency')
+    redirect('/admin/checklist/new?error=Pick+a+frequency')
 
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -44,20 +44,20 @@ export async function createTask(formData: FormData) {
 
   if (error || !data) {
     redirect(
-      `/owner/checklist/new?error=${encodeURIComponent(error?.message ?? 'Failed to create task')}`,
+      `/admin/checklist/new?error=${encodeURIComponent(error?.message ?? 'Failed to create task')}`,
     )
   }
-  revalidatePath('/owner/checklist')
+  revalidatePath('/admin/checklist')
   revalidatePath('/staff/checklist')
-  redirect(`/owner/checklist/${data.id}?notice=Task+added`)
+  redirect(`/admin/checklist/${data.id}?notice=Task+added`)
 }
 
 export async function updateTask(id: string, formData: FormData) {
-  await requireOwner()
+  await requireOwnerOrManager()
   const { name, frequency, area, sort_order } = parseTaskPayload(formData)
-  if (!name) redirect(`/owner/checklist/${id}?error=Name+is+required`)
+  if (!name) redirect(`/admin/checklist/${id}?error=Name+is+required`)
   if (!frequency)
-    redirect(`/owner/checklist/${id}?error=Pick+a+frequency`)
+    redirect(`/admin/checklist/${id}?error=Pick+a+frequency`)
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -66,29 +66,29 @@ export async function updateTask(id: string, formData: FormData) {
     .eq('id', id)
 
   if (error) {
-    redirect(`/owner/checklist/${id}?error=${encodeURIComponent(error.message)}`)
+    redirect(`/admin/checklist/${id}?error=${encodeURIComponent(error.message)}`)
   }
-  revalidatePath('/owner/checklist')
-  revalidatePath(`/owner/checklist/${id}`)
+  revalidatePath('/admin/checklist')
+  revalidatePath(`/admin/checklist/${id}`)
   revalidatePath('/staff/checklist')
-  redirect(`/owner/checklist/${id}?notice=Saved`)
+  redirect(`/admin/checklist/${id}?notice=Saved`)
 }
 
 async function setTaskActive(id: string, active: boolean) {
-  await requireOwner()
+  await requireOwnerOrManager()
   const admin = createAdminClient()
   const { error } = await admin
     .from('cleaning_tasks')
     .update({ active })
     .eq('id', id)
   if (error) {
-    redirect(`/owner/checklist/${id}?error=${encodeURIComponent(error.message)}`)
+    redirect(`/admin/checklist/${id}?error=${encodeURIComponent(error.message)}`)
   }
-  revalidatePath('/owner/checklist')
-  revalidatePath(`/owner/checklist/${id}`)
+  revalidatePath('/admin/checklist')
+  revalidatePath(`/admin/checklist/${id}`)
   revalidatePath('/staff/checklist')
   redirect(
-    `/owner/checklist/${id}?notice=${active ? 'Reactivated' : 'Deactivated'}`,
+    `/admin/checklist/${id}?notice=${active ? 'Reactivated' : 'Deactivated'}`,
   )
 }
 
@@ -97,6 +97,31 @@ export async function deactivateTask(id: string) {
 }
 export async function reactivateTask(id: string) {
   await setTaskActive(id, true)
+}
+
+/**
+ * Persist a new ordering of tasks within a frequency bucket. Receives an
+ * array of task IDs in their new order; assigns sort_order = index × 10
+ * so we leave room to insert between later if needed.
+ */
+export async function reorderTasks(orderedIds: string[]): Promise<void> {
+  await requireOwnerOrManager()
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) return
+
+  const admin = createAdminClient()
+  // Batch updates — one round-trip per task. For a typical checklist (<30)
+  // this is fine.
+  await Promise.all(
+    orderedIds.map((id, i) =>
+      admin
+        .from('cleaning_tasks')
+        .update({ sort_order: i * 10 })
+        .eq('id', id),
+    ),
+  )
+
+  revalidatePath('/admin/checklist')
+  revalidatePath('/staff/checklist')
 }
 
 /**

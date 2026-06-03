@@ -17,7 +17,7 @@ export default async function NewTaskPage({
   return (
     <main className="mx-auto max-w-md">
       <Link
-        href="/owner/checklist"
+        href="/admin/checklist"
         className="text-sm text-brand-amber hover:underline"
       >
         ← All tasks
@@ -118,7 +118,7 @@ export default async function NewTaskPage({
             Add task
           </button>
           <Link
-            href="/owner/checklist"
+            href="/admin/checklist"
             className="rounded-lg border border-brand-sage/60 px-4 py-2 text-sm font-medium text-brand-forest hover:bg-brand-sage/10"
           >
             Cancel
