@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import { logout } from '@/lib/auth/actions'
 
 type Role = 'owner' | 'manager' | 'staff'
@@ -18,7 +19,12 @@ const ROLE_LABEL: Record<Role, string> = {
 export function RoleHeader({ role, name }: { role: Role; name: string }) {
   return (
     <header className="flex items-center justify-between bg-brand-forest px-6 py-3 text-brand-cream">
-      <div className="flex items-center gap-3">
+      <Link
+        href="/"
+        className="flex items-center gap-3 rounded-md px-1 py-1 transition-colors hover:bg-brand-olive"
+        title="Back to dashboard"
+        aria-label="Back to dashboard"
+      >
         <Image
           src="/logo.png"
           alt="Needham Nest Café"
@@ -31,7 +37,8 @@ export function RoleHeader({ role, name }: { role: Role; name: string }) {
         >
           {ROLE_LABEL[role]}
         </span>
-      </div>
+        <span className="text-xs text-brand-cream/70">· Dashboard</span>
+      </Link>
       <div className="flex items-center gap-4">
         <span className="text-sm text-brand-cream/90">{name}</span>
         <form action={logout}>

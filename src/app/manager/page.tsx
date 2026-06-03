@@ -140,6 +140,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/admin/training"
+          title="Training"
+          subtitle="Add records + upload certificates"
+          cta="Open →"
+        />
+        <Card
           href="/handbook"
           title="Handbook"
           subtitle="Crib sheets + manuals"

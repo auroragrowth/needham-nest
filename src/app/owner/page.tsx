@@ -203,6 +203,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/admin/training"
+          title="Training"
+          subtitle="Certificates grouped by course (with file upload)"
+          cta="Open →"
+        />
+        <Card
           href="/owner/compliance/pack"
           title="EHO compliance pack"
           subtitle="Printable PDF for inspectors"
