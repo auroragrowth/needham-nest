@@ -55,7 +55,7 @@ export default async function RotaPage({
   const nextWeek = new Date(weekStart)
   nextWeek.setDate(nextWeek.getDate() + 7)
 
-  const [{ data: staff }, { data: shifts }] = await Promise.all([
+  const [{ data: staff }, { data: shifts }, { data: avail }] = await Promise.all([
     admin
       .from('profiles')
       .select('id, name, role, contracted_weekly_hours')
@@ -68,6 +68,11 @@ export default async function RotaPage({
       .gte('date', fromIso)
       .lte('date', toIso)
       .order('start_time'),
+    admin
+      .from('staff_availability')
+      .select('id, staff_user_id, date, start_time, end_time')
+      .gte('date', fromIso)
+      .lte('date', toIso),
   ])
 
   const byStaffDay = new Map<string, Shift[]>()
@@ -76,6 +81,17 @@ export default async function RotaPage({
     const arr = byStaffDay.get(key) ?? []
     arr.push(s)
     byStaffDay.set(key, arr)
+  }
+
+  // Availability lookup: keyed by `${staffId}|${date}`. Each entry is a list
+  // of (start, end) windows; null start = all day.
+  type AvailWindow = { start: string | null; end: string | null }
+  const availByStaffDay = new Map<string, AvailWindow[]>()
+  for (const a of avail ?? []) {
+    const key = `${a.staff_user_id}|${a.date}`
+    const arr = availByStaffDay.get(key) ?? []
+    arr.push({ start: a.start_time, end: a.end_time })
+    availByStaffDay.set(key, arr)
   }
   const draftCount = (shifts ?? []).filter((s) => !s.published).length
 
@@ -210,12 +226,29 @@ export default async function RotaPage({
                 {days.map((d) => {
                   const key = `${s.id}|${isoDate(d)}`
                   const dayShifts = byStaffDay.get(key) ?? []
+                  const dayAvail = availByStaffDay.get(key) ?? []
                   return (
                     <td
                       key={key}
-                      className="border-b border-brand-sage/30 px-2 py-2"
+                      className={`border-b border-brand-sage/30 px-2 py-2 ${
+                        dayAvail.length === 0 && dayShifts.length === 0
+                          ? 'bg-brand-sage/5'
+                          : ''
+                      }`}
                     >
                       <div className="space-y-1">
+                        {dayAvail.length > 0 && (
+                          <p className="text-[10px] text-brand-teal-deep">
+                            ✓{' '}
+                            {dayAvail
+                              .map((w) =>
+                                w.start
+                                  ? `${fmtTime(w.start)}–${fmtTime(w.end!)}`
+                                  : 'all day',
+                              )
+                              .join(', ')}
+                          </p>
+                        )}
                         {dayShifts.map((sh) => (
                           <Link
                             key={sh.id}

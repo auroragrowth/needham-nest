@@ -9,21 +9,57 @@ export default async function NewShiftPage({
 }) {
   const sp = await searchParams
   const admin = createAdminClient()
-  const [{ data: staff }, { data: settingsRows }] = await Promise.all([
-    admin
-      .from('profiles')
-      .select('id, name, role')
-      .eq('active', true)
-      .neq('role', 'owner')
-      .order('name'),
-    admin
-      .from('settings')
-      .select('trading_open_time, trading_close_time')
-      .limit(1),
-  ])
+
+  const [{ data: staff }, { data: settingsRows }, { data: availability }] =
+    await Promise.all([
+      admin
+        .from('profiles')
+        .select('id, name, role')
+        .eq('active', true)
+        .neq('role', 'owner')
+        .order('name'),
+      admin
+        .from('settings')
+        .select('trading_open_time, trading_close_time')
+        .limit(1),
+      sp.date
+        ? admin
+            .from('staff_availability')
+            .select('staff_user_id, start_time, end_time')
+            .eq('date', sp.date)
+        : Promise.resolve({ data: [] }),
+    ])
+
   const settings = settingsRows?.[0]
   const openTime = settings?.trading_open_time?.slice(0, 5) ?? '08:00'
   const closeTime = settings?.trading_close_time?.slice(0, 5) ?? '16:00'
+
+  // Index availability for that date so we can sort staff and label entries
+  const availByStaff = new Map<
+    string,
+    Array<{ start: string | null; end: string | null }>
+  >()
+  for (const a of availability ?? []) {
+    const arr = availByStaff.get(a.staff_user_id) ?? []
+    arr.push({ start: a.start_time, end: a.end_time })
+    availByStaff.set(a.staff_user_id, arr)
+  }
+  function availLabel(staffId: string): string {
+    const list = availByStaff.get(staffId)
+    if (!list || list.length === 0) return ''
+    return list
+      .map((w) =>
+        w.start ? `${w.start.slice(0, 5)}–${w.end!.slice(0, 5)}` : 'all day',
+      )
+      .join(', ')
+  }
+  // Sort: available staff first, then the rest by name
+  const sortedStaff = [...(staff ?? [])].sort((a, b) => {
+    const aAvail = availByStaff.has(a.id) ? 1 : 0
+    const bAvail = availByStaff.has(b.id) ? 1 : 0
+    if (aAvail !== bAvail) return bAvail - aAvail
+    return a.name.localeCompare(b.name)
+  })
 
   return (
     <main className="mx-auto max-w-md">
@@ -64,13 +100,43 @@ export default async function NewShiftPage({
             <option value="" disabled>
               Pick a person
             </option>
-            {(staff ?? []).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-                {s.role === 'manager' ? ' (manager)' : ''}
-              </option>
-            ))}
+            {sp.date && availByStaff.size > 0 && (
+              <optgroup label={`Available on ${sp.date}`}>
+                {sortedStaff
+                  .filter((s) => availByStaff.has(s.id))
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      ✓ {s.name}
+                      {s.role === 'manager' ? ' (mgr)' : ''} ·{' '}
+                      {availLabel(s.id)}
+                    </option>
+                  ))}
+              </optgroup>
+            )}
+            <optgroup
+              label={
+                sp.date
+                  ? 'Not marked available (you can still schedule)'
+                  : 'All people'
+              }
+            >
+              {sortedStaff
+                .filter((s) => !availByStaff.has(s.id))
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.role === 'manager' ? ' (mgr)' : ''}
+                  </option>
+                ))}
+            </optgroup>
           </select>
+          {sp.date && (
+            <p className="mt-1 text-xs text-brand-slate">
+              {availByStaff.size === 0
+                ? 'No one has marked themselves available for that date yet.'
+                : `${availByStaff.size} person${availByStaff.size === 1 ? '' : 's'} available — they show first with their windows.`}
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-xs font-medium text-brand-forest">

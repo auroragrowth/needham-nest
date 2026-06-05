@@ -173,6 +173,12 @@ export default async function StaffHub({
           accent="off"
         />
         <HubTile
+          href="/staff/availability"
+          title="Availability"
+          status="When you can work"
+          accent="off"
+        />
+        <HubTile
           href="/staff/leave"
           title="Leave"
           status="Request holiday / sick"

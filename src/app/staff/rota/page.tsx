@@ -17,10 +17,11 @@ export default async function StaffRotaPage() {
     .from('rota_shifts')
     .select('id, date, start_time, end_time, notes, published')
     .eq('staff_user_id', session.profileId)
-    .eq('published', true)
     .gte('date', today)
     .order('date')
     .order('start_time')
+
+  const hasDraft = (shifts ?? []).some((s) => !s.published)
 
   return (
     <main className="mx-auto max-w-md">
@@ -31,22 +32,39 @@ export default async function StaffRotaPage() {
         Your shifts
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        Upcoming shifts the manager has published.
+        Upcoming shifts. Draft shifts are still being worked on — let Vic know
+        if anything looks wrong.
       </p>
+
+      {hasDraft && (
+        <p className="mt-4 rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-sm text-brand-forest">
+          Some of these are still <strong>DRAFT</strong> — they&apos;ll
+          change to confirmed once Vic publishes the week.
+        </p>
+      )}
 
       <ul className="mt-6 space-y-2">
         {(shifts ?? []).map((s) => (
           <li
             key={s.id}
-            className="rounded-2xl border border-brand-sage/40 bg-white p-4"
+            className={`rounded-2xl border bg-white p-4 ${
+              s.published ? 'border-brand-sage/40' : 'border-brand-amber/50'
+            }`}
           >
-            <p className="font-medium text-brand-forest">
-              {new Date(s.date).toLocaleDateString([], {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'short',
-              })}
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-medium text-brand-forest">
+                {new Date(s.date).toLocaleDateString([], {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </p>
+              {!s.published && (
+                <span className="rounded bg-brand-amber/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-forest">
+                  Draft
+                </span>
+              )}
+            </div>
             <p className="mt-1 text-sm text-brand-slate">
               {fmtTime(s.start_time)} – {fmtTime(s.end_time)}
             </p>
