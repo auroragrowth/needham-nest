@@ -12,10 +12,13 @@ export type Task = {
 }
 
 /**
- * Drag-and-drop reorderable list using HTML5 native DnD. Single bucket
- * (the parent renders one of these per frequency).
+ * Reorderable list. Works on every device:
+ *  - Up / Down buttons (tap-friendly on iPad, keyboard-accessible on
+ *    desktop)
+ *  - HTML5 native drag handle on top (works on desktop pointers, no-op
+ *    on iOS)
  *
- * Saves on drop via the reorderTasks server action.
+ * Single bucket — parent renders one per frequency.
  */
 export function SortableTasks({ initial }: { initial: Task[] }) {
   const [items, setItems] = useState(initial)
@@ -28,10 +31,30 @@ export function SortableTasks({ initial }: { initial: Task[] }) {
     setItems(initial)
   }, [initial])
 
+  function persist(next: Task[]) {
+    startTransition(() => {
+      reorderTasks(next.map((t) => t.id)).catch(() => {
+        /* best effort; next refresh will re-fetch */
+      })
+    })
+  }
+
+  function moveBy(id: string, delta: -1 | 1) {
+    setItems((current) => {
+      const idx = current.findIndex((t) => t.id === id)
+      if (idx < 0) return current
+      const targetIdx = idx + delta
+      if (targetIdx < 0 || targetIdx >= current.length) return current
+      const next = [...current]
+      ;[next[idx], next[targetIdx]] = [next[targetIdx], next[idx]]
+      persist(next)
+      return next
+    })
+  }
+
   function onDragStart(e: React.DragEvent<HTMLLIElement>, id: string) {
     draggedId.current = id
     e.dataTransfer.effectAllowed = 'move'
-    // Required for Firefox to actually start the drag
     e.dataTransfer.setData('text/plain', id)
   }
 
@@ -55,12 +78,7 @@ export function SortableTasks({ initial }: { initial: Task[] }) {
       if (fromIdx < 0 || toIdx < 0) return current
       const [moved] = next.splice(fromIdx, 1)
       next.splice(toIdx, 0, moved)
-      // Fire-and-forget save
-      startTransition(() => {
-        reorderTasks(next.map((t) => t.id)).catch(() => {
-          // best effort; UI already moved. Next refresh will re-fetch
-        })
-      })
+      persist(next)
       return next
     })
   }
@@ -75,8 +93,10 @@ export function SortableTasks({ initial }: { initial: Task[] }) {
       {items.length === 0 && (
         <li className="px-4 py-3 text-sm text-brand-slate">No tasks in this bucket.</li>
       )}
-      {items.map((t) => {
+      {items.map((t, i) => {
         const isOver = overId === t.id
+        const isFirst = i === 0
+        const isLast = i === items.length - 1
         return (
           <li
             key={t.id}
@@ -85,17 +105,48 @@ export function SortableTasks({ initial }: { initial: Task[] }) {
             onDragOver={(e) => onDragOver(e, t.id)}
             onDrop={(e) => onDrop(e, t.id)}
             onDragEnd={onDragEnd}
-            className={`flex items-center gap-3 px-2 py-2 transition-colors ${
+            className={`flex items-center gap-2 px-2 py-2 transition-colors ${
               isOver ? 'bg-brand-teal/10' : ''
             } ${!t.active ? 'opacity-60' : ''}`}
+            style={{ touchAction: 'manipulation' }}
           >
             <span
-              className="cursor-grab select-none px-2 text-lg text-brand-slate hover:text-brand-forest active:cursor-grabbing"
+              className="hidden cursor-grab select-none px-1 text-lg text-brand-slate hover:text-brand-forest active:cursor-grabbing sm:inline"
               aria-label="Drag to reorder"
-              title="Drag to reorder"
+              title="Drag to reorder (desktop)"
             >
               ⋮⋮
             </span>
+            <div className="flex flex-col">
+              <button
+                type="button"
+                onClick={() => moveBy(t.id, -1)}
+                disabled={isFirst}
+                aria-label="Move up"
+                title="Move up"
+                className="cursor-pointer rounded text-base text-brand-forest disabled:cursor-not-allowed disabled:opacity-30 active:scale-95"
+                style={{
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                onClick={() => moveBy(t.id, 1)}
+                disabled={isLast}
+                aria-label="Move down"
+                title="Move down"
+                className="cursor-pointer rounded text-base text-brand-forest disabled:cursor-not-allowed disabled:opacity-30 active:scale-95"
+                style={{
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                ▼
+              </button>
+            </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium text-brand-forest">
                 {t.name}

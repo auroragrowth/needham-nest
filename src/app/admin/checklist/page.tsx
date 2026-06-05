@@ -62,11 +62,19 @@ export default async function ChecklistAdminPage({
             Checklist admin
           </h1>
           <p className="mt-1 text-sm text-brand-slate">
-            Build the start-up, mid-shift and close-down checklists. Drag
-            <span className="mx-1 select-none rounded bg-brand-sage/20 px-1 font-mono text-brand-forest">
+            Build the start-up, mid-shift and close-down checklists. Tap{' '}
+            <span className="mx-0.5 inline-block rounded bg-brand-sage/20 px-1 text-brand-forest">
+              ▲
+            </span>
+            /
+            <span className="mx-0.5 inline-block rounded bg-brand-sage/20 px-1 text-brand-forest">
+              ▼
+            </span>
+            on iPad to reorder. On desktop you can also drag with{' '}
+            <span className="mx-0.5 inline-block rounded bg-brand-sage/20 px-1 font-mono text-brand-forest">
               ⋮⋮
             </span>
-            to reorder within each list — saves automatically.
+            . Saves automatically.
           </p>
         </div>
         <Link
