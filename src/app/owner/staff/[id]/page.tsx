@@ -48,7 +48,9 @@ export default async function EditStaffPage({
   if (!person) notFound()
 
   const isSelf = session?.profileId === person.id
-  const isPinHolder = person.role === 'staff' && !person.auth_user_id
+  // Any PIN-only profile can have its PIN reset here (staff or manager
+  // without email). Owner manages their own PIN at /owner/me.
+  const isPinHolder = !person.auth_user_id && person.role !== 'owner'
 
   const updateName = updateStaffName.bind(null, id)
   const updateDetails = updateStaffDetails.bind(null, id)
@@ -330,10 +332,11 @@ export default async function EditStaffPage({
       {isPinHolder && (
         <section className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-6">
           <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
-            Change PIN
+            Reset PIN
           </h2>
           <p className="mt-1 text-xs text-brand-slate">
-            Replaces the existing PIN. Must be unique among active staff.
+            Sets a new 4-digit PIN for {person.name}. Must be unique among
+            active people. Use this when someone forgets theirs.
           </p>
           <form action={updatePin} className="mt-3 flex items-end gap-2">
             <div>
