@@ -190,6 +190,12 @@ export default async function StaffHub({
           status="Crib sheets + manuals"
           accent="off"
         />
+        <HubTile
+          href="/shopping-list"
+          title="Shopping list"
+          status="Add what we need"
+          accent="off"
+        />
       </div>
     </main>
   )

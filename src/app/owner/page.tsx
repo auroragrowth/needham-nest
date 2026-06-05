@@ -225,6 +225,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/shopping-list"
+          title="Shopping list"
+          subtitle="Anyone can add — shared between all"
+          cta="Open →"
+        />
+        <Card
           href="/owner/compliance/pack"
           title="EHO compliance pack"
           subtitle="Printable PDF for inspectors"

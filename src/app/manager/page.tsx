@@ -162,6 +162,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/shopping-list"
+          title="Shopping list"
+          subtitle="Shared list — everyone can add"
+          cta="Open →"
+        />
+        <Card
           href="/handbook"
           title="Handbook"
           subtitle="Crib sheets + manuals"
