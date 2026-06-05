@@ -9,11 +9,13 @@ export default async function StaffLayout({
 }) {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role !== 'staff') redirect('/')
+  // Owner stays out of the tablet flow (they have /owner/* for management).
+  // Staff and Manager both use the tablet — managers wear both hats.
+  if (session.role === 'owner') redirect('/owner')
 
   return (
-    <div data-role="staff" className="min-h-screen">
-      <RoleHeader role="staff" name={session.name} />
+    <div data-role={session.role} className="min-h-screen">
+      <RoleHeader role={session.role} name={session.name} />
       <div className="p-6">{children}</div>
     </div>
   )

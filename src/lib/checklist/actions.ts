@@ -130,9 +130,6 @@ export async function reorderTasks(orderedIds: string[]): Promise<void> {
  */
 export async function completeTask(taskId: string) {
   const session = await requireStaffFeature('checklist')
-  if (session.role !== 'staff') {
-    redirect('/?error=Only+staff+complete+checklist+tasks')
-  }
 
   const admin = createAdminClient()
   const { error } = await admin.from('cleaning_log').insert({

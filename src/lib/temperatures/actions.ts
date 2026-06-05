@@ -7,9 +7,6 @@ import { requireStaffFeature } from '@/lib/permissions'
 
 export async function logTemperature(applianceId: string, formData: FormData) {
   const session = await requireStaffFeature('temperatures')
-  if (session.role !== 'staff') {
-    redirect('/?error=Only+staff+log+temperatures')
-  }
 
   const tempStr = String(formData.get('temperature') ?? '').trim()
   const notes = String(formData.get('notes') ?? '').trim() || null

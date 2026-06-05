@@ -150,6 +150,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/staff"
+          title="Tablet tasks"
+          subtitle="Clock in/out, temperatures, checklist, stock — same as staff"
+          cta="Open →"
+        />
+        <Card
           href="/admin/checklist"
           title="Checklist admin"
           subtitle="Build + reorder start-up / close-down lists"

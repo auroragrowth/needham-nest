@@ -119,9 +119,6 @@ export async function reactivateItem(id: string) {
 /** Staff logs wastage for a specific item. */
 export async function recordWastage(itemId: string, formData: FormData) {
   const session = await requireStaffFeature('wastage')
-  if (session.role !== 'staff') {
-    redirect('/?error=Only+staff+log+wastage')
-  }
 
   const quantity = Number(formData.get('quantity'))
   const reasonRaw = String(formData.get('reason') ?? '').trim()
@@ -171,9 +168,6 @@ export async function recordWastage(itemId: string, formData: FormData) {
  */
 export async function recordStockCount(formData: FormData) {
   const session = await requireStaffFeature('stock_count')
-  if (session.role !== 'staff') {
-    redirect('/?error=Only+staff+count+stock')
-  }
 
   const notes = String(formData.get('notes') ?? '').trim() || null
 

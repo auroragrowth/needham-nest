@@ -7,9 +7,6 @@ import { requireStaffFeature } from '@/lib/permissions'
 
 export async function clockIn() {
   const session = await requireStaffFeature('clock')
-  if (session.role !== 'staff') {
-    redirect('/?error=Only+staff+clock+in')
-  }
 
   const admin = createAdminClient()
 
@@ -43,9 +40,6 @@ export async function clockIn() {
 
 export async function clockOut() {
   const session = await requireStaffFeature('clock')
-  if (session.role !== 'staff') {
-    redirect('/?error=Only+staff+clock+out')
-  }
 
   const admin = createAdminClient()
 

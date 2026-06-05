@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { deleteShift, publishWeek } from '@/lib/rota/actions'
+import { colourForProfile } from '@/lib/colours'
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d)
@@ -214,10 +215,21 @@ export default async function RotaPage({
             {(staff ?? []).map((s) => {
               const scheduled = hoursByStaff.get(s.id) ?? 0
               const contracted = Number(s.contracted_weekly_hours ?? 0)
+              const col = colourForProfile(s.id)
               return (
               <tr key={s.id} className="align-top">
-                <td className="border-b border-brand-sage/30 px-3 py-2 font-medium text-brand-forest">
-                  {s.name}
+                <td
+                  className="border-b border-brand-sage/30 px-3 py-2 font-medium text-brand-forest"
+                  style={{ borderLeft: `4px solid ${col.dot}` }}
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      aria-hidden
+                      className="inline-block h-3 w-3 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: col.dot }}
+                    />
+                    {s.name}
+                  </span>
                   <div className="text-[10px] uppercase tracking-wide text-brand-slate">
                     {s.role}
                     {contracted > 0 && ` · ${contracted}h`}
@@ -253,15 +265,20 @@ export default async function RotaPage({
                           <Link
                             key={sh.id}
                             href={`/manager/rota/${sh.id}`}
-                            className={`block rounded-md px-2 py-1 text-xs ${
-                              sh.published
-                                ? 'border border-brand-teal/40 bg-brand-teal/10 text-brand-teal-deep'
-                                : 'border border-brand-amber/40 bg-brand-amber/10 text-brand-forest'
-                            }`}
+                            className="block rounded-md border px-2 py-1 text-xs"
+                            style={{
+                              backgroundColor: col.bg,
+                              borderColor: sh.published
+                                ? col.border
+                                : 'rgb(245 158 11 / 0.6)', // amber-500 for draft
+                              borderWidth: sh.published ? 1 : 2,
+                              borderStyle: sh.published ? 'solid' : 'dashed',
+                              color: col.text,
+                            }}
                           >
                             {fmtTime(sh.start_time)}–{fmtTime(sh.end_time)}
                             {!sh.published && (
-                              <span className="ml-1 text-[10px] uppercase">
+                              <span className="ml-1 rounded bg-brand-amber/40 px-1 text-[9px] font-semibold uppercase text-brand-forest">
                                 draft
                               </span>
                             )}
