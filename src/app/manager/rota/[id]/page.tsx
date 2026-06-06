@@ -65,40 +65,72 @@ export default async function EditShiftPage({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-brand-forest">
+          <label
+            htmlFor="edit_shift_date"
+            className="block text-xs font-medium text-brand-forest"
+          >
             Date
           </label>
           <input
+            id="edit_shift_date"
             name="date"
             type="date"
             required
             defaultValue={shift.date}
-            className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            min="2024-01-01"
+            max="2099-12-31"
+            className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            style={{
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              WebkitAppearance: 'none',
+              minHeight: '44px',
+            }}
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-brand-forest">
+            <label
+              htmlFor="edit_shift_start"
+              className="block text-xs font-medium text-brand-forest"
+            >
               Start
             </label>
             <input
+              id="edit_shift_start"
               name="start_time"
               type="time"
               required
               defaultValue={shift.start_time.slice(0, 5)}
-              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitAppearance: 'none',
+                minHeight: '44px',
+              }}
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-brand-forest">
+            <label
+              htmlFor="edit_shift_end"
+              className="block text-xs font-medium text-brand-forest"
+            >
               End
             </label>
             <input
+              id="edit_shift_end"
               name="end_time"
               type="time"
               required
               defaultValue={shift.end_time.slice(0, 5)}
-              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitAppearance: 'none',
+                minHeight: '44px',
+              }}
             />
           </div>
         </div>

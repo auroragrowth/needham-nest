@@ -139,40 +139,75 @@ export default async function NewShiftPage({
           )}
         </div>
         <div>
-          <label className="block text-xs font-medium text-brand-forest">
+          <label
+            htmlFor="shift_date"
+            className="block text-xs font-medium text-brand-forest"
+          >
             Date
           </label>
           <input
+            id="shift_date"
             name="date"
             type="date"
             defaultValue={sp.date}
             required
-            className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            min="2024-01-01"
+            max="2099-12-31"
+            className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            style={{
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              WebkitAppearance: 'none',
+              minHeight: '44px',
+            }}
           />
+          <p className="mt-1 text-xs text-brand-slate">
+            Tap to open the date picker.
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-brand-forest">
+            <label
+              htmlFor="shift_start"
+              className="block text-xs font-medium text-brand-forest"
+            >
               Start
             </label>
             <input
+              id="shift_start"
               name="start_time"
               type="time"
               required
               defaultValue={openTime}
-              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitAppearance: 'none',
+                minHeight: '44px',
+              }}
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-brand-forest">
+            <label
+              htmlFor="shift_end"
+              className="block text-xs font-medium text-brand-forest"
+            >
               End
             </label>
             <input
+              id="shift_end"
               name="end_time"
               type="time"
               required
               defaultValue={closeTime}
-              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitAppearance: 'none',
+                minHeight: '44px',
+              }}
             />
           </div>
         </div>
