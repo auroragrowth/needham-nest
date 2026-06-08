@@ -150,22 +150,32 @@ export function AvailabilityCalendar({
             <button
               type="button"
               onClick={() => setMode('all_day')}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+              className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium ${
                 mode === 'all_day'
                   ? 'bg-brand-forest text-brand-cream'
                   : 'border border-brand-sage/60 bg-white text-brand-forest'
               }`}
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                minHeight: '44px',
+              }}
             >
               All day
             </button>
             <button
               type="button"
               onClick={() => setMode('window')}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+              className={`cursor-pointer rounded-md px-4 py-2 text-sm font-medium ${
                 mode === 'window'
                   ? 'bg-brand-forest text-brand-cream'
                   : 'border border-brand-sage/60 bg-white text-brand-forest'
               }`}
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                minHeight: '44px',
+              }}
             >
               Specific time window
             </button>
@@ -183,32 +193,57 @@ export function AvailabilityCalendar({
             {mode === 'window' && (
               <>
                 <div>
-                  <label className="block text-[11px] font-medium text-brand-forest">
+                  <label
+                    htmlFor="avail_start"
+                    className="block text-xs font-medium text-brand-forest"
+                  >
                     From
                   </label>
                   <input
+                    id="avail_start"
                     name="start_time"
                     type="time"
                     required
-                    className="mt-1 rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+                    className="mt-1 block cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+                    style={{
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      WebkitAppearance: 'none',
+                      minHeight: '44px',
+                    }}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-brand-forest">
+                  <label
+                    htmlFor="avail_end"
+                    className="block text-xs font-medium text-brand-forest"
+                  >
                     To
                   </label>
                   <input
+                    id="avail_end"
                     name="end_time"
                     type="time"
                     required
-                    className="mt-1 rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+                    className="mt-1 block cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+                    style={{
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      WebkitAppearance: 'none',
+                      minHeight: '44px',
+                    }}
                   />
                 </div>
               </>
             )}
             <button
               type="submit"
-              className="rounded-md bg-brand-amber px-4 py-2 text-sm font-semibold text-brand-forest hover:bg-brand-amber/90"
+              className="cursor-pointer rounded-md bg-brand-amber px-5 py-3 text-base font-semibold text-brand-forest hover:bg-brand-amber/90"
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                minHeight: '44px',
+              }}
             >
               {mode === 'all_day' ? 'Save all day' : 'Save window'}
             </button>
