@@ -225,6 +225,24 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/manager/rota"
+          title="Rota"
+          subtitle="Plan shifts, see availability, publish to staff"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/leave"
+          title="Leave"
+          subtitle="Approve holiday / sick / unpaid"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/timesheets"
+          title="Timesheets"
+          subtitle="Hours from clock in/out"
+          cta="Open →"
+        />
+        <Card
           href="/shopping-list"
           title="Shopping list"
           subtitle="Anyone can add — shared between all"

@@ -9,11 +9,13 @@ export default async function ManagerLayout({
 }) {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role !== 'manager') redirect('/')
+  // Owner + manager both use the manager area (rota, leave, compliance,
+  // timesheets, cash, wastage). Staff stays out.
+  if (session.role === 'staff') redirect('/staff')
 
   return (
-    <div data-role="manager" className="min-h-screen">
-      <RoleHeader role="manager" name={session.name} />
+    <div data-role={session.role} className="min-h-screen">
+      <RoleHeader role={session.role} name={session.name} />
       <div className="p-6">{children}</div>
     </div>
   )
