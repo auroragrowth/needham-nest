@@ -97,6 +97,24 @@ export default async function NewStaffPage({
           </p>
         </div>
 
+        <div>
+          <label
+            htmlFor="date_of_birth"
+            className="block text-sm font-medium text-brand-forest"
+          >
+            Date of birth
+          </label>
+          <input
+            id="date_of_birth"
+            name="date_of_birth"
+            type="date"
+            className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+          />
+          <p className="mt-1 text-xs text-brand-slate">
+            Needed for statutory break checks — under-18s get stricter rules.
+          </p>
+        </div>
+
         <div className="flex gap-2 pt-2">
           <button
             type="submit"

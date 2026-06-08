@@ -49,11 +49,18 @@ export async function createStaff(formData: FormData) {
     redirect('/owner/staff/new?error=PIN+already+in+use+%E2%80%94+pick+another')
   }
 
+  const dobStr = String(formData.get('date_of_birth') ?? '').trim()
   const pinHash = await hashPin(pin)
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('profiles')
-    .insert({ name, role, pin_hash: pinHash, active: true })
+    .insert({
+      name,
+      role,
+      pin_hash: pinHash,
+      active: true,
+      date_of_birth: dobStr || null,
+    })
     .select('id')
     .single()
 
@@ -123,6 +130,7 @@ export async function updateStaffDetails(
   const hourlyStr = String(formData.get('hourly_rate') ?? '').trim()
   const startStr = String(formData.get('start_date') ?? '').trim()
   const contractedStr = String(formData.get('contracted_weekly_hours') ?? '').trim()
+  const dobStr = String(formData.get('date_of_birth') ?? '').trim()
 
   const payload = {
     phone: String(formData.get('phone') ?? '').trim() || null,
@@ -133,6 +141,7 @@ export async function updateStaffDetails(
     right_to_work_ref:
       String(formData.get('right_to_work_ref') ?? '').trim() || null,
     start_date: startStr || null,
+    date_of_birth: dobStr || null,
     hourly_rate: hourlyStr === '' ? null : Number(hourlyStr),
     contracted_weekly_hours:
       contractedStr === '' ? null : Number(contractedStr),

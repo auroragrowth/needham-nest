@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
+import { requireDob } from '@/lib/auth/dob-gate'
 import { RoleHeader } from '@/components/shared/RoleHeader'
 
 export default async function ManagerLayout({
@@ -12,6 +13,7 @@ export default async function ManagerLayout({
   // Owner + manager both use the manager area (rota, leave, compliance,
   // timesheets, cash, wastage). Staff stays out.
   if (session.role === 'staff') redirect('/staff')
+  await requireDob(session.profileId)
 
   return (
     <div data-role={session.role} className="min-h-screen">

@@ -1,7 +1,13 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { deleteShift, publishWeek } from '@/lib/rota/actions'
+import { publishWeek } from '@/lib/rota/actions'
 import { colourForProfile } from '@/lib/colours'
+import {
+  checkShiftBreak,
+  checkRest,
+  describeFlag,
+  isUnderEighteen,
+} from '@/lib/rota/compliance'
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d)
@@ -28,6 +34,7 @@ type Shift = {
   end_time: string
   notes: string | null
   published: boolean
+  break_minutes: number
 }
 
 export default async function RotaPage({
@@ -56,16 +63,28 @@ export default async function RotaPage({
   const nextWeek = new Date(weekStart)
   nextWeek.setDate(nextWeek.getDate() + 7)
 
-  const [{ data: staff }, { data: shifts }, { data: avail }] = await Promise.all([
+  // Pull a 14-day window of shifts so daily/weekly rest checks see the
+  // shift that ended just before this week and last week's history.
+  const restWindowStart = isoDate(
+    new Date(weekStart.getTime() - 8 * 24 * 60 * 60 * 1000),
+  )
+  const restWindowEnd = isoDate(
+    new Date(weekStart.getTime() + 13 * 24 * 60 * 60 * 1000),
+  )
+
+  const [{ data: staff }, { data: shifts }, { data: avail }, { data: contextShifts }] =
+    await Promise.all([
     admin
       .from('profiles')
-      .select('id, name, role, contracted_weekly_hours')
+      .select('id, name, role, contracted_weekly_hours, date_of_birth')
       .eq('active', true)
       .neq('role', 'owner')
       .order('name'),
     admin
       .from('rota_shifts')
-      .select('id, staff_user_id, date, start_time, end_time, notes, published')
+      .select(
+        'id, staff_user_id, date, start_time, end_time, notes, published, break_minutes',
+      )
       .gte('date', fromIso)
       .lte('date', toIso)
       .order('start_time'),
@@ -74,6 +93,13 @@ export default async function RotaPage({
       .select('id, staff_user_id, date, start_time, end_time')
       .gte('date', fromIso)
       .lte('date', toIso),
+    admin
+      .from('rota_shifts')
+      .select(
+        'id, staff_user_id, date, start_time, end_time, break_minutes',
+      )
+      .gte('date', restWindowStart)
+      .lte('date', restWindowEnd),
   ])
 
   const byStaffDay = new Map<string, Shift[]>()
@@ -96,10 +122,53 @@ export default async function RotaPage({
   }
   const draftCount = (shifts ?? []).filter((s) => !s.published).length
 
+  // Build per-staff shift lists from the wider context window so daily
+  // and weekly rest checks reach across week boundaries.
+  type ContextShift = {
+    id: string
+    staff_user_id: string
+    date: string
+    start_time: string
+    end_time: string
+    break_minutes: number
+  }
+  const contextByStaff = new Map<string, ContextShift[]>()
+  for (const s of (contextShifts ?? []) as ContextShift[]) {
+    const arr = contextByStaff.get(s.staff_user_id) ?? []
+    arr.push(s)
+    contextByStaff.set(s.staff_user_id, arr)
+  }
+
+  const flagsByShift = new Map<string, string[]>()
+  const staffById = new Map(
+    (staff ?? []).map((s) => [
+      s.id,
+      s as { id: string; date_of_birth: string | null },
+    ]),
+  )
+  for (const s of (shifts ?? []) as Shift[]) {
+    const profile = staffById.get(s.staff_user_id)
+    const young = isUnderEighteen(profile?.date_of_birth, s.date)
+    const breakFlags = checkShiftBreak(
+      { ...s, break_minutes: s.break_minutes ?? 0 },
+      young,
+    )
+    const restFlags = checkRest(
+      { ...s, break_minutes: s.break_minutes ?? 0 },
+      contextByStaff.get(s.staff_user_id) ?? [],
+      young,
+    )
+    const all = [...breakFlags, ...restFlags]
+    if (all.length > 0) {
+      flagsByShift.set(s.id, all.map(describeFlag))
+    }
+  }
+
   function shiftHours(s: Shift): number {
     const [sh, sm] = s.start_time.split(':').map(Number)
     const [eh, em] = s.end_time.split(':').map(Number)
-    return (eh * 60 + em - (sh * 60 + sm)) / 60
+    const gross = eh * 60 + em - (sh * 60 + sm)
+    return Math.max(0, gross - (s.break_minutes ?? 0)) / 60
   }
 
   const hoursByStaff = new Map<string, number>()
@@ -167,6 +236,46 @@ export default async function RotaPage({
         <p className="mt-4 rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-sm text-brand-forest">
           {sp.error}
         </p>
+      )}
+
+      {flagsByShift.size > 0 && (
+        <section className="mt-4 rounded-xl border-2 border-red-300 bg-red-50 p-4">
+          <h2 className="text-sm font-semibold text-red-800">
+            ⚠ {flagsByShift.size} shift{flagsByShift.size === 1 ? '' : 's'} need
+            attention
+          </h2>
+          <ul className="mt-2 space-y-1 text-xs text-red-800">
+            {(shifts ?? [])
+              .filter((s) => flagsByShift.has(s.id))
+              .map((s) => {
+                const name =
+                  staffById.get(s.staff_user_id) &&
+                  (staff ?? []).find((p) => p.id === s.staff_user_id)?.name
+                return (
+                  <li key={s.id}>
+                    <Link
+                      href={`/manager/rota/${s.id}`}
+                      className="hover:underline"
+                    >
+                      <span className="font-semibold">{name ?? '—'}</span>{' '}
+                      {new Date(s.date + 'T00:00:00Z').toLocaleDateString([], {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}{' '}
+                      {fmtTime(s.start_time)}–{fmtTime(s.end_time)}: {' '}
+                      {flagsByShift.get(s.id)!.join(' · ')}
+                    </Link>
+                  </li>
+                )
+              })}
+          </ul>
+          <p className="mt-2 text-[11px] text-red-700">
+            UK Working Time Regulations 1998: 20-min break for shifts &gt; 6h
+            (30 min / 4.5h under 18); 11h daily rest (12h under 18); at least
+            one 24h continuous break in any 7 days (48h under 18).
+          </p>
+        </section>
       )}
 
       {draftCount > 0 && (
@@ -277,9 +386,22 @@ export default async function RotaPage({
                             }}
                           >
                             {fmtTime(sh.start_time)}–{fmtTime(sh.end_time)}
+                            {(sh.break_minutes ?? 0) > 0 && (
+                              <span className="ml-1 text-[9px] text-brand-slate">
+                                ·{sh.break_minutes}m
+                              </span>
+                            )}
                             {!sh.published && (
                               <span className="ml-1 rounded bg-brand-amber/40 px-1 text-[9px] font-semibold uppercase text-brand-forest">
                                 draft
+                              </span>
+                            )}
+                            {flagsByShift.has(sh.id) && (
+                              <span
+                                title={flagsByShift.get(sh.id)!.join(' • ')}
+                                className="ml-1 inline-block rounded bg-red-100 px-1 text-[9px] font-semibold uppercase text-red-700"
+                              >
+                                ⚠ {flagsByShift.get(sh.id)!.length}
                               </span>
                             )}
                             {sh.notes && (

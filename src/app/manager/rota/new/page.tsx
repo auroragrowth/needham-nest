@@ -212,6 +212,34 @@ export default async function NewShiftPage({
           </div>
         </div>
         <div>
+          <label
+            htmlFor="break_minutes_new"
+            className="block text-xs font-medium text-brand-forest"
+          >
+            Break (minutes)
+          </label>
+          <input
+            id="break_minutes_new"
+            name="break_minutes"
+            type="number"
+            min="0"
+            max="240"
+            step="5"
+            defaultValue="0"
+            className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            style={{
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              WebkitAppearance: 'none',
+              minHeight: '44px',
+            }}
+          />
+          <p className="mt-1 text-xs text-brand-slate">
+            Statutory minimum: 20 min if shift &gt; 6h (30 min / 4.5h for
+            under-18s). Counts as unpaid time.
+          </p>
+        </div>
+        <div>
           <label className="block text-xs font-medium text-brand-forest">
             Notes
           </label>

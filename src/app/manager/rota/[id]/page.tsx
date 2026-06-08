@@ -13,7 +13,7 @@ export default async function EditShiftPage({
   const [{ data: shift }, { data: staff }] = await Promise.all([
     admin
       .from('rota_shifts')
-      .select('id, staff_user_id, date, start_time, end_time, notes, published')
+      .select('id, staff_user_id, date, start_time, end_time, notes, published, break_minutes')
       .eq('id', id)
       .maybeSingle(),
     admin
@@ -133,6 +133,34 @@ export default async function EditShiftPage({
               }}
             />
           </div>
+        </div>
+        <div>
+          <label
+            htmlFor="break_minutes_edit"
+            className="block text-xs font-medium text-brand-forest"
+          >
+            Break (minutes)
+          </label>
+          <input
+            id="break_minutes_edit"
+            name="break_minutes"
+            type="number"
+            min="0"
+            max="240"
+            step="5"
+            defaultValue={shift.break_minutes ?? 0}
+            className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-base text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            style={{
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              WebkitAppearance: 'none',
+              minHeight: '44px',
+            }}
+          />
+          <p className="mt-1 text-xs text-brand-slate">
+            Statutory minimum: 20 min if shift &gt; 6h (30 min / 4.5h for
+            under-18s). Counts as unpaid time.
+          </p>
         </div>
         <div>
           <label className="block text-xs font-medium text-brand-forest">

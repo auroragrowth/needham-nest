@@ -13,12 +13,16 @@ async function requireOwnerOrManager() {
 }
 
 function parseShift(formData: FormData) {
+  const breakRaw = String(formData.get('break_minutes') ?? '').trim()
+  const break_minutes =
+    breakRaw === '' ? 0 : Math.max(0, Math.min(240, Number(breakRaw) || 0))
   return {
     staff_user_id: String(formData.get('staff_user_id') ?? '').trim(),
     date: String(formData.get('date') ?? '').trim(),
     start_time: String(formData.get('start_time') ?? '').trim(),
     end_time: String(formData.get('end_time') ?? '').trim(),
     notes: String(formData.get('notes') ?? '').trim() || null,
+    break_minutes,
   }
 }
 

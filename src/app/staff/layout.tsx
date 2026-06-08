@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
+import { requireDob } from '@/lib/auth/dob-gate'
 import { RoleHeader } from '@/components/shared/RoleHeader'
 
 export default async function StaffLayout({
@@ -12,6 +13,7 @@ export default async function StaffLayout({
   // Owner stays out of the tablet flow (they have /owner/* for management).
   // Staff and Manager both use the tablet — managers wear both hats.
   if (session.role === 'owner') redirect('/owner')
+  await requireDob(session.profileId)
 
   return (
     <div data-role={session.role} className="min-h-screen">
