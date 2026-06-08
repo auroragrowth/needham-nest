@@ -7,33 +7,34 @@ type Props = {
 }
 
 /**
- * Minimal PIN entry: one text input that triggers the device's native
- * numeric keypad. Works on every browser back to ancient Safari without
- * relying on JS event handling for digit buttons.
- *
- * Submits when 4 digits are entered (via JS if available) OR when the
- * user clicks the visible Sign in button.
+ * One numeric input → device numeric keypad. Submits when 4 digits are
+ * entered. Works on iPad iOS 15 (legacy .click() path) and modern Safari
+ * (requestSubmit). The visible Sign in button is the manual fallback.
  */
 export function PinPad({ action }: Props) {
   const [pin, setPin] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
   const hiddenSubmitRef = useRef<HTMLButtonElement>(null)
 
-  // Auto-submit when 4 digits entered. Click the hidden (never disabled)
-  // submit button so the form posts even though the visible button has
-  // already gone disabled.
   useEffect(() => {
-    if (pin.length === 4 && !submitting) {
-      setSubmitting(true)
-      const t = setTimeout(() => {
-        hiddenSubmitRef.current?.click()
-      }, 50)
-      return () => clearTimeout(t)
+    if (pin.length !== 4 || submitting) return
+    const form = formRef.current
+    if (!form) return
+
+    setSubmitting(true)
+
+    // Prefer requestSubmit (iOS 16+, all modern browsers) — it triggers
+    // React's server-action handler properly. Fall back to clicking a
+    // hidden submit button for iOS 15.x (iPad Air 2).
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit(hiddenSubmitRef.current ?? undefined)
+    } else {
+      hiddenSubmitRef.current?.click()
     }
   }, [pin, submitting])
 
-  // Defensive: if the submit silently fails, reset after 10s so the UI
-  // never gets permanently stuck.
+  // If submit silently fails, unstick after 10s so the user can retry.
   useEffect(() => {
     if (!submitting) return
     const t = setTimeout(() => setSubmitting(false), 10000)
@@ -41,13 +42,17 @@ export function PinPad({ action }: Props) {
   }, [submitting])
 
   return (
-    <form action={action} className="flex flex-col items-center gap-6">
+    <form
+      ref={formRef}
+      action={action}
+      className="flex flex-col items-center gap-6"
+    >
       <input
         name="pin"
         type="text"
         inputMode="numeric"
         pattern="\d{4}"
-        autoComplete="one-time-code"
+        autoComplete="off"
         maxLength={4}
         required
         autoFocus
@@ -59,24 +64,43 @@ export function PinPad({ action }: Props) {
         aria-label="PIN"
         placeholder="••••"
         className="w-48 rounded-2xl border-2 border-brand-sage/60 bg-white px-4 py-4 text-center font-mono text-4xl tracking-[0.5em] text-brand-forest outline-none focus:border-brand-amber focus:ring-2 focus:ring-brand-amber/30"
+        style={{
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          WebkitAppearance: 'none',
+        }}
       />
 
-      {/* Always-enabled hidden submit button used for auto-submit. */}
+      {/* Off-screen submit so requestSubmit/.click can trigger the server
+          action even when the visible button is disabled. Positioned with
+          inline styles (not Tailwind) to ensure reliable cross-browser
+          off-screen placement without pointer-events:none, which blocked
+          programmatic clicks on iOS. */}
       <button
         ref={hiddenSubmitRef}
         type="submit"
         aria-hidden="true"
         tabIndex={-1}
-        className="pointer-events-none absolute h-0 w-0 overflow-hidden border-0 p-0 opacity-0"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          width: '1px',
+          height: '1px',
+          opacity: 0,
+        }}
       >
         Submit
       </button>
 
-      {/* Visible Sign in button — manual fallback / Enter target. */}
       <button
         type="submit"
         disabled={submitting || pin.length !== 4}
         className="rounded-lg bg-brand-forest px-8 py-3 text-base font-medium text-brand-cream hover:bg-brand-olive disabled:cursor-not-allowed disabled:opacity-50"
+        style={{
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          minHeight: '44px',
+        }}
       >
         {submitting ? 'Signing in…' : 'Sign in'}
       </button>
