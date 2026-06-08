@@ -231,6 +231,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/manager/availability"
+          title="Staff availability"
+          subtitle="Month overview of who's free each day"
+          cta="Open →"
+        />
+        <Card
           href="/manager/leave"
           title="Leave"
           subtitle="Approve holiday / sick / unpaid"
