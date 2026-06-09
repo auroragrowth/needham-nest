@@ -201,6 +201,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/handbook/files"
+          title="Uploaded files"
+          subtitle="Every PDF / image you've attached to a handbook article"
+          cta="Open →"
+        />
+        <Card
           href="/owner/risk-assessments"
           title="Risk assessments"
           subtitle="Fire, COSHH, slips/trips, manual handling"

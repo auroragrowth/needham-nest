@@ -52,14 +52,22 @@ export default async function HandbookListPage({
             Manuals, crib sheets, how-tos. Everyone can read this.
           </p>
         </div>
-        {session.role === 'owner' && (
+        <div className="flex flex-wrap gap-2">
           <Link
-            href="/handbook/new"
-            className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
+            href="/handbook/files"
+            className="rounded-lg border border-brand-sage/60 bg-white px-4 py-2 text-sm font-medium text-brand-forest hover:bg-brand-sage/10"
           >
-            + Add article
+            All files →
           </Link>
-        )}
+          {session.role === 'owner' && (
+            <Link
+              href="/handbook/new"
+              className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
+            >
+              + Add article
+            </Link>
+          )}
+        </div>
       </div>
 
       {params.notice && (
