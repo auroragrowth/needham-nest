@@ -76,7 +76,9 @@ export default async function RotaPage({
     await Promise.all([
     admin
       .from('profiles')
-      .select('id, name, role, contracted_weekly_hours, date_of_birth')
+      .select(
+        'id, name, role, contracted_weekly_hours, date_of_birth, colour_index',
+      )
       .eq('active', true)
       .order('name'),
     admin
@@ -323,7 +325,7 @@ export default async function RotaPage({
             {(staff ?? []).map((s) => {
               const scheduled = hoursByStaff.get(s.id) ?? 0
               const contracted = Number(s.contracted_weekly_hours ?? 0)
-              const col = colourForProfile(s.id)
+              const col = colourForProfile(s.id, s.colour_index)
               return (
               <tr key={s.id} className="align-top">
                 <td

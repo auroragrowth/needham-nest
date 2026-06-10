@@ -13,6 +13,7 @@ import {
   updateStaffRole,
 } from '../actions'
 import { TRAINING_TYPES } from '@/lib/training/constants'
+import { COLOUR_OPTIONS, colourForIndex } from '@/lib/colours'
 import {
   addTrainingRecord,
   deleteTrainingRecord,
@@ -34,7 +35,7 @@ export default async function EditStaffPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours',
+        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index',
       )
       .eq('id', id)
       .maybeSingle(),
@@ -204,6 +205,61 @@ export default async function EditStaffPage({
             type="date"
             defaultValue={person.date_of_birth ?? ''}
           />
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-brand-forest">
+              Rota colour
+            </label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <label
+                className="flex cursor-pointer items-center gap-1 rounded-md border border-brand-sage/60 bg-white px-2 py-1 text-xs text-brand-forest"
+                style={{
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  minHeight: '36px',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="colour_index"
+                  value=""
+                  defaultChecked={person.colour_index == null}
+                />
+                Auto
+              </label>
+              {COLOUR_OPTIONS.map((opt) => {
+                const c = colourForIndex(opt.index)
+                const selected = person.colour_index === opt.index
+                return (
+                  <label
+                    key={opt.index}
+                    className="flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs"
+                    style={{
+                      backgroundColor: c.bg,
+                      borderColor: selected ? c.border : 'transparent',
+                      borderWidth: selected ? 2 : 1,
+                      color: c.text,
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      minHeight: '36px',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="colour_index"
+                      value={opt.index}
+                      defaultChecked={selected}
+                    />
+                    <span
+                      aria-hidden
+                      className="inline-block h-3 w-3 rounded-full"
+                      style={{ backgroundColor: c.dot }}
+                    />
+                    {opt.name}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
           <div className="col-span-2">
             <button
               type="submit"

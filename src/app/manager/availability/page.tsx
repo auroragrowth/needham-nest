@@ -47,7 +47,7 @@ export default async function AvailabilityOverviewPage({
   const [{ data: staff }, { data: avail }] = await Promise.all([
     admin
       .from('profiles')
-      .select('id, name, role')
+      .select('id, name, role, colour_index')
       .eq('active', true)
       .order('name'),
     admin
@@ -115,7 +115,7 @@ export default async function AvailabilityOverviewPage({
       {/* Staff legend with totals */}
       <div className="mt-4 flex flex-wrap gap-2 rounded-xl border border-brand-sage/40 bg-white p-3">
         {(staff ?? []).map((s) => {
-          const col = colourForProfile(s.id)
+          const col = colourForProfile(s.id, s.colour_index)
           const total = totalsByStaff.get(s.id) ?? 0
           return (
             <span
@@ -186,7 +186,10 @@ export default async function AvailabilityOverviewPage({
                 {entries.map(([staffId, windows]) => {
                   const s = staffById.get(staffId)
                   if (!s) return null
-                  const col = colourForProfile(staffId)
+                  const col = colourForProfile(
+                    staffId,
+                    staffById.get(staffId)?.colour_index,
+                  )
                   return (
                     <li
                       key={staffId}

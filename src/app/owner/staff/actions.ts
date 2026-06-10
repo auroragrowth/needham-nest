@@ -145,6 +145,12 @@ export async function updateStaffDetails(
     hourly_rate: hourlyStr === '' ? null : Number(hourlyStr),
     contracted_weekly_hours:
       contractedStr === '' ? null : Number(contractedStr),
+    colour_index: (() => {
+      const raw = String(formData.get('colour_index') ?? '').trim()
+      if (raw === '') return null
+      const n = Number(raw)
+      return Number.isFinite(n) && n >= 0 && n <= 9 ? n : null
+    })(),
   }
 
   const admin = createAdminClient()
