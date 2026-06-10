@@ -16,7 +16,6 @@ export default async function NewShiftPage({
         .from('profiles')
         .select('id, name, role')
         .eq('active', true)
-        .neq('role', 'owner')
         .order('name'),
       admin
         .from('settings')

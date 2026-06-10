@@ -20,7 +20,6 @@ export default async function EditShiftPage({
       .from('profiles')
       .select('id, name')
       .eq('active', true)
-      .neq('role', 'owner')
       .order('name'),
   ])
   if (!shift) notFound()

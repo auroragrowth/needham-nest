@@ -78,7 +78,6 @@ export default async function RotaPage({
       .from('profiles')
       .select('id, name, role, contracted_weekly_hours, date_of_birth')
       .eq('active', true)
-      .neq('role', 'owner')
       .order('name'),
     admin
       .from('rota_shifts')
