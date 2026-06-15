@@ -49,7 +49,13 @@ export async function computeDailyStaffingCost(
 
   const paye_people: StaffingCostBreakdown['paye_people'] = []
   const hourlyRateById = new Map<string, number>()
+  // Owner draws aren't payroll — exclude them entirely from the cost.
+  const excludedIds = new Set<string>()
   for (const p of people ?? []) {
+    if (p.employment_type === 'owner_draw') {
+      excludedIds.add(p.id)
+      continue
+    }
     if (p.employment_type === 'paye' && p.annual_salary) {
       const daily = Number(p.annual_salary) / 365
       paye_people.push({
@@ -81,7 +87,7 @@ export async function computeDailyStaffingCost(
   const hourly_people: StaffingCostBreakdown['hourly_people'] = []
   const payeIds = new Set(paye_people.map((p) => p.id))
   for (const [id, hours] of hoursById) {
-    if (payeIds.has(id)) continue // PAYE cost already counted in baseline
+    if (payeIds.has(id) || excludedIds.has(id)) continue // PAYE counted in baseline; owner_draw excluded
     const rate = hourlyRateById.get(id) ?? 0
     const cost = hours * rate
     const person = (people ?? []).find((p) => p.id === id)
