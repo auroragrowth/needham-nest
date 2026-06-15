@@ -35,7 +35,7 @@ export default async function EditStaffPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index',
+        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary',
       )
       .eq('id', id)
       .maybeSingle(),
@@ -204,6 +204,33 @@ export default async function EditStaffPage({
             name="date_of_birth"
             type="date"
             defaultValue={person.date_of_birth ?? ''}
+          />
+          <div>
+            <label
+              htmlFor="employment_type"
+              className="block text-xs font-medium text-brand-forest"
+            >
+              Employment type
+            </label>
+            <select
+              id="employment_type"
+              name="employment_type"
+              defaultValue={person.employment_type ?? ''}
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+            >
+              <option value="">— not set —</option>
+              <option value="paye">PAYE (salaried, costs every day)</option>
+              <option value="casual">Casual / hourly</option>
+              <option value="self_employed">Self-employed</option>
+              <option value="owner_draw">Owner draw (no payroll)</option>
+            </select>
+          </div>
+          <Field
+            label="Annual salary (PAYE only)"
+            name="annual_salary"
+            type="number"
+            step="0.01"
+            defaultValue={person.annual_salary?.toString() ?? ''}
           />
           <div className="col-span-2">
             <label className="block text-xs font-medium text-brand-forest">

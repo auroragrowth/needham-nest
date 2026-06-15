@@ -131,6 +131,15 @@ export async function updateStaffDetails(
   const startStr = String(formData.get('start_date') ?? '').trim()
   const contractedStr = String(formData.get('contracted_weekly_hours') ?? '').trim()
   const dobStr = String(formData.get('date_of_birth') ?? '').trim()
+  const annualStr = String(formData.get('annual_salary') ?? '').trim()
+  const employmentRaw = String(formData.get('employment_type') ?? '').trim()
+  const employmentType =
+    employmentRaw === 'paye' ||
+    employmentRaw === 'casual' ||
+    employmentRaw === 'self_employed' ||
+    employmentRaw === 'owner_draw'
+      ? employmentRaw
+      : null
 
   const payload = {
     phone: String(formData.get('phone') ?? '').trim() || null,
@@ -151,6 +160,8 @@ export async function updateStaffDetails(
       const n = Number(raw)
       return Number.isFinite(n) && n >= 0 && n <= 9 ? n : null
     })(),
+    employment_type: employmentType,
+    annual_salary: annualStr === '' ? null : Number(annualStr),
   }
 
   const admin = createAdminClient()

@@ -99,6 +99,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/manager/staffing-cost"
+          title="Staffing cost"
+          subtitle="PAYE baseline + rostered hourly, by day"
+          cta="Open →"
+        />
+        <Card
           href="/manager/rota"
           title="Rota"
           subtitle="Weekly grid + publish to staff"
