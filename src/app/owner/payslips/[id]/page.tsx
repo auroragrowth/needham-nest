@@ -5,14 +5,16 @@ import { PrintButton } from './PrintButton'
 
 function fmtTime(iso: string | null): string {
   if (!iso) return '— still on —'
-  return new Date(iso).toLocaleTimeString([], {
+  return new Date(iso).toLocaleTimeString('en-GB', {
+    timeZone: 'UTC',
     hour: '2-digit',
     minute: '2-digit',
   })
 }
 
 function fmtDate(iso: string): string {
-  return new Date(iso + 'T00:00:00Z').toLocaleDateString([], {
+  return new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', {
+    timeZone: 'UTC',
     weekday: 'short',
     day: 'numeric',
     month: 'short',

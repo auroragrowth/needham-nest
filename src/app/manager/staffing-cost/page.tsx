@@ -134,16 +134,21 @@ export default async function StaffingCostPage({
                   <ul className="mt-1 space-y-0.5 text-[11px] text-brand-slate">
                     {p.segments.map((seg, i) => (
                       <li key={i} className="font-mono">
-                        {new Date(seg.clock_in).toLocaleTimeString([], {
+                        {new Date(seg.clock_in).toLocaleTimeString('en-GB', {
+                          timeZone: 'UTC',
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
                         {' – '}
                         {seg.clock_out
-                          ? new Date(seg.clock_out).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
+                          ? new Date(seg.clock_out).toLocaleTimeString(
+                              'en-GB',
+                              {
+                                timeZone: 'UTC',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              },
+                            )
                           : 'now (still on)'}{' '}
                         ({seg.hours.toFixed(2)}h)
                       </li>

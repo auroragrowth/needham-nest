@@ -129,7 +129,8 @@ export default async function TimesheetsPage() {
                     </p>
                     <p className="text-xs text-brand-slate">
                       Since{' '}
-                      {new Date(l.clock_in).toLocaleTimeString([], {
+                      {new Date(l.clock_in).toLocaleTimeString('en-GB', {
+                        timeZone: 'UTC',
                         hour: '2-digit',
                         minute: '2-digit',
                       })}

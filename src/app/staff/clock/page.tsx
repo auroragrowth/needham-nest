@@ -107,7 +107,8 @@ export default async function StaffDashboard({
             </p>
             <p className="mt-1 text-sm text-brand-slate">
               Clocked in at{' '}
-              {onShiftSince!.toLocaleTimeString([], {
+              {onShiftSince!.toLocaleTimeString('en-GB', {
+                timeZone: 'UTC',
                 hour: '2-digit',
                 minute: '2-digit',
               })}
@@ -127,7 +128,8 @@ export default async function StaffDashboard({
               Not clocked in
             </p>
             <p className="mt-2 text-4xl font-semibold text-brand-forest">
-              {now.toLocaleTimeString([], {
+              {now.toLocaleTimeString('en-GB', {
+                timeZone: 'UTC',
                 hour: '2-digit',
                 minute: '2-digit',
               })}
@@ -173,20 +175,23 @@ export default async function StaffDashboard({
               >
                 <div>
                   <p className="text-brand-forest">
-                    {start.toLocaleDateString([], {
+                    {start.toLocaleDateString('en-GB', {
+                      timeZone: 'UTC',
                       weekday: 'short',
                       day: 'numeric',
                       month: 'short',
                     })}
                   </p>
                   <p className="text-xs text-brand-slate">
-                    {start.toLocaleTimeString([], {
+                    {start.toLocaleTimeString('en-GB', {
+                      timeZone: 'UTC',
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                     {' → '}
                     {end
-                      ? end.toLocaleTimeString([], {
+                      ? end.toLocaleTimeString('en-GB', {
+                          timeZone: 'UTC',
                           hour: '2-digit',
                           minute: '2-digit',
                         })

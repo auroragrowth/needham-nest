@@ -36,16 +36,11 @@ export async function logTemperature(applianceId: string, formData: FormData) {
     redirect('/staff/temperatures?error=Appliance+not+found')
   }
 
-  const inRange =
-    (appliance.target_min == null || temperature >= appliance.target_min) &&
-    (appliance.target_max == null || temperature <= appliance.target_max)
-
-  if (!inRange && !correctiveAction) {
-    redirect(
-      `/staff/temperatures/${applianceId}?error=Out+of+range+%E2%80%94+a+corrective+action+note+is+required.&t=${temperature}`,
-    )
-  }
-
+  // We used to refuse out-of-range readings without a corrective-action
+  // note. Paul wants to record what's actually there — the row is still
+  // saved with the snapshotted target range so the EHO pack can show
+  // out-of-range readings, and the corrective-action box is still
+  // available (and encouraged in the UI when it's outside the band).
   const { error } = await admin.from('temperature_logs').insert({
     appliance_id: applianceId,
     user_id: session.profileId,
