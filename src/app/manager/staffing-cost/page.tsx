@@ -43,9 +43,9 @@ export default async function StaffingCostPage({
         Staffing cost
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        PAYE staff (Vic) cost the business every day, whether they work or
-        not — annual salary ÷ 365. Hourly staff cost only the hours they&apos;re
-        rostered.
+        PAYE staff (Vic) cost the business every day, whether they clock in or
+        not — annual salary ÷ 365. Hourly staff cost only the hours they&apos;ve
+        actually clocked. Still-on-shift entries count up to right now.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -116,6 +116,11 @@ export default async function StaffingCostPage({
                     <span className="text-xs text-brand-slate">
                       {p.hours.toFixed(1)}h × £{p.rate.toFixed(2)}
                     </span>
+                    {p.still_clocked_in && (
+                      <span className="ml-1 rounded bg-brand-teal-deep/15 px-1 text-[10px] font-semibold uppercase text-brand-teal-deep">
+                        on shift
+                      </span>
+                    )}
                   </span>
                   <span className="font-mono">£{p.cost.toFixed(2)}</span>
                 </li>
