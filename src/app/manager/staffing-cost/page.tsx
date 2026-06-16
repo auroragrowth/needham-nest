@@ -67,6 +67,12 @@ export default async function StaffingCostPage({
         >
           Next week →
         </Link>
+        <Link
+          href="/manager/staffing-cost/history"
+          className="rounded-lg bg-brand-forest px-3 py-1.5 text-sm font-medium text-brand-cream hover:bg-brand-olive"
+        >
+          Day-by-day history →
+        </Link>
       </div>
 
       <section className="mt-6 rounded-xl border-2 border-brand-amber/60 bg-brand-amber/10 p-5">

@@ -255,6 +255,18 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/payslips"
+          title="Payslips"
+          subtitle="Per-staff shift list + gross totals (printable)"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/staffing-cost/history"
+          title="Staffing cost history"
+          subtitle="Day-by-day totals with running cumulative"
+          cta="Open →"
+        />
+        <Card
           href="/shopping-list"
           title="Shopping list"
           subtitle="Anyone can add — shared between all"

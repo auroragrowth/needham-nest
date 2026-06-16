@@ -185,3 +185,184 @@ export async function computeDailyStaffingCost(
     total: Number((paye_baseline + hourly_variable).toFixed(2)),
   }
 }
+
+export type DailyTotal = {
+  date: string
+  paye: number
+  hourly: number
+  total: number
+  cumulative: number
+}
+
+/**
+ * Day-by-day totals for a date range, plus a running cumulative.
+ * One SQL query for the whole range — works for up to ~365 days easily.
+ */
+export async function computeStaffingCostRange(
+  from: string,
+  to: string,
+): Promise<DailyTotal[]> {
+  const admin = createAdminClient()
+
+  const [{ data: people }, { data: logs }] = await Promise.all([
+    admin
+      .from('profiles')
+      .select('id, employment_type, annual_salary, hourly_rate')
+      .eq('active', true),
+    admin
+      .from('time_logs')
+      .select('user_id, clock_in, clock_out, hourly_rate')
+      .gte('clock_in', `${from}T00:00:00Z`)
+      .lte('clock_in', `${to}T23:59:59Z`),
+  ])
+
+  const profileById = new Map<
+    string,
+    { rate: number | null; type: string | null }
+  >()
+  let payeDailyBaseline = 0
+  for (const p of people ?? []) {
+    profileById.set(p.id, {
+      rate: p.hourly_rate == null ? null : Number(p.hourly_rate),
+      type: p.employment_type ?? null,
+    })
+    if (p.employment_type === 'paye' && p.annual_salary) {
+      payeDailyBaseline += Number(p.annual_salary) / 365
+    }
+  }
+
+  const dailyHourly = new Map<string, number>()
+  const now = Date.now()
+  for (const l of logs ?? []) {
+    const profile = profileById.get(l.user_id)
+    if (!profile) continue
+    if (profile.type === 'owner_draw' || profile.type === 'paye') continue
+    const startMs = new Date(l.clock_in).getTime()
+    const endMs = l.clock_out ? new Date(l.clock_out).getTime() : now
+    const hours = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    if (hours === 0) continue
+    const rate =
+      l.hourly_rate != null ? Number(l.hourly_rate) : (profile.rate ?? 0)
+    const day = l.clock_in.slice(0, 10)
+    dailyHourly.set(day, (dailyHourly.get(day) ?? 0) + hours * rate)
+  }
+
+  const out: DailyTotal[] = []
+  let cumulative = 0
+  for (const day of eachDay(from, to)) {
+    const hourly = dailyHourly.get(day) ?? 0
+    const total = payeDailyBaseline + hourly
+    cumulative += total
+    out.push({
+      date: day,
+      paye: Number(payeDailyBaseline.toFixed(2)),
+      hourly: Number(hourly.toFixed(2)),
+      total: Number(total.toFixed(2)),
+      cumulative: Number(cumulative.toFixed(2)),
+    })
+  }
+  return out
+}
+
+export type PayslipShift = {
+  date: string
+  clock_in: string
+  clock_out: string | null
+  hours: number
+  rate: number
+  cost: number
+}
+
+export type StaffPayslip = {
+  staff_id: string
+  staff_name: string
+  employment_type: string | null
+  from: string
+  to: string
+  shifts: PayslipShift[]
+  total_hours: number
+  total_gross: number
+  paye_days: number
+  paye_total: number
+}
+
+/**
+ * Per-staff payslip for a date range. Returns every clocked shift,
+ * sorted oldest first, with the rate that was effective at clock-in
+ * (snapshotted on the row). For PAYE staff also returns the daily
+ * salary spread × days in the period.
+ */
+export async function buildStaffPayslip(
+  staffId: string,
+  from: string,
+  to: string,
+): Promise<StaffPayslip | null> {
+  const admin = createAdminClient()
+
+  const [{ data: profile }, { data: logs }] = await Promise.all([
+    admin
+      .from('profiles')
+      .select(
+        'id, name, employment_type, annual_salary, hourly_rate',
+      )
+      .eq('id', staffId)
+      .maybeSingle(),
+    admin
+      .from('time_logs')
+      .select('clock_in, clock_out, hourly_rate')
+      .eq('user_id', staffId)
+      .gte('clock_in', `${from}T00:00:00Z`)
+      .lte('clock_in', `${to}T23:59:59Z`)
+      .order('clock_in', { ascending: true }),
+  ])
+
+  if (!profile) return null
+
+  const now = Date.now()
+  let total_hours = 0
+  let total_gross = 0
+  const shifts: PayslipShift[] = []
+  for (const l of logs ?? []) {
+    const startMs = new Date(l.clock_in).getTime()
+    const endMs = l.clock_out ? new Date(l.clock_out).getTime() : now
+    const hours = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    if (hours === 0) continue
+    const rate =
+      l.hourly_rate != null
+        ? Number(l.hourly_rate)
+        : profile.hourly_rate == null
+          ? 0
+          : Number(profile.hourly_rate)
+    const cost = hours * rate
+    total_hours += hours
+    total_gross += cost
+    shifts.push({
+      date: l.clock_in.slice(0, 10),
+      clock_in: l.clock_in,
+      clock_out: l.clock_out,
+      hours: Number(hours.toFixed(2)),
+      rate: Number(rate.toFixed(2)),
+      cost: Number(cost.toFixed(2)),
+    })
+  }
+
+  let paye_days = 0
+  let paye_total = 0
+  if (profile.employment_type === 'paye' && profile.annual_salary) {
+    paye_days = eachDay(from, to).length
+    paye_total = (Number(profile.annual_salary) / 365) * paye_days
+  }
+
+  return {
+    staff_id: profile.id,
+    staff_name: profile.name,
+    employment_type: profile.employment_type ?? null,
+    from,
+    to,
+    shifts,
+    total_hours: Number(total_hours.toFixed(2)),
+    total_gross: Number(total_gross.toFixed(2)),
+    paye_days,
+    paye_total: Number(paye_total.toFixed(2)),
+  }
+}
