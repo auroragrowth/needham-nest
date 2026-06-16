@@ -15,6 +15,20 @@
  */
 import { createAdminClient } from '@/lib/supabase/admin'
 
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+function eachDay(from: string, to: string): string[] {
+  const out: string[] = []
+  const start = new Date(from + 'T00:00:00Z')
+  const end = new Date(to + 'T00:00:00Z')
+  for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) {
+    out.push(isoDate(d))
+  }
+  return out
+}
+
 export type StaffingCostBreakdown = {
   date: string
   paye_baseline: number
@@ -27,6 +41,11 @@ export type StaffingCostBreakdown = {
     rate: number
     cost: number
     still_clocked_in: boolean
+    segments: Array<{
+      clock_in: string
+      clock_out: string | null
+      hours: number
+    }>
   }>
   total: number
 }
@@ -92,6 +111,11 @@ export async function computeDailyStaffingCost(
     weightedRateNumer: number // sum(hours × rate) so we can show a sensible blended rate
     cost: number
     stillClockedIn: boolean
+    segments: Array<{
+      clock_in: string
+      clock_out: string | null
+      hours: number
+    }>
   }
   const aggById = new Map<string, Agg>()
   const now = Date.now()
@@ -112,11 +136,17 @@ export async function computeDailyStaffingCost(
       weightedRateNumer: 0,
       cost: 0,
       stillClockedIn: false,
+      segments: [] as Agg['segments'],
     }
     cur.hours += hours
     cur.weightedRateNumer += hours * rate
     cur.cost += cost
     cur.stillClockedIn = cur.stillClockedIn || stillOpen
+    cur.segments.push({
+      clock_in: l.clock_in,
+      clock_out: l.clock_out,
+      hours: Number(hours.toFixed(2)),
+    })
     aggById.set(l.user_id, cur)
   }
 
@@ -135,6 +165,9 @@ export async function computeDailyStaffingCost(
       rate: Number(blendedRate.toFixed(2)),
       cost: Number(agg.cost.toFixed(2)),
       still_clocked_in: agg.stillClockedIn,
+      segments: agg.segments.sort((a, b) =>
+        a.clock_in.localeCompare(b.clock_in),
+      ),
     })
   }
   hourly_people.sort((a, b) => a.name.localeCompare(b.name))

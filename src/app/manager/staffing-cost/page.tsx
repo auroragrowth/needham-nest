@@ -110,19 +110,39 @@ export default async function StaffingCostPage({
             </p>
             <ul className="mt-1 space-y-1 text-sm">
               {main.hourly_people.map((p) => (
-                <li key={p.id} className="flex justify-between gap-2">
-                  <span>
-                    {p.name}{' '}
-                    <span className="text-xs text-brand-slate">
-                      {p.hours.toFixed(1)}h × £{p.rate.toFixed(2)}
-                    </span>
-                    {p.still_clocked_in && (
-                      <span className="ml-1 rounded bg-brand-teal-deep/15 px-1 text-[10px] font-semibold uppercase text-brand-teal-deep">
-                        on shift
+                <li key={p.id} className="rounded border border-brand-sage/30 bg-white p-2">
+                  <div className="flex justify-between gap-2">
+                    <span>
+                      <span className="font-semibold">{p.name}</span>{' '}
+                      <span className="text-xs text-brand-slate">
+                        {p.hours.toFixed(2)}h × £{p.rate.toFixed(2)}
                       </span>
-                    )}
-                  </span>
-                  <span className="font-mono">£{p.cost.toFixed(2)}</span>
+                      {p.still_clocked_in && (
+                        <span className="ml-1 rounded bg-brand-teal-deep/15 px-1 text-[10px] font-semibold uppercase text-brand-teal-deep">
+                          on shift
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-mono">£{p.cost.toFixed(2)}</span>
+                  </div>
+                  <ul className="mt-1 space-y-0.5 text-[11px] text-brand-slate">
+                    {p.segments.map((seg, i) => (
+                      <li key={i} className="font-mono">
+                        {new Date(seg.clock_in).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                        {' – '}
+                        {seg.clock_out
+                          ? new Date(seg.clock_out).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : 'now (still on)'}{' '}
+                        ({seg.hours.toFixed(2)}h)
+                      </li>
+                    ))}
+                  </ul>
                 </li>
               ))}
             </ul>
