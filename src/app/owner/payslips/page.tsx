@@ -29,6 +29,12 @@ export default async function PayslipsIndexPage() {
         range, with gross pay totals. Use it as the source for your payroll
         software — actual PAYE deductions still go through HMRC.
       </p>
+      <Link
+        href="/owner/payslips/week"
+        className="mt-4 inline-block rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
+      >
+        Whole-team weekly printout →
+      </Link>
 
       <ul className="mt-6 space-y-2">
         {(staff ?? []).map((s) => {
