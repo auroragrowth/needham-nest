@@ -186,6 +186,117 @@ export async function computeDailyStaffingCost(
   }
 }
 
+export type WeeklyStaffMatrix = {
+  days: string[]
+  staff: Array<{
+    id: string
+    name: string
+    employment_type: string | null
+    per_day: number[]
+    week_total: number
+  }>
+  day_totals: number[]
+  day_cumulative: number[]
+  week_grand: number
+}
+
+/** Per-staff per-day cost grid for a week. One SQL query for the range. */
+export async function computeWeeklyStaffMatrix(
+  weekStart: string,
+  weekEnd: string,
+): Promise<WeeklyStaffMatrix> {
+  const admin = createAdminClient()
+
+  const days = eachDay(weekStart, weekEnd)
+  const dayIndex = new Map(days.map((d, i) => [d, i]))
+
+  const [{ data: people }, { data: logs }] = await Promise.all([
+    admin
+      .from('profiles')
+      .select(
+        'id, name, employment_type, annual_salary, hourly_rate',
+      )
+      .eq('active', true)
+      .order('name'),
+    admin
+      .from('time_logs')
+      .select('user_id, clock_in, clock_out, hourly_rate')
+      .gte('clock_in', `${weekStart}T00:00:00Z`)
+      .lte('clock_in', `${weekEnd}T23:59:59Z`),
+  ])
+
+  const now = Date.now()
+  const hourlyByStaffDay = new Map<string, number[]>()
+  for (const l of logs ?? []) {
+    const day = l.clock_in.slice(0, 10)
+    const idx = dayIndex.get(day)
+    if (idx === undefined) continue
+    const startMs = new Date(l.clock_in).getTime()
+    const endMs = l.clock_out ? new Date(l.clock_out).getTime() : now
+    const hours = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    if (hours === 0) continue
+    const profile = (people ?? []).find((p) => p.id === l.user_id)
+    if (!profile) continue
+    const rate =
+      l.hourly_rate != null
+        ? Number(l.hourly_rate)
+        : profile.hourly_rate == null
+          ? 0
+          : Number(profile.hourly_rate)
+    let row = hourlyByStaffDay.get(l.user_id)
+    if (!row) {
+      row = new Array(days.length).fill(0) as number[]
+      hourlyByStaffDay.set(l.user_id, row)
+    }
+    row[idx] += hours * rate
+  }
+
+  const staff: WeeklyStaffMatrix['staff'] = []
+  for (const p of people ?? []) {
+    if (p.employment_type === 'owner_draw') continue
+    let per_day: number[]
+    if (p.employment_type === 'paye' && p.annual_salary) {
+      const daily = Number(p.annual_salary) / 365
+      per_day = new Array(days.length).fill(daily) as number[]
+    } else {
+      per_day = hourlyByStaffDay.get(p.id) ?? new Array(days.length).fill(0)
+    }
+    const week_total = per_day.reduce((a, n) => a + n, 0)
+    // Only include staff who actually cost something this week to keep
+    // the table tight on print.
+    if (week_total === 0 && p.employment_type !== 'paye') continue
+    staff.push({
+      id: p.id,
+      name: p.name,
+      employment_type: p.employment_type ?? null,
+      per_day: per_day.map((n) => Number(n.toFixed(2))),
+      week_total: Number(week_total.toFixed(2)),
+    })
+  }
+
+  const day_totals = new Array(days.length).fill(0) as number[]
+  for (const s of staff) {
+    s.per_day.forEach((v, i) => {
+      day_totals[i] += v
+    })
+  }
+  const day_cumulative: number[] = []
+  let running = 0
+  for (const t of day_totals) {
+    running += t
+    day_cumulative.push(Number(running.toFixed(2)))
+  }
+  const week_grand = day_totals.reduce((a, n) => a + n, 0)
+
+  return {
+    days,
+    staff,
+    day_totals: day_totals.map((n) => Number(n.toFixed(2))),
+    day_cumulative,
+    week_grand: Number(week_grand.toFixed(2)),
+  }
+}
+
 export type DailyTotal = {
   date: string
   paye: number

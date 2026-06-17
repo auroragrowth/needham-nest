@@ -267,6 +267,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/staff-costs/week"
+          title="Weekly staff costs"
+          subtitle="Matrix: each person × each day, week + running totals"
+          cta="Open →"
+        />
+        <Card
           href="/shopping-list"
           title="Shopping list"
           subtitle="Anyone can add — shared between all"
