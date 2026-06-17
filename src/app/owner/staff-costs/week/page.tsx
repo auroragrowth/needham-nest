@@ -2,6 +2,10 @@ import Link from 'next/link'
 import { computeWeeklyStaffMatrix } from '@/lib/staffing/cost'
 import { PrintButton } from '../../payslips/[id]/PrintButton'
 
+// Don't cache: clock-ins change throughout the day.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
