@@ -339,9 +339,15 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/receipts"
+          title="📸 Snap a receipt"
+          subtitle="One photo, auto-scanned, auto-reconciled"
+          cta="Open →"
+        />
+        <Card
           href="/owner/invoices-upload"
           title="Bulk invoices"
-          subtitle="Drop PDFs / iPhone photos — AI extracts the fields"
+          subtitle="Drop many PDFs / photos at once"
           cta="Upload →"
         />
         <Card
