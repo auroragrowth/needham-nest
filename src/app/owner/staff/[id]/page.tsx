@@ -6,11 +6,13 @@ import { STAFF_FEATURES } from '@/lib/permissions'
 import {
   deactivateStaff,
   reactivateStaff,
+  removeStaffPhoto,
   updateStaffDetails,
   updateStaffName,
   updateStaffPermissions,
   updateStaffPin,
   updateStaffRole,
+  uploadStaffPhoto,
 } from '../actions'
 import { TRAINING_TYPES } from '@/lib/training/constants'
 import { COLOUR_OPTIONS, colourForIndex } from '@/lib/colours'
@@ -35,7 +37,7 @@ export default async function EditStaffPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary',
+        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary, photo_path, bio, email, pronouns, allergies, address_line_1, address_line_2, address_city, address_postcode, ni_number, bank_sort_code, bank_account_number, probation_end_date, notice_period_weeks',
       )
       .eq('id', id)
       .maybeSingle(),
@@ -59,6 +61,17 @@ export default async function EditStaffPage({
   const updatePerms = updateStaffPermissions.bind(null, id)
   const updateRole = updateStaffRole.bind(null, id)
   const addTraining = addTrainingRecord.bind(null, id)
+  const uploadPhoto = uploadStaffPhoto.bind(null, id)
+  const removePhoto = removeStaffPhoto.bind(null, id)
+
+  // Sign a short-lived URL for the photo so it can be rendered (private bucket).
+  let photoUrl: string | null = null
+  if (person.photo_path) {
+    const { data: signed } = await admin.storage
+      .from('staff-photos')
+      .createSignedUrl(person.photo_path, 60 * 60)
+    photoUrl = signed?.signedUrl ?? null
+  }
 
   const currentPerms = (person.permissions ?? {}) as Record<string, boolean>
   const today = new Date().toISOString().slice(0, 10)
@@ -99,6 +112,57 @@ export default async function EditStaffPage({
           {sp.error}
         </p>
       )}
+
+      <section className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+          Photo
+        </h2>
+        <div className="mt-3 flex items-center gap-4">
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoUrl}
+              alt={`${person.name} photo`}
+              className="h-24 w-24 rounded-full border-2 border-brand-sage/60 object-cover"
+            />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-brand-sage/60 bg-brand-sage/10 text-3xl text-brand-slate">
+              {person.name.charAt(0)}
+            </div>
+          )}
+          <div className="flex-1 space-y-2">
+            <form
+              action={uploadPhoto}
+              encType="multipart/form-data"
+              className="flex flex-wrap items-end gap-2"
+            >
+              <input
+                name="photo"
+                type="file"
+                accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
+                required
+                className="text-sm text-brand-forest"
+              />
+              <button
+                type="submit"
+                className="rounded-lg bg-brand-forest px-3 py-1.5 text-sm font-medium text-brand-cream hover:bg-brand-olive"
+              >
+                Upload
+              </button>
+            </form>
+            {photoUrl && (
+              <form action={removePhoto}>
+                <button
+                  type="submit"
+                  className="text-xs text-brand-amber hover:underline"
+                >
+                  Remove photo
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-6">
         <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
@@ -286,6 +350,113 @@ export default async function EditStaffPage({
                 )
               })}
             </div>
+          </div>
+          <Field
+            label="Email"
+            name="email"
+            type="email"
+            defaultValue={person.email ?? ''}
+          />
+          <Field
+            label="Pronouns (optional)"
+            name="pronouns"
+            defaultValue={person.pronouns ?? ''}
+          />
+          <Field
+            label="NI number"
+            name="ni_number"
+            defaultValue={person.ni_number ?? ''}
+          />
+          <Field
+            label="Probation end date"
+            name="probation_end_date"
+            type="date"
+            defaultValue={person.probation_end_date ?? ''}
+          />
+          <Field
+            label="Notice period (weeks)"
+            name="notice_period_weeks"
+            type="number"
+            step="1"
+            defaultValue={person.notice_period_weeks?.toString() ?? ''}
+          />
+          <Field
+            label="Bank sort code"
+            name="bank_sort_code"
+            placeholder="00-00-00"
+            defaultValue={person.bank_sort_code ?? ''}
+          />
+          <Field
+            label="Bank account number"
+            name="bank_account_number"
+            defaultValue={person.bank_account_number ?? ''}
+          />
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-brand-forest">
+              Address
+            </label>
+            <input
+              name="address_line_1"
+              type="text"
+              placeholder="Line 1"
+              defaultValue={person.address_line_1 ?? ''}
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+            />
+            <input
+              name="address_line_2"
+              type="text"
+              placeholder="Line 2"
+              defaultValue={person.address_line_2 ?? ''}
+              className="mt-2 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+            />
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <input
+                name="address_city"
+                type="text"
+                placeholder="Town / city"
+                defaultValue={person.address_city ?? ''}
+                className="w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+              />
+              <input
+                name="address_postcode"
+                type="text"
+                placeholder="Postcode"
+                defaultValue={person.address_postcode ?? ''}
+                className="w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest uppercase"
+              />
+            </div>
+          </div>
+          <div className="col-span-2">
+            <label
+              htmlFor="bio"
+              className="block text-xs font-medium text-brand-forest"
+            >
+              Bio (visible to the team)
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              rows={3}
+              defaultValue={person.bio ?? ''}
+              placeholder="Short intro — favourite drink, hobbies, how long they've been baking, etc."
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+            />
+          </div>
+          <div className="col-span-2">
+            <label
+              htmlFor="allergies"
+              className="block text-xs font-medium text-brand-forest"
+            >
+              Allergies / medical notes
+            </label>
+            <textarea
+              id="allergies"
+              name="allergies"
+              rows={2}
+              defaultValue={person.allergies ?? ''}
+              placeholder="Anything the team or EHO needs to know if there's an incident."
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+            />
           </div>
           <div className="col-span-2">
             <button

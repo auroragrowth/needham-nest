@@ -17,10 +17,21 @@ export default async function StaffListPage({
 
   const { data: people } = await admin
     .from('profiles')
-    .select('id, name, role, active, auth_user_id')
+    .select('id, name, role, active, auth_user_id, photo_path')
     .order('active', { ascending: false })
     .order('role', { ascending: true })
     .order('name', { ascending: true })
+
+  // Sign URLs for staff photos (private bucket).
+  const photoUrls = new Map<string, string>()
+  for (const p of people ?? []) {
+    if (p.photo_path) {
+      const { data: signed } = await admin.storage
+        .from('staff-photos')
+        .createSignedUrl(p.photo_path, 60 * 60)
+      if (signed?.signedUrl) photoUrls.set(p.id, signed.signedUrl)
+    }
+  }
 
   return (
     <main className="mx-auto max-w-3xl">
@@ -68,7 +79,21 @@ export default async function StaffListPage({
                 }`}
               >
                 <td className="px-4 py-3 font-medium text-brand-forest">
-                  {p.name}
+                  <span className="flex items-center gap-2">
+                    {photoUrls.get(p.id) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={photoUrls.get(p.id)}
+                        alt=""
+                        className="h-8 w-8 rounded-full border border-brand-sage/40 object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-sage/20 text-xs text-brand-slate">
+                        {p.name.charAt(0)}
+                      </span>
+                    )}
+                    {p.name}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <span

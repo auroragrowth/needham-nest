@@ -162,6 +162,30 @@ export async function updateStaffDetails(
     })(),
     employment_type: employmentType,
     annual_salary: annualStr === '' ? null : Number(annualStr),
+    bio: String(formData.get('bio') ?? '').trim() || null,
+    email: String(formData.get('email') ?? '').trim() || null,
+    pronouns: String(formData.get('pronouns') ?? '').trim() || null,
+    allergies: String(formData.get('allergies') ?? '').trim() || null,
+    address_line_1: String(formData.get('address_line_1') ?? '').trim() || null,
+    address_line_2: String(formData.get('address_line_2') ?? '').trim() || null,
+    address_city: String(formData.get('address_city') ?? '').trim() || null,
+    address_postcode:
+      String(formData.get('address_postcode') ?? '').trim().toUpperCase() ||
+      null,
+    ni_number:
+      String(formData.get('ni_number') ?? '').trim().toUpperCase() || null,
+    bank_sort_code:
+      String(formData.get('bank_sort_code') ?? '').trim() || null,
+    bank_account_number:
+      String(formData.get('bank_account_number') ?? '').trim() || null,
+    probation_end_date:
+      String(formData.get('probation_end_date') ?? '').trim() || null,
+    notice_period_weeks: (() => {
+      const raw = String(formData.get('notice_period_weeks') ?? '').trim()
+      if (raw === '') return null
+      const n = Number(raw)
+      return Number.isFinite(n) && n >= 0 ? n : null
+    })(),
   }
 
   const admin = createAdminClient()
@@ -272,4 +296,54 @@ export async function updateStaffPermissions(
   revalidatePath(`/owner/staff/${profileId}`)
   revalidatePath('/staff')
   redirect(`/owner/staff/${profileId}?notice=Permissions+updated`)
+}
+
+export async function uploadStaffPhoto(
+  profileId: string,
+  formData: FormData,
+) {
+  await requireOwner()
+  const file = formData.get('photo')
+  if (!(file instanceof File) || file.size === 0) {
+    redirect(`/owner/staff/${profileId}?error=Pick+a+photo+to+upload`)
+  }
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+  const storagePath = `${profileId}/${crypto.randomUUID()}.${ext}`
+  const bytes = await file.arrayBuffer()
+  const admin = createAdminClient()
+  const { error: uploadErr } = await admin.storage
+    .from('staff-photos')
+    .upload(storagePath, bytes, { contentType: file.type })
+  if (uploadErr) {
+    redirect(
+      `/owner/staff/${profileId}?error=${encodeURIComponent(uploadErr.message)}`,
+    )
+  }
+  await admin
+    .from('profiles')
+    .update({ photo_path: storagePath })
+    .eq('id', profileId)
+  revalidatePath('/owner/staff')
+  revalidatePath(`/owner/staff/${profileId}`)
+  redirect(`/owner/staff/${profileId}?notice=Photo+uploaded`)
+}
+
+export async function removeStaffPhoto(profileId: string) {
+  await requireOwner()
+  const admin = createAdminClient()
+  const { data: p } = await admin
+    .from('profiles')
+    .select('photo_path')
+    .eq('id', profileId)
+    .maybeSingle()
+  if (p?.photo_path) {
+    await admin.storage.from('staff-photos').remove([p.photo_path])
+  }
+  await admin
+    .from('profiles')
+    .update({ photo_path: null })
+    .eq('id', profileId)
+  revalidatePath('/owner/staff')
+  revalidatePath(`/owner/staff/${profileId}`)
+  redirect(`/owner/staff/${profileId}?notice=Photo+removed`)
 }
