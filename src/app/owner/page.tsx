@@ -339,6 +339,18 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/invoices-upload"
+          title="Bulk invoices"
+          subtitle="Drop PDFs / iPhone photos — AI extracts the fields"
+          cta="Upload →"
+        />
+        <Card
+          href="/owner/invoices-reconcile"
+          title="Invoice reconciliation"
+          subtitle="Flag unmatched, post to director's loan"
+          cta="Open →"
+        />
+        <Card
           href="/owner/pl"
           title="Profit & Loss"
           subtitle="Period view: takings vs expenses, net after CT"
