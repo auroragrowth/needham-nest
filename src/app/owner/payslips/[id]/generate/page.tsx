@@ -20,11 +20,28 @@ export default async function GeneratePayslipPage({
   const { id } = await params
   const sp = await searchParams
 
-  const today = isoDate(new Date())
-  const monthStart = today.slice(0, 7) + '-01'
+  // Payroll runs Monday → Sunday, one week in arrears. Default the form
+  // to the most recent COMPLETED Mon–Sun week (i.e. the Sun-just-gone
+  // backwards 6 days, regardless of what day Paul opens the form).
+  const todayDate = new Date()
+  const dow = todayDate.getUTCDay() // 0=Sun..6=Sat
+  // Last Sunday (inclusive of today if today is Sunday): subtract dow.
+  const lastSunday = new Date(todayDate)
+  lastSunday.setUTCDate(todayDate.getUTCDate() - dow)
+  const lastMonday = new Date(lastSunday)
+  lastMonday.setUTCDate(lastSunday.getUTCDate() - 6)
+  const defaultPayDate = new Date(lastSunday)
+  defaultPayDate.setUTCDate(lastSunday.getUTCDate() + 5) // Friday after
+
   const from =
-    sp.from && /^\d{4}-\d{2}-\d{2}$/.test(sp.from) ? sp.from : monthStart
-  const to = sp.to && /^\d{4}-\d{2}-\d{2}$/.test(sp.to) ? sp.to : today
+    sp.from && /^\d{4}-\d{2}-\d{2}$/.test(sp.from)
+      ? sp.from
+      : isoDate(lastMonday)
+  const to =
+    sp.to && /^\d{4}-\d{2}-\d{2}$/.test(sp.to)
+      ? sp.to
+      : isoDate(lastSunday)
+  const payDateDefault = isoDate(defaultPayDate)
 
   const admin = createAdminClient()
   const [{ data: profile }, payslipData] = await Promise.all([
@@ -73,6 +90,10 @@ export default async function GeneratePayslipPage({
           <legend className="col-span-2 text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
             Period
           </legend>
+          <p className="col-span-2 text-xs text-brand-slate">
+            Wages run Mon → Sun, paid the following Friday (one week
+            in arrears). Defaults below cover the last completed week.
+          </p>
           <Field
             label="From"
             name="period_from"
@@ -91,7 +112,7 @@ export default async function GeneratePayslipPage({
             label="Pay date"
             name="pay_date"
             type="date"
-            defaultValue={today}
+            defaultValue={payDateDefault}
             required
           />
           <Field

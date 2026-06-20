@@ -219,7 +219,7 @@ export default async function OnboardingPage({
         {/* PAYROLL */}
         <Section
           title="Payroll"
-          hint="Needed for PAYE and to pay you. Your details are stored encrypted at rest."
+          hint="Wages run Monday → Sunday and are paid one week in arrears — so the hours you work this week land in your bank the following week. Your details are stored encrypted at rest."
         >
           <Field
             label="National Insurance number"
