@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { buildStaffPayslip } from '@/lib/staffing/cost'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { PrintButton } from './PrintButton'
 
 function fmtTime(iso: string | null): string {
@@ -43,6 +44,15 @@ export default async function StaffPayslipPage({
 
   const isPaye = payslip.employment_type === 'paye'
 
+  // Saved payslips for this staff member (most recent first).
+  const admin = createAdminClient()
+  const { data: saved } = await admin
+    .from('payslips')
+    .select('id, pay_date, period_from, period_to, gross_pay, net_pay')
+    .eq('staff_id', id)
+    .order('pay_date', { ascending: false })
+    .limit(12)
+
   return (
     <main className="mx-auto max-w-3xl">
       <Link
@@ -61,7 +71,15 @@ export default async function StaffPayslipPage({
             {isPaye && ' · PAYE (salaried)'}
           </p>
         </div>
-        <PrintButton />
+        <div className="flex gap-2">
+          <Link
+            href={`/owner/payslips/${id}/generate?from=${from}&to=${to}`}
+            className="rounded-lg bg-brand-amber px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-amber/90"
+          >
+            Generate payslip →
+          </Link>
+          <PrintButton />
+        </div>
       </header>
 
       <form className="mt-4 flex flex-wrap items-end gap-3 rounded-xl border border-brand-sage/40 bg-white p-4 print:hidden">
@@ -193,6 +211,38 @@ export default async function StaffPayslipPage({
           </table>
         </div>
       </section>
+
+      {(saved?.length ?? 0) > 0 && (
+        <section className="mt-8 print:hidden">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+            Saved payslips
+          </h2>
+          <ul className="mt-3 space-y-1">
+            {(saved ?? []).map((ps) => (
+              <li
+                key={ps.id}
+                className="flex items-baseline justify-between gap-3 rounded-md border border-brand-sage/40 bg-white px-3 py-2 text-sm"
+              >
+                <Link
+                  href={`/owner/payslips/${id}/${ps.id}`}
+                  className="text-brand-forest hover:text-brand-amber hover:underline"
+                >
+                  Paid {fmtDate(ps.pay_date)} ·{' '}
+                  <span className="text-xs text-brand-slate">
+                    period {fmtDate(ps.period_from)} – {fmtDate(ps.period_to)}
+                  </span>
+                </Link>
+                <span className="font-mono text-xs">
+                  £{Number(ps.gross_pay).toFixed(2)} gross ·{' '}
+                  <span className="font-semibold">
+                    £{Number(ps.net_pay).toFixed(2)} net
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <p className="mt-8 text-[10px] text-brand-slate">
         Hours and gross figures are derived from clock-in / clock-out
