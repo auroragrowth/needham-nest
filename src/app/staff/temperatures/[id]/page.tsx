@@ -47,7 +47,10 @@ export default async function LogTemperaturePage({
     .limit(3)
 
   const action = logTemperature.bind(null, id)
-  const lastTemp = sp.t ?? ''
+  // For freezers the temperature is always negative; default the input to
+  // a leading minus so staff don't have to remember to type it.
+  const lastTemp =
+    sp.t ?? (appliance.kind === 'freezer' ? '-' : '')
 
   return (
     <main className="mx-auto max-w-md">
@@ -89,16 +92,27 @@ export default async function LogTemperaturePage({
           <input
             id="temperature"
             name="temperature"
-            type="number"
-            step="0.1"
-            min={-40}
-            max={150}
+            type="text"
+            // text + decimal inputMode so a leading '-' renders correctly
+            // on freezer screens; the server still parses with Number().
+            inputMode="decimal"
+            pattern="-?\\d+(\\.\\d+)?"
             required
             defaultValue={lastTemp}
-            inputMode="decimal"
             autoFocus
             className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-2xl text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            style={{
+              touchAction: 'manipulation',
+              WebkitAppearance: 'none',
+              minHeight: '44px',
+            }}
           />
+          {appliance.kind === 'freezer' && (
+            <p className="mt-1 text-xs text-brand-slate">
+              Freezer readings are always negative — the minus is
+              pre-filled, just type the number.
+            </p>
+          )}
         </div>
 
         <div>
