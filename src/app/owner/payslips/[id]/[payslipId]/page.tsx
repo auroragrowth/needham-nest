@@ -2,7 +2,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PrintButton } from '../PrintButton'
-import { deletePayslip } from '@/lib/payslips/actions'
+import {
+  deletePayslip,
+  markPayslipPaid,
+  unmarkPayslipPaid,
+} from '@/lib/payslips/actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +56,8 @@ export default async function PayslipView({
   if (!payslip || !profile) notFound()
 
   const del = deletePayslip.bind(null, id, payslipId)
+  const markPaid = markPayslipPaid.bind(null, id, payslipId)
+  const unmark = unmarkPayslipPaid.bind(null, id, payslipId)
 
   const totalDeductions =
     Number(payslip.tax_deduction) +
@@ -69,10 +75,44 @@ export default async function PayslipView({
       </Link>
 
       <header className="mt-2 flex flex-wrap items-baseline justify-between gap-3 print:hidden">
-        <h1 className="text-xl font-semibold tracking-tight text-brand-forest">
-          Payslip · {fmtDate(payslip.pay_date)}
-        </h1>
-        <div className="flex gap-2">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-brand-forest">
+            Payslip {payslip.slip_number ?? ''}
+          </h1>
+          <p className="text-xs text-brand-slate">
+            Paid {fmtDate(payslip.pay_date)} · {profile.name}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {payslip.paid_at ? (
+            <form action={unmark}>
+              <button
+                type="submit"
+                className="rounded-lg bg-brand-teal-deep/15 px-3 py-1.5 text-sm font-semibold text-brand-teal-deep hover:bg-brand-teal-deep/25"
+                title={`Paid ${fmtDate(payslip.paid_at.slice(0, 10))} via ${payslip.paid_method ?? '—'}. Click to undo.`}
+              >
+                ✓ Paid · undo
+              </button>
+            </form>
+          ) : (
+            <form action={markPaid} className="flex gap-1">
+              <select
+                name="paid_method"
+                className="rounded-md border border-brand-sage/60 bg-white px-2 py-1.5 text-xs text-brand-forest"
+              >
+                <option value="BACS">BACS</option>
+                <option value="Cash">Cash</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Director loan">Director loan</option>
+              </select>
+              <button
+                type="submit"
+                className="rounded-lg bg-brand-amber px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-amber/90"
+              >
+                Mark paid
+              </button>
+            </form>
+          )}
           <Link
             href={`/owner/payslips/${id}/generate?from=${payslip.period_from}&to=${payslip.period_to}`}
             className="rounded-lg border border-brand-sage/60 px-3 py-1.5 text-sm text-brand-forest hover:bg-brand-sage/10"
@@ -110,12 +150,23 @@ export default async function PayslipView({
               <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
                 Payslip
               </p>
-              <p className="mt-1 text-xs text-brand-slate">
+              {payslip.slip_number && (
+                <p className="mt-1 font-mono text-sm font-semibold text-brand-forest">
+                  {payslip.slip_number}
+                </p>
+              )}
+              <p className="text-xs text-brand-slate">
                 Pay date {fmtDate(payslip.pay_date)}
               </p>
               <p className="text-xs text-brand-slate">
                 Period {fmtDate(payslip.period_from)} – {fmtDate(payslip.period_to)}
               </p>
+              {payslip.paid_at && (
+                <p className="mt-1 text-xs font-semibold text-brand-teal-deep">
+                  ✓ Paid {fmtDate(payslip.paid_at.slice(0, 10))}
+                  {payslip.paid_method && ` · ${payslip.paid_method}`}
+                </p>
+              )}
             </div>
           </div>
         </header>

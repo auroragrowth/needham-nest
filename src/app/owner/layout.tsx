@@ -11,7 +11,8 @@ export default async function OwnerLayout({
   const session = await getSession()
   if (!session) redirect('/login')
   if (session.role !== 'owner') redirect('/')
-  await requireDob(session.profileId)
+  // Owner is exempt from the staff onboarding gate — Paul keeps his
+  // details in his own area, not the new-hire intake.
 
   return (
     <div data-role="owner" className="min-h-screen">

@@ -48,7 +48,9 @@ export default async function StaffPayslipPage({
   const admin = createAdminClient()
   const { data: saved } = await admin
     .from('payslips')
-    .select('id, pay_date, period_from, period_to, gross_pay, net_pay')
+    .select(
+      'id, pay_date, period_from, period_to, gross_pay, net_pay, slip_number, paid_at, paid_method',
+    )
     .eq('staff_id', id)
     .order('pay_date', { ascending: false })
     .limit(12)
@@ -227,9 +229,20 @@ export default async function StaffPayslipPage({
                   href={`/owner/payslips/${id}/${ps.id}`}
                   className="text-brand-forest hover:text-brand-amber hover:underline"
                 >
-                  Paid {fmtDate(ps.pay_date)} ·{' '}
+                  <span className="font-mono text-xs text-brand-teal-deep">
+                    {ps.slip_number ?? '—'}
+                  </span>{' '}
+                  {ps.paid_at ? (
+                    <span className="ml-1 rounded bg-brand-teal-deep/15 px-1 text-[10px] font-semibold text-brand-teal-deep">
+                      ✓ paid
+                    </span>
+                  ) : (
+                    <span className="ml-1 rounded bg-brand-amber/30 px-1 text-[10px] font-semibold text-brand-forest">
+                      unpaid
+                    </span>
+                  )}{' '}
                   <span className="text-xs text-brand-slate">
-                    period {fmtDate(ps.period_from)} – {fmtDate(ps.period_to)}
+                    · {fmtDate(ps.period_from)} – {fmtDate(ps.period_to)}
                   </span>
                 </Link>
                 <span className="font-mono text-xs">

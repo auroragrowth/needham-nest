@@ -50,6 +50,12 @@ export async function savePayslip(staffId: string, formData: FormData) {
     pension_deduction -
     other_deductions
 
+  // ISO week number of the period's end date — e.g. period ending Sun
+  // 22 Jun 2026 → 2026-W25. Stable identifier we can print on the slip
+  // and reference verbally ('week 25').
+  const periodEnd = new Date(period_to + 'T00:00:00Z')
+  const slip_number = isoWeekIdentifier(periodEnd)
+
   const payload = {
     staff_id: staffId,
     period_from,
@@ -57,6 +63,7 @@ export async function savePayslip(staffId: string, formData: FormData) {
     pay_date,
     hours_worked,
     gross_pay,
+    slip_number,
     tax_code: s(formData, 'tax_code'),
     ni_category: s(formData, 'ni_category') ?? 'A',
     tax_deduction,
@@ -92,4 +99,66 @@ export async function deletePayslip(staffId: string, payslipId: string) {
   await admin.from('payslips').delete().eq('id', payslipId)
   revalidatePath(`/owner/payslips/${staffId}`)
   redirect(`/owner/payslips/${staffId}?notice=Payslip+deleted`)
+}
+
+export async function markPayslipPaid(
+  staffId: string,
+  payslipId: string,
+  formData: FormData,
+) {
+  const session = await requireOwner()
+  const method = String(formData.get('paid_method') ?? '').trim() || 'BACS'
+  const admin = createAdminClient()
+  await admin
+    .from('payslips')
+    .update({
+      paid_at: new Date().toISOString(),
+      paid_method: method,
+      paid_by: session.profileId,
+    })
+    .eq('id', payslipId)
+  revalidatePath(`/owner/payslips/${staffId}`)
+  revalidatePath(`/owner/payslips/${staffId}/${payslipId}`)
+  revalidatePath('/staff/me/payslips')
+  redirect(`/owner/payslips/${staffId}/${payslipId}?notice=Marked+paid`)
+}
+
+export async function unmarkPayslipPaid(
+  staffId: string,
+  payslipId: string,
+) {
+  await requireOwner()
+  const admin = createAdminClient()
+  await admin
+    .from('payslips')
+    .update({ paid_at: null, paid_method: null, paid_by: null })
+    .eq('id', payslipId)
+  revalidatePath(`/owner/payslips/${staffId}`)
+  revalidatePath(`/owner/payslips/${staffId}/${payslipId}`)
+  revalidatePath('/staff/me/payslips')
+  redirect(
+    `/owner/payslips/${staffId}/${payslipId}?notice=Marked+unpaid`,
+  )
+}
+
+/** Returns the ISO-8601 week identifier for a date (e.g. '2026-W25'). */
+function isoWeekIdentifier(d: Date): string {
+  // Algorithm: shift to Thursday of the same ISO week, then count
+  // weeks from the first Thursday of the ISO year.
+  const target = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+  )
+  const dayNum = (target.getUTCDay() + 6) % 7 // Mon=0..Sun=6
+  target.setUTCDate(target.getUTCDate() - dayNum + 3) // Thursday of ISO week
+  const firstThursday = new Date(
+    Date.UTC(target.getUTCFullYear(), 0, 4),
+  )
+  const firstThuDow = (firstThursday.getUTCDay() + 6) % 7
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThuDow + 3)
+  const week =
+    1 +
+    Math.round(
+      (target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000),
+    )
+  return `${target.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
 }
