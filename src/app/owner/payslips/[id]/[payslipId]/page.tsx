@@ -130,6 +130,13 @@ export default async function PayslipView({
           >
             Edit
           </Link>
+          <a
+            href={`/owner/payslips/${id}/${payslipId}/pdf`}
+            download
+            className="rounded-lg bg-brand-teal px-3 py-1.5 text-sm font-semibold text-brand-cream hover:bg-brand-teal-deep"
+          >
+            Download PDF
+          </a>
           <PrintButton />
           <form action={del}>
             <button
