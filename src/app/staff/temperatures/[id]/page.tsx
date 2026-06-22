@@ -89,24 +89,41 @@ export default async function LogTemperaturePage({
           >
             Temperature (°C)
           </label>
-          <input
-            id="temperature"
-            name="temperature"
-            type="text"
-            // text + decimal inputMode so a leading '-' renders correctly
-            // on freezer screens; the server still parses with Number().
-            inputMode="decimal"
-            pattern="-?\\d+(\\.\\d+)?"
-            required
-            defaultValue={lastTemp}
-            autoFocus
-            className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-2xl text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
-            style={{
-              touchAction: 'manipulation',
-              WebkitAppearance: 'none',
-              minHeight: '44px',
-            }}
-          />
+          {appliance.kind === 'freezer' ? (
+            // Freezers need a leading minus pre-filled, which type="number"
+            // refuses to render. text + decimal inputMode + no pattern so
+            // staff aren't blocked by browser-side validation; the server
+            // parses with Number() and rejects garbage.
+            <input
+              id="temperature"
+              name="temperature"
+              type="text"
+              inputMode="decimal"
+              required
+              defaultValue={lastTemp}
+              autoFocus
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-2xl text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+              style={{
+                touchAction: 'manipulation',
+                WebkitAppearance: 'none',
+                minHeight: '44px',
+              }}
+            />
+          ) : (
+            <input
+              id="temperature"
+              name="temperature"
+              type="number"
+              step="0.1"
+              min={-40}
+              max={150}
+              required
+              defaultValue={lastTemp}
+              inputMode="decimal"
+              autoFocus
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-3 text-2xl text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            />
+          )}
           {appliance.kind === 'freezer' && (
             <p className="mt-1 text-xs text-brand-slate">
               Freezer readings are always negative — the minus is
