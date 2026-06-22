@@ -42,7 +42,7 @@ export default async function PayslipView({
       admin
         .from('profiles')
         .select(
-          'id, name, address_line_1, address_line_2, address_city, address_postcode, ni_number, employment_type',
+          'id, name, address_line_1, address_line_2, address_city, address_postcode, ni_number, employment_type, bank_sort_code, bank_account_number',
         )
         .eq('id', id)
         .maybeSingle(),
@@ -227,6 +227,22 @@ export default async function PayslipView({
                 {Number(payslip.hours_worked).toFixed(2)}
               </span>
             </p>
+            {(profile.bank_sort_code || profile.bank_account_number) && (
+              <>
+                <p className="mt-1">
+                  <span className="text-brand-slate">Sort code:</span>{' '}
+                  <span className="font-mono">
+                    {profile.bank_sort_code ?? '—'}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-brand-slate">Account:</span>{' '}
+                  <span className="font-mono">
+                    {profile.bank_account_number ?? '—'}
+                  </span>
+                </p>
+              </>
+            )}
           </div>
         </section>
 
