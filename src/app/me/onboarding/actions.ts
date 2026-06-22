@@ -17,6 +17,7 @@ const REQUIRED = [
   'address_postcode',
   'emergency_contact_name',
   'emergency_contact_phone',
+  'uniform_size',
 ] as const
 
 export async function completeOnboarding(formData: FormData) {
@@ -70,6 +71,7 @@ export async function completeOnboarding(formData: FormData) {
     tax_code: s(formData, 'tax_code')?.toUpperCase() ?? null,
     bank_sort_code: s(formData, 'bank_sort_code'),
     bank_account_number: s(formData, 'bank_account_number'),
+    uniform_size: s(formData, 'uniform_size'),
     onboarding_completed_at: new Date().toISOString(),
   }
 

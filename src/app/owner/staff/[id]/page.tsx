@@ -37,7 +37,7 @@ export default async function EditStaffPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary, photo_path, bio, email, pronouns, allergies, address_line_1, address_line_2, address_city, address_postcode, ni_number, bank_sort_code, bank_account_number, probation_end_date, notice_period_weeks',
+        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary, photo_path, bio, email, pronouns, allergies, address_line_1, address_line_2, address_city, address_postcode, ni_number, bank_sort_code, bank_account_number, probation_end_date, notice_period_weeks, uniform_size',
       )
       .eq('id', id)
       .maybeSingle(),
@@ -380,6 +380,29 @@ export default async function EditStaffPage({
             step="1"
             defaultValue={person.notice_period_weeks?.toString() ?? ''}
           />
+          <div>
+            <label
+              htmlFor="uniform_size"
+              className="block text-xs font-medium text-brand-forest"
+            >
+              Uniform size
+            </label>
+            <select
+              id="uniform_size"
+              name="uniform_size"
+              defaultValue={person.uniform_size ?? ''}
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+            >
+              <option value="">— not set —</option>
+              <option value="XS">XS</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+              <option value="XXL">XXL</option>
+              <option value="XXXL">XXXL</option>
+            </select>
+          </div>
           <Field
             label="Bank sort code"
             name="bank_sort_code"

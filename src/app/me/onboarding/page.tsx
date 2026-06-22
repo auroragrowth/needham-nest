@@ -18,7 +18,7 @@ export default async function OnboardingPage({
   const { data: profile } = await admin
     .from('profiles')
     .select(
-      'date_of_birth, phone, email, pronouns, address_line_1, address_line_2, address_city, address_postcode, emergency_contact_name, emergency_contact_phone, medical_conditions, medication, allergies, ni_number, tax_code, bank_sort_code, bank_account_number, onboarding_completed_at',
+      'date_of_birth, phone, email, pronouns, address_line_1, address_line_2, address_city, address_postcode, emergency_contact_name, emergency_contact_phone, medical_conditions, medication, allergies, ni_number, tax_code, bank_sort_code, bank_account_number, uniform_size, onboarding_completed_at',
     )
     .eq('id', session.profileId)
     .maybeSingle()
@@ -131,6 +131,45 @@ export default async function OnboardingPage({
             required
             defaultValue={profile?.emergency_contact_phone ?? ''}
           />
+        </Section>
+
+        {/* UNIFORM */}
+        <Section
+          title="Uniform"
+          hint="So we can get your apron / tee in the right size before you start."
+        >
+          <div className="sm:col-span-2">
+            <label
+              htmlFor="uniform_size"
+              className="block text-xs font-medium text-brand-forest"
+            >
+              Uniform size{' '}
+              <span className="ml-1 text-brand-amber">*</span>
+            </label>
+            <select
+              id="uniform_size"
+              name="uniform_size"
+              required
+              defaultValue={profile?.uniform_size ?? ''}
+              className="mt-1 block w-full cursor-pointer rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+              style={{
+                touchAction: 'manipulation',
+                WebkitAppearance: 'none',
+                minHeight: '44px',
+              }}
+            >
+              <option value="" disabled>
+                — pick a size —
+              </option>
+              <option value="XS">XS</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+              <option value="XXL">XXL</option>
+              <option value="XXXL">XXXL</option>
+            </select>
+          </div>
         </Section>
 
         {/* HEALTH */}
