@@ -67,6 +67,17 @@ export default async function PayslipView({
 
   return (
     <main className="mx-auto max-w-2xl print:max-w-none">
+      {/* Force the printed page to A5 portrait. The @page rule has to
+          live in a real <style> tag (Tailwind can't emit it). */}
+      <style>{`
+        @media print {
+          @page { size: A5 portrait; margin: 10mm; }
+          html, body { background: white; }
+          main { padding: 0 !important; }
+          article { font-size: 10pt; }
+          article h1, article h2, article h3 { font-size: 11pt; }
+        }
+      `}</style>
       <Link
         href={`/owner/payslips/${id}`}
         className="text-sm text-brand-amber hover:underline print:hidden"
