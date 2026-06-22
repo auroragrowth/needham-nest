@@ -67,12 +67,11 @@ export default async function WeeklyHoursPage({
     (staff ?? []).map((s) => buildStaffPayslip(s.id, from, to)),
   )
 
+  // Show every active staff member, even with zero shifts this week —
+  // Paul wants everyone visible so he can spot people who haven't been
+  // clocking in. The 'No shifts this week' note tells him at a glance.
   const withShifts = payslips.filter(
-    (p): p is NonNullable<typeof p> =>
-      p !== null &&
-      (p.shifts.length > 0 ||
-        p.employment_type === 'paye' ||
-        p.total_hours > 0),
+    (p): p is NonNullable<typeof p> => p !== null,
   )
 
   const grandHours = withShifts.reduce((a, p) => a + p.total_hours, 0)

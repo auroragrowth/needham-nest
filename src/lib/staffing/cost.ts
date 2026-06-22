@@ -262,9 +262,9 @@ export async function computeWeeklyStaffMatrix(
       per_day = hourlyByStaffDay.get(p.id) ?? new Array(days.length).fill(0)
     }
     const week_total = per_day.reduce((a, n) => a + n, 0)
-    // Only include staff who actually cost something this week to keep
-    // the table tight on print.
-    if (week_total === 0 && p.employment_type !== 'paye') continue
+    // Include every active non-owner-draw profile, even if zero this
+    // week — Paul wants the whole team visible on the matrix so he can
+    // see who's not clocking in.
     staff.push({
       id: p.id,
       name: p.name,
