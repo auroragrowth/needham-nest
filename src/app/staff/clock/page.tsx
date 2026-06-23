@@ -4,8 +4,8 @@ import {
   clockIn,
   clockOut,
   startBreak,
-  endBreak,
 } from '@/lib/time-logs/actions'
+import { BackToWorkButton } from './BackToWorkButton'
 
 function formatDuration(ms: number): string {
   if (ms <= 0) return '0m'
@@ -87,6 +87,27 @@ export default async function StaffDashboard({
   const onShiftSince = isOnShift ? new Date(openShift!.clock_in) : null
   const currentShiftMs = isOnShift ? shiftMs(openShift!, now) : 0
 
+  // Pull DOB so we can pick the right statutory break minimum
+  // (under-18s need 30 min, adults 20 min).
+  const { data: meProfile } = await admin
+    .from('profiles')
+    .select('date_of_birth')
+    .eq('id', session.profileId)
+    .maybeSingle()
+  const isUnder18 = (() => {
+    if (!meProfile?.date_of_birth) return false
+    const dob = new Date(meProfile.date_of_birth + 'T00:00:00Z')
+    const eighteenth = new Date(
+      Date.UTC(
+        dob.getUTCFullYear() + 18,
+        dob.getUTCMonth(),
+        dob.getUTCDate(),
+      ),
+    )
+    return now < eighteenth
+  })()
+  const requiredBreakMinutes = isUnder18 ? 30 : 20
+
   const todayMs = (todays ?? []).reduce((acc, l) => acc + shiftMs(l, now), 0)
   const weekMs = (weekly ?? []).reduce((acc, l) => acc + shiftMs(l, now), 0)
 
@@ -129,19 +150,12 @@ export default async function StaffDashboard({
                 )}{' '}
                 · this time isn&apos;t paid
               </p>
-              <form action={endBreak} className="mt-6">
-                <button
-                  type="submit"
-                  className="w-full rounded-2xl bg-brand-forest px-6 py-5 text-xl font-semibold text-brand-cream shadow-sm transition active:scale-[0.98] hover:bg-brand-olive"
-                  style={{
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent',
-                    minHeight: '44px',
-                  }}
-                >
-                  Back to work
-                </button>
-              </form>
+              <div className="mt-6">
+                <BackToWorkButton
+                  breakStartAt={openShift!.break_start_at!}
+                  requiredMinutes={requiredBreakMinutes}
+                />
+              </div>
             </>
           ) : (
             // ON SHIFT — show 'On break' + 'Clock out'.
