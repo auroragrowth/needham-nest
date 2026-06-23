@@ -71,7 +71,9 @@ export async function computeDailyStaffingCost(
       .eq('active', true),
     admin
       .from('time_logs')
-      .select('user_id, clock_in, clock_out, hourly_rate')
+      .select(
+        'user_id, clock_in, clock_out, hourly_rate, break_minutes_total, break_start_at',
+      )
       .gte('clock_in', dayStartIso)
       .lte('clock_in', dayEndIso),
   ])
@@ -123,7 +125,20 @@ export async function computeDailyStaffingCost(
     const startMs = new Date(l.clock_in).getTime()
     const stillOpen = !l.clock_out
     const endMs = stillOpen ? now : new Date(l.clock_out).getTime()
-    const hours = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    // Subtract recorded break minutes from paid time. Include any
+    // in-progress break (break_start_at without an end) so a clocked-in
+    // staffer on break doesn't accrue paid time during it.
+    let breakMin = l.break_minutes_total ?? 0
+    if (stillOpen && l.break_start_at) {
+      breakMin += Math.max(
+        0,
+        Math.floor(
+          (now - new Date(l.break_start_at).getTime()) / 60000,
+        ),
+      )
+    }
+    const grossHours = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    const hours = Math.max(0, grossHours - breakMin / 60)
     if (hours === 0) continue
     const profile = profileById.get(l.user_id)
     const rate =
@@ -232,8 +247,17 @@ export async function computeWeeklyStaffMatrix(
     const idx = dayIndex.get(day)
     if (idx === undefined) continue
     const startMs = new Date(l.clock_in).getTime()
-    const endMs = l.clock_out ? new Date(l.clock_out).getTime() : now
-    const hours = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    const stillOpen = !l.clock_out
+    const endMs = stillOpen ? now : new Date(l.clock_out).getTime()
+    let breakMin = l.break_minutes_total ?? 0
+    if (stillOpen && l.break_start_at) {
+      breakMin += Math.max(
+        0,
+        Math.floor((now - new Date(l.break_start_at).getTime()) / 60000),
+      )
+    }
+    const gross = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    const hours = Math.max(0, gross - breakMin / 60)
     if (hours === 0) continue
     const profile = (people ?? []).find((p) => p.id === l.user_id)
     if (!profile) continue
@@ -322,7 +346,9 @@ export async function computeStaffingCostRange(
       .eq('active', true),
     admin
       .from('time_logs')
-      .select('user_id, clock_in, clock_out, hourly_rate')
+      .select(
+        'user_id, clock_in, clock_out, hourly_rate, break_minutes_total, break_start_at',
+      )
       .gte('clock_in', `${from}T00:00:00Z`)
       .lte('clock_in', `${to}T23:59:59Z`),
   ])
@@ -349,8 +375,17 @@ export async function computeStaffingCostRange(
     if (!profile) continue
     if (profile.type === 'owner_draw' || profile.type === 'paye') continue
     const startMs = new Date(l.clock_in).getTime()
-    const endMs = l.clock_out ? new Date(l.clock_out).getTime() : now
-    const hours = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    const stillOpen = !l.clock_out
+    const endMs = stillOpen ? now : new Date(l.clock_out).getTime()
+    let breakMin = l.break_minutes_total ?? 0
+    if (stillOpen && l.break_start_at) {
+      breakMin += Math.max(
+        0,
+        Math.floor((now - new Date(l.break_start_at).getTime()) / 60000),
+      )
+    }
+    const gross = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    const hours = Math.max(0, gross - breakMin / 60)
     if (hours === 0) continue
     const rate =
       l.hourly_rate != null ? Number(l.hourly_rate) : (profile.rate ?? 0)
@@ -420,7 +455,9 @@ export async function buildStaffPayslip(
       .maybeSingle(),
     admin
       .from('time_logs')
-      .select('clock_in, clock_out, hourly_rate')
+      .select(
+        'clock_in, clock_out, hourly_rate, break_minutes_total, break_start_at',
+      )
       .eq('user_id', staffId)
       .gte('clock_in', `${from}T00:00:00Z`)
       .lte('clock_in', `${to}T23:59:59Z`)
@@ -435,8 +472,17 @@ export async function buildStaffPayslip(
   const shifts: PayslipShift[] = []
   for (const l of logs ?? []) {
     const startMs = new Date(l.clock_in).getTime()
-    const endMs = l.clock_out ? new Date(l.clock_out).getTime() : now
-    const hours = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    const stillOpen = !l.clock_out
+    const endMs = stillOpen ? now : new Date(l.clock_out).getTime()
+    let breakMin = l.break_minutes_total ?? 0
+    if (stillOpen && l.break_start_at) {
+      breakMin += Math.max(
+        0,
+        Math.floor((now - new Date(l.break_start_at).getTime()) / 60000),
+      )
+    }
+    const gross = Math.max(0, (endMs - startMs) / (1000 * 60 * 60))
+    const hours = Math.max(0, gross - breakMin / 60)
     if (hours === 0) continue
     const rate =
       l.hourly_rate != null

@@ -1,6 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
-import { clockIn, clockOut } from '@/lib/time-logs/actions'
+import {
+  clockIn,
+  clockOut,
+  startBreak,
+  endBreak,
+} from '@/lib/time-logs/actions'
 
 function formatDuration(ms: number): string {
   if (ms <= 0) return '0m'
@@ -52,7 +57,9 @@ export default async function StaffDashboard({
     await Promise.all([
       admin
         .from('time_logs')
-        .select('id, clock_in, clock_out')
+        .select(
+          'id, clock_in, clock_out, break_start_at, break_minutes_total',
+        )
         .eq('user_id', session.profileId)
         .is('clock_out', null)
         .maybeSingle(),
@@ -98,30 +105,94 @@ export default async function StaffDashboard({
 
       <section className="rounded-xl border border-brand-sage/40 bg-white p-6 text-center">
         {isOnShift ? (
-          <>
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
-              On shift
-            </p>
-            <p className="mt-2 text-4xl font-semibold text-brand-forest">
-              {formatDuration(currentShiftMs)}
-            </p>
-            <p className="mt-1 text-sm text-brand-slate">
-              Clocked in at{' '}
-              {onShiftSince!.toLocaleTimeString('en-GB', {
-                timeZone: 'UTC',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-            <form action={clockOut} className="mt-6">
-              <button
-                type="submit"
-                className="w-full rounded-2xl bg-brand-amber px-6 py-5 text-xl font-semibold text-brand-forest shadow-sm transition active:scale-[0.98] hover:bg-brand-amber/90"
-              >
-                Clock out
-              </button>
-            </form>
-          </>
+          openShift?.break_start_at ? (
+            // ON BREAK — only show 'Back to work' (no clock-out while on break).
+            <>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-amber">
+                On break
+              </p>
+              <p className="mt-2 text-4xl font-semibold text-brand-forest">
+                {formatDuration(
+                  Date.now() -
+                    new Date(openShift.break_start_at).getTime(),
+                )}
+              </p>
+              <p className="mt-1 text-sm text-brand-slate">
+                Break started{' '}
+                {new Date(openShift.break_start_at).toLocaleTimeString(
+                  'en-GB',
+                  {
+                    timeZone: 'UTC',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  },
+                )}{' '}
+                · this time isn&apos;t paid
+              </p>
+              <form action={endBreak} className="mt-6">
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-brand-forest px-6 py-5 text-xl font-semibold text-brand-cream shadow-sm transition active:scale-[0.98] hover:bg-brand-olive"
+                  style={{
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent',
+                    minHeight: '44px',
+                  }}
+                >
+                  Back to work
+                </button>
+              </form>
+            </>
+          ) : (
+            // ON SHIFT — show 'On break' + 'Clock out'.
+            <>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+                On shift
+              </p>
+              <p className="mt-2 text-4xl font-semibold text-brand-forest">
+                {formatDuration(currentShiftMs)}
+              </p>
+              <p className="mt-1 text-sm text-brand-slate">
+                Clocked in at{' '}
+                {onShiftSince!.toLocaleTimeString('en-GB', {
+                  timeZone: 'UTC',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+                {openShift?.break_minutes_total
+                  ? ` · ${openShift.break_minutes_total}m break taken`
+                  : ''}
+              </p>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <form action={startBreak}>
+                  <button
+                    type="submit"
+                    className="w-full rounded-2xl bg-brand-sage px-4 py-5 text-lg font-semibold text-brand-forest shadow-sm transition active:scale-[0.98] hover:bg-brand-sage/80"
+                    style={{
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      minHeight: '44px',
+                    }}
+                  >
+                    On break
+                  </button>
+                </form>
+                <form action={clockOut}>
+                  <button
+                    type="submit"
+                    className="w-full rounded-2xl bg-brand-amber px-4 py-5 text-lg font-semibold text-brand-forest shadow-sm transition active:scale-[0.98] hover:bg-brand-amber/90"
+                    style={{
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      minHeight: '44px',
+                    }}
+                  >
+                    Clock out
+                  </button>
+                </form>
+              </div>
+            </>
+          )
         ) : (
           <>
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-slate">

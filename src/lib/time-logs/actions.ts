@@ -45,7 +45,7 @@ export async function clockOut() {
 
   const { data: openShift } = await admin
     .from('time_logs')
-    .select('id')
+    .select('id, break_start_at, break_minutes_total')
     .eq('user_id', session.profileId)
     .is('clock_out', null)
     .maybeSingle()
@@ -54,9 +54,21 @@ export async function clockOut() {
     redirect('/staff/clock?error=No%20open%20shift%20to%20clock%20out%20of')
   }
 
+  // If they're still on break when clocking out, fold the in-progress
+  // break into the total so we don't charge them paid time for it.
+  let breakTotal = openShift.break_minutes_total ?? 0
+  if (openShift.break_start_at) {
+    const ms = Date.now() - new Date(openShift.break_start_at).getTime()
+    breakTotal += Math.max(0, Math.floor(ms / 60000))
+  }
+
   const { error } = await admin
     .from('time_logs')
-    .update({ clock_out: new Date().toISOString() })
+    .update({
+      clock_out: new Date().toISOString(),
+      break_start_at: null,
+      break_minutes_total: breakTotal,
+    })
     .eq('id', openShift.id)
 
   if (error) {
@@ -67,4 +79,70 @@ export async function clockOut() {
   revalidatePath('/staff/clock')
   revalidatePath('/manager/timesheets')
   redirect('/staff/clock?notice=Clocked+out')
+}
+
+export async function startBreak() {
+  const session = await requireStaffFeature('clock')
+  const admin = createAdminClient()
+
+  const { data: openShift } = await admin
+    .from('time_logs')
+    .select('id, break_start_at')
+    .eq('user_id', session.profileId)
+    .is('clock_out', null)
+    .maybeSingle()
+
+  if (!openShift) {
+    redirect('/staff/clock?error=Clock+in+before+starting+a+break')
+  }
+  if (openShift.break_start_at) {
+    redirect('/staff/clock?error=Already+on+break')
+  }
+
+  const { error } = await admin
+    .from('time_logs')
+    .update({ break_start_at: new Date().toISOString() })
+    .eq('id', openShift.id)
+  if (error) {
+    redirect(`/staff/clock?error=${encodeURIComponent(error.message)}`)
+  }
+
+  revalidatePath('/staff')
+  revalidatePath('/staff/clock')
+  redirect('/staff/clock?notice=On+break')
+}
+
+export async function endBreak() {
+  const session = await requireStaffFeature('clock')
+  const admin = createAdminClient()
+
+  const { data: openShift } = await admin
+    .from('time_logs')
+    .select('id, break_start_at, break_minutes_total')
+    .eq('user_id', session.profileId)
+    .is('clock_out', null)
+    .maybeSingle()
+
+  if (!openShift || !openShift.break_start_at) {
+    redirect('/staff/clock?error=You+are+not+on+a+break')
+  }
+
+  const ms = Date.now() - new Date(openShift.break_start_at).getTime()
+  const breakMinutes = Math.max(0, Math.floor(ms / 60000))
+  const newTotal = (openShift.break_minutes_total ?? 0) + breakMinutes
+
+  const { error } = await admin
+    .from('time_logs')
+    .update({
+      break_start_at: null,
+      break_minutes_total: newTotal,
+    })
+    .eq('id', openShift.id)
+  if (error) {
+    redirect(`/staff/clock?error=${encodeURIComponent(error.message)}`)
+  }
+
+  revalidatePath('/staff')
+  revalidatePath('/staff/clock')
+  redirect('/staff/clock?notice=Back+to+work')
 }
