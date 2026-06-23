@@ -235,7 +235,9 @@ export async function computeWeeklyStaffMatrix(
       .order('name'),
     admin
       .from('time_logs')
-      .select('user_id, clock_in, clock_out, hourly_rate')
+      .select(
+        'user_id, clock_in, clock_out, hourly_rate, break_minutes_total, break_start_at',
+      )
       .gte('clock_in', `${weekStart}T00:00:00Z`)
       .lte('clock_in', `${weekEnd}T23:59:59Z`),
   ])
