@@ -185,6 +185,18 @@ export default async function StaffHub({
           accent="off"
         />
         <HubTile
+          href="/staff/receipts"
+          title="Snap a receipt"
+          status="Upload a photo, AI reads it"
+          accent="off"
+        />
+        <HubTile
+          href="/staff/accident"
+          title="Accident report"
+          status="Slip, burn, customer trip — log it"
+          accent="off"
+        />
+        <HubTile
           href="/staff/leave"
           title="Leave"
           status="Request holiday / sick"

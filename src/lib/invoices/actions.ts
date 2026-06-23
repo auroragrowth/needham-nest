@@ -13,6 +13,12 @@ async function requireOwner() {
   return session
 }
 
+async function requireAnyAuth() {
+  const session = await getSession()
+  if (!session) redirect('/login')
+  return session
+}
+
 /**
  * Bulk-process supplier invoice files. For each uploaded file:
  *  1. Save to the supplier-invoices storage bucket.
@@ -21,10 +27,15 @@ async function requireOwner() {
  *  4. Try to match a bank_transaction by exact amount + supplier text.
  */
 export async function uploadAndExtractInvoices(formData: FormData) {
-  const session = await requireOwner()
+  // Anyone signed in can snap a receipt — Paul wanted the whole team
+  // able to upload. Auto-match and director-loan posting are still
+  // owner-only (handled in their own actions).
+  const session = await requireAnyAuth()
   const files = formData.getAll('files').filter((f): f is File => f instanceof File && f.size > 0)
   if (files.length === 0) {
-    redirect('/owner/invoices-upload?error=Pick+at+least+one+file')
+    const returnTo =
+      session.role === 'owner' ? '/owner/invoices-upload' : '/staff/receipts'
+    redirect(`${returnTo}?error=Pick+at+least+one+file`)
   }
 
   const admin = createAdminClient()
@@ -88,23 +99,31 @@ export async function uploadAndExtractInvoices(formData: FormData) {
     }
   }
 
-  // Auto-match every unmatched expense against bank_transactions after
-  // the batch lands so newly-imported invoices get caught.
-  await runAutoMatch()
+  // Auto-match every unmatched expense after the batch lands — but only
+  // when an owner is uploading. For staff snaps we skip it; Paul can
+  // re-run match from the reconciliation page.
+  if (session.role === 'owner') {
+    await runAutoMatch()
+  }
 
   revalidatePath('/owner/invoices-upload')
   revalidatePath('/owner/invoices-reconcile')
+  revalidatePath('/staff/receipts')
   const params = new URLSearchParams()
   params.set(
     'notice',
-    `Uploaded ${processed} invoice${processed === 1 ? '' : 's'}${
+    `Uploaded ${processed} receipt${processed === 1 ? '' : 's'}${
       failures > 0 ? `, ${failures} failed` : ''
     }.`,
   )
   if (errors.length > 0) {
     params.set('errors', errors.slice(0, 5).join(' | '))
   }
-  redirect(`/owner/invoices-reconcile?${params.toString()}`)
+  const returnTo =
+    session.role === 'owner'
+      ? `/owner/invoices-reconcile?${params.toString()}`
+      : `/staff/receipts?${params.toString()}`
+  redirect(returnTo)
 }
 
 async function findOrCreatePayee(name: string): Promise<string | null> {

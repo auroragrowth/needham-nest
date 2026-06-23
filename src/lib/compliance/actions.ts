@@ -58,18 +58,25 @@ export async function deleteRiskAssessment(id: string) {
 // ---------- Accident log ----------
 
 export async function addAccident(formData: FormData) {
-  const session = await requireOwnerOrManager()
+  // Anyone signed in can file an accident report — staff fill it in
+  // from /staff/accident, owner / manager review them on /owner/accidents.
+  const session = await getSession()
+  if (!session) redirect('/login')
+
   const occurredStr = String(formData.get('occurred_at') ?? '').trim()
   const person = String(formData.get('person') ?? '').trim()
   const description = String(formData.get('description') ?? '').trim()
   const action_taken = String(formData.get('action_taken') ?? '').trim() || null
   const riddor_reportable = formData.get('riddor_reportable') === 'on'
 
+  const isStaff = session.role === 'staff'
+  const returnTo = isStaff ? '/staff/accident' : '/owner/accidents'
+
   if (!person) {
-    redirect('/owner/accidents?error=Person+is+required')
+    redirect(`${returnTo}?error=Person+is+required`)
   }
   if (!description) {
-    redirect('/owner/accidents?error=Description+is+required')
+    redirect(`${returnTo}?error=Description+is+required`)
   }
 
   const admin = createAdminClient()
@@ -82,10 +89,15 @@ export async function addAccident(formData: FormData) {
     riddor_reportable,
   })
   if (error) {
-    redirect(`/owner/accidents?error=${encodeURIComponent(error.message)}`)
+    redirect(`${returnTo}?error=${encodeURIComponent(error.message)}`)
   }
   revalidatePath('/owner/accidents')
-  redirect('/owner/accidents?notice=Logged')
+  revalidatePath('/staff/accident')
+  redirect(
+    isStaff
+      ? '/staff/accident?notice=Thanks+%E2%80%94+Paul+has+been+notified.'
+      : '/owner/accidents?notice=Logged',
+  )
 }
 
 export async function deleteAccident(id: string) {
