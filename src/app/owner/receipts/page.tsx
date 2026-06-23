@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { uploadAndExtractInvoices } from '@/lib/invoices/actions'
+import { ReceiptUploadForm } from '../../staff/receipts/ReceiptUploadForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,45 +79,8 @@ export default async function ReceiptsPage({
         </p>
       )}
 
-      {/* Big camera-first button — iOS Safari opens the camera straight
-          away thanks to capture="environment". */}
-      <form
-        action={uploadAndExtractInvoices}
-        encType="multipart/form-data"
-        className="mt-6 rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-6 text-center"
-      >
-        <input
-          id="files"
-          name="files"
-          type="file"
-          accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,image/webp"
-          capture="environment"
-          required
-          className="hidden"
-        />
-        <label
-          htmlFor="files"
-          className="block cursor-pointer text-brand-forest"
-          style={{ touchAction: 'manipulation' }}
-        >
-          <span className="text-5xl" aria-hidden>
-            📸
-          </span>
-          <span className="mt-2 block text-lg font-semibold">
-            Snap or pick a receipt
-          </span>
-          <span className="mt-1 block text-xs text-brand-slate">
-            iPhone / iPad: opens the camera. Laptop: opens the file picker.
-          </span>
-        </label>
-        <button
-          type="submit"
-          className="mt-4 w-full rounded-lg bg-brand-forest px-4 py-3 text-base font-semibold text-brand-cream hover:bg-brand-olive"
-          style={{ minHeight: '44px' }}
-        >
-          Upload &amp; scan
-        </button>
-      </form>
+      {/* Auto-submits as soon as a file is picked — single-tap flow. */}
+      <ReceiptUploadForm />
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Link

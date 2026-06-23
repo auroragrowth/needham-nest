@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { uploadAndExtractInvoices } from '@/lib/invoices/actions'
+import { ReceiptUploadForm } from './ReceiptUploadForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,43 +67,7 @@ export default async function StaffReceiptsPage({
         </p>
       )}
 
-      <form
-        action={uploadAndExtractInvoices}
-        encType="multipart/form-data"
-        className="mt-6 rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-6 text-center"
-      >
-        <input
-          id="files"
-          name="files"
-          type="file"
-          accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,image/webp"
-          capture="environment"
-          required
-          className="hidden"
-        />
-        <label
-          htmlFor="files"
-          className="block cursor-pointer text-brand-forest"
-          style={{ touchAction: 'manipulation' }}
-        >
-          <span className="text-5xl" aria-hidden>
-            📸
-          </span>
-          <span className="mt-2 block text-lg font-semibold">
-            Snap or pick a receipt
-          </span>
-          <span className="mt-1 block text-xs text-brand-slate">
-            Camera opens straight away on iPad / iPhone.
-          </span>
-        </label>
-        <button
-          type="submit"
-          className="mt-4 w-full rounded-lg bg-brand-forest px-4 py-3 text-base font-semibold text-brand-cream hover:bg-brand-olive"
-          style={{ minHeight: '44px' }}
-        >
-          Upload &amp; scan
-        </button>
-      </form>
+      <ReceiptUploadForm />
 
       <section className="mt-8">
         <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
