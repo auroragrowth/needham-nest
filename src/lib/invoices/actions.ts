@@ -79,7 +79,11 @@ export async function uploadAndExtractInvoices(formData: FormData) {
       const { error: insertErr } = await admin.from('expenses').insert({
         user_id: session.authUserId ?? null,
         date: extracted.date ?? new Date().toISOString().slice(0, 10),
-        category: 'cost_of_sales',
+        // Default to 'other' — Paul (or the team) re-categorises from the
+        // expense edit screen. Valid enum: food_purchases, drink_purchases,
+        // cleaning, rent_utilities, repairs_maintenance, insurance, staff,
+        // equipment, marketing, other.
+        category: 'other',
         payee_id: payeeId,
         vendor: extracted.supplier ?? 'Unknown supplier',
         amount: extracted.amount ?? 0,
