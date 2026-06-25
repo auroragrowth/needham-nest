@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { uploadAndExtractInvoices } from '@/lib/invoices/actions'
 
 export const dynamic = 'force-dynamic'
+// Big batches of HEICs can take 3–5 minutes (convert + Claude call per
+// file). Vercel default is 60s; bumping to 300s (max on Pro).
+export const maxDuration = 300
 
 export default async function InvoicesUploadPage({
   searchParams,

@@ -39,71 +39,71 @@ export async function uploadAndExtractInvoices(formData: FormData) {
   }
 
   const admin = createAdminClient()
-  let processed = 0
-  let failures = 0
   const errors: string[] = []
 
-  for (const file of files) {
-    try {
-      const bytes = await file.arrayBuffer()
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
-      const storagePath = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`
-      const { error: uploadErr } = await admin.storage
-        .from('supplier-invoices')
-        .upload(storagePath, bytes, { contentType: file.type })
-      if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`)
-
-      let extracted: ExtractedInvoice
+  // Process files in parallel so a batch of 15 doesn't take 15× a single
+  // file's time. Each task does: read bytes → upload to storage → call
+  // Claude → insert expense row. Failures land in the errors list and
+  // still create a draft row so nothing is silently lost.
+  const results = await Promise.all(
+    files.map(async (file) => {
       try {
-        extracted = await extractInvoice(file.name, bytes)
+        const bytes = await file.arrayBuffer()
+        const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
+        const storagePath = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`
+        const { error: uploadErr } = await admin.storage
+          .from('supplier-invoices')
+          .upload(storagePath, bytes, { contentType: file.type })
+        if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`)
+
+        let extracted: ExtractedInvoice
+        try {
+          extracted = await extractInvoice(file.name, bytes)
+        } catch (e) {
+          errors.push(`${file.name}: ${(e as Error).message}`)
+          extracted = {
+            date: null,
+            supplier: null,
+            amount: null,
+            amount_net: null,
+            vat_amount: null,
+            vat_rate: null,
+            reference: null,
+            notes: 'AI extraction failed — fill in manually.',
+            confidence: 'low',
+          }
+        }
+
+        const payeeId = extracted.supplier
+          ? await findOrCreatePayee(extracted.supplier)
+          : null
+
+        const { error: insertErr } = await admin.from('expenses').insert({
+          user_id: session.profileId,
+          date: extracted.date ?? new Date().toISOString().slice(0, 10),
+          category: 'other',
+          payee_id: payeeId,
+          vendor: extracted.supplier ?? 'Unknown supplier',
+          amount: extracted.amount ?? 0,
+          reference: extracted.reference,
+          receipt_path: storagePath,
+          vat_rate: extracted.vat_rate,
+          notes: extracted.notes,
+          ai_extracted: true,
+          ai_extracted_at: new Date().toISOString(),
+          ai_raw: extracted as unknown as Record<string, unknown>,
+        })
+        if (insertErr) throw new Error(`Insert failed: ${insertErr.message}`)
+        return { ok: true as const }
       } catch (e) {
         errors.push(`${file.name}: ${(e as Error).message}`)
-        // Still create a draft row so Paul can fill it in by hand.
-        extracted = {
-          date: null,
-          supplier: null,
-          amount: null,
-          amount_net: null,
-          vat_amount: null,
-          vat_rate: null,
-          reference: null,
-          notes: 'AI extraction failed — fill in manually.',
-          confidence: 'low',
-        }
+        return { ok: false as const }
       }
+    }),
+  )
 
-      const payeeId = extracted.supplier
-        ? await findOrCreatePayee(extracted.supplier)
-        : null
-
-      const { error: insertErr } = await admin.from('expenses').insert({
-        // expenses.user_id FKs to profiles(id), NOT NULL — use the session
-        // profile, not the auth.users id which is null for PIN-only logins.
-        user_id: session.profileId,
-        date: extracted.date ?? new Date().toISOString().slice(0, 10),
-        // Default to 'other' — Paul (or the team) re-categorises from the
-        // expense edit screen. Valid enum: food_purchases, drink_purchases,
-        // cleaning, rent_utilities, repairs_maintenance, insurance, staff,
-        // equipment, marketing, other.
-        category: 'other',
-        payee_id: payeeId,
-        vendor: extracted.supplier ?? 'Unknown supplier',
-        amount: extracted.amount ?? 0,
-        reference: extracted.reference,
-        receipt_path: storagePath,
-        vat_rate: extracted.vat_rate,
-        notes: extracted.notes,
-        ai_extracted: true,
-        ai_extracted_at: new Date().toISOString(),
-        ai_raw: extracted as unknown as Record<string, unknown>,
-      })
-      if (insertErr) throw new Error(`Insert failed: ${insertErr.message}`)
-      processed += 1
-    } catch (e) {
-      failures += 1
-      errors.push(`${file.name}: ${(e as Error).message}`)
-    }
-  }
+  const processed = results.filter((r) => r.ok).length
+  const failures = results.length - processed
 
   // Auto-match every unmatched expense after the batch lands — but only
   // when an owner is uploading. For staff snaps we skip it; Paul can

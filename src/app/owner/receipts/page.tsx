@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ReceiptUploadForm } from '../../staff/receipts/ReceiptUploadForm'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 function fmtMoney(n: number | null): string {
   if (n == null) return '—'

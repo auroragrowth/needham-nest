@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ReceiptUploadForm } from './ReceiptUploadForm'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 function fmtDate(d: string): string {
   return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', {
