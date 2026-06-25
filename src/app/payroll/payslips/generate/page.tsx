@@ -55,6 +55,7 @@ export default async function PayrollGeneratePage({
     .from('profiles')
     .select('id, name, role, employment_type')
     .eq('active', true)
+    .eq('payroll_included', true)
     .neq('role', 'payroll')
     .order('name')
 

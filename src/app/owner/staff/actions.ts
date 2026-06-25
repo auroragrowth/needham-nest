@@ -179,6 +179,7 @@ export async function updateStaffDetails(
     bank_account_number:
       String(formData.get('bank_account_number') ?? '').trim() || null,
     uniform_size: String(formData.get('uniform_size') ?? '').trim() || null,
+    payroll_included: formData.get('payroll_included') === 'on',
     probation_end_date:
       String(formData.get('probation_end_date') ?? '').trim() || null,
     notice_period_weeks: (() => {

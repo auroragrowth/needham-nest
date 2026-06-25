@@ -22,6 +22,7 @@ export default async function PayrollDashboard() {
     .from('profiles')
     .select('*', { count: 'exact', head: true })
     .eq('active', true)
+    .eq('payroll_included', true)
     .neq('role', 'owner')
     .neq('role', 'payroll')
 

@@ -37,7 +37,7 @@ export default async function EditStaffPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary, photo_path, bio, email, pronouns, allergies, address_line_1, address_line_2, address_city, address_postcode, ni_number, bank_sort_code, bank_account_number, probation_end_date, notice_period_weeks, uniform_size',
+        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary, photo_path, bio, email, pronouns, allergies, address_line_1, address_line_2, address_city, address_postcode, ni_number, bank_sort_code, bank_account_number, probation_end_date, notice_period_weeks, uniform_size, payroll_included',
       )
       .eq('id', id)
       .maybeSingle(),
@@ -414,6 +414,25 @@ export default async function EditStaffPage({
             name="bank_account_number"
             defaultValue={person.bank_account_number ?? ''}
           />
+          <div className="col-span-2 flex items-center gap-2 rounded-md border border-brand-sage/40 bg-brand-cream/40 p-3">
+            <input
+              id="payroll_included"
+              name="payroll_included"
+              type="checkbox"
+              defaultChecked={person.payroll_included !== false}
+              className="h-5 w-5"
+            />
+            <label
+              htmlFor="payroll_included"
+              className="text-sm text-brand-forest"
+            >
+              <span className="font-semibold">Include in payroll.</span>{' '}
+              <span className="text-xs text-brand-slate">
+                Untick for volunteers, work-experience, or anyone who&apos;s
+                on the rota but doesn&apos;t get paid through the system.
+              </span>
+            </label>
+          </div>
           <div className="col-span-2">
             <label className="block text-xs font-medium text-brand-forest">
               Address

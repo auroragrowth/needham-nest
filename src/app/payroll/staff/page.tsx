@@ -16,6 +16,7 @@ export default async function PayrollStaffList() {
       'id, name, role, employment_type, hourly_rate, annual_salary, ni_number, tax_code, bank_sort_code, bank_account_number',
     )
     .eq('active', true)
+    .eq('payroll_included', true)
     .neq('role', 'payroll')
     .order('role')
     .order('name')

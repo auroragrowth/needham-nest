@@ -68,7 +68,8 @@ export async function computeDailyStaffingCost(
       .select(
         'id, name, employment_type, annual_salary, hourly_rate',
       )
-      .eq('active', true),
+      .eq('active', true)
+      .eq('payroll_included', true),
     admin
       .from('time_logs')
       .select(
@@ -232,6 +233,7 @@ export async function computeWeeklyStaffMatrix(
         'id, name, employment_type, annual_salary, hourly_rate',
       )
       .eq('active', true)
+      .eq('payroll_included', true)
       .order('name'),
     admin
       .from('time_logs')
@@ -345,7 +347,8 @@ export async function computeStaffingCostRange(
     admin
       .from('profiles')
       .select('id, employment_type, annual_salary, hourly_rate')
-      .eq('active', true),
+      .eq('active', true)
+      .eq('payroll_included', true),
     admin
       .from('time_logs')
       .select(
