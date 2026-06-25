@@ -128,9 +128,18 @@ export async function extractInvoice(
   if (!textBlock || textBlock.type !== 'text') {
     throw new Error('Claude returned no text content')
   }
+
+  // Claude sometimes wraps JSON in markdown fences despite being told not to.
+  // Strip ```json ... ``` (or ``` ... ```) before parsing.
+  const cleaned = textBlock.text
+    .trim()
+    .replace(/^```(?:json)?\s*\n?/i, '')
+    .replace(/\n?```\s*$/i, '')
+    .trim()
+
   let parsed: ExtractedInvoice
   try {
-    parsed = JSON.parse(textBlock.text)
+    parsed = JSON.parse(cleaned)
   } catch {
     throw new Error(
       `Claude returned non-JSON. Raw: ${textBlock.text.slice(0, 200)}`,

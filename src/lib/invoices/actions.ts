@@ -77,7 +77,9 @@ export async function uploadAndExtractInvoices(formData: FormData) {
         : null
 
       const { error: insertErr } = await admin.from('expenses').insert({
-        user_id: session.authUserId ?? null,
+        // expenses.user_id FKs to profiles(id), NOT NULL — use the session
+        // profile, not the auth.users id which is null for PIN-only logins.
+        user_id: session.profileId,
         date: extracted.date ?? new Date().toISOString().slice(0, 10),
         // Default to 'other' — Paul (or the team) re-categorises from the
         // expense edit screen. Valid enum: food_purchases, drink_purchases,
