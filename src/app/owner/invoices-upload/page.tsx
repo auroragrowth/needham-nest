@@ -75,22 +75,6 @@ export default async function InvoicesUploadPage({
         </button>
       </form>
 
-      <section className="mt-6 rounded-xl border border-brand-teal/30 bg-brand-teal/5 p-4 text-sm text-brand-forest">
-        <p className="font-semibold">What happens next</p>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-brand-slate">
-          <li>Each file goes to private storage.</li>
-          <li>Claude reads it and pulls out the structured fields.</li>
-          <li>An expense row is created — even if the AI fails, so you can fix it.</li>
-          <li>
-            The auto-matcher hunts your bank_transactions for an exact-amount
-            debit with a similar supplier name.
-          </li>
-          <li>
-            Anything left unmatched lands on the reconciliation page flagged
-            for review.
-          </li>
-        </ol>
-      </section>
     </main>
   )
 }

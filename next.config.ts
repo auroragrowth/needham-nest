@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   // Default server action body limit (1MB) silently rejects them.
   experimental: {
     serverActions: {
-      bodySizeLimit: "25mb",
+      bodySizeLimit: "100mb",
     },
   },
 };

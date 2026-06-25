@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import heicConvert from 'heic-convert'
 
 /**
  * Calls Claude to extract structured invoice data from a PDF/JPG/PNG.
@@ -62,8 +63,28 @@ export async function extractInvoice(
   }
   const client = new Anthropic({ apiKey })
 
-  const base64 = Buffer.from(bytes).toString('base64')
-  const mediaType = mediaTypeFor(filename)
+  let workingBytes: ArrayBuffer = bytes
+  let mediaType = mediaTypeFor(filename)
+
+  // iPhone HEIC files: Claude can't read them, convert to JPEG first.
+  if (mediaType === 'image/heic' || mediaType === 'image/heif') {
+    const inputBuffer = new Uint8Array(bytes)
+    const jpegBuf = await (
+      heicConvert as unknown as (opts: {
+        buffer: Uint8Array
+        format: 'JPEG'
+        quality: number
+      }) => Promise<ArrayBuffer>
+    )({
+      buffer: inputBuffer,
+      format: 'JPEG',
+      quality: 0.85,
+    })
+    workingBytes = jpegBuf
+    mediaType = 'image/jpeg'
+  }
+
+  const base64 = Buffer.from(workingBytes).toString('base64')
   const isPdf = mediaType === 'application/pdf'
 
   const message = await client.messages.create({
@@ -87,11 +108,9 @@ export async function extractInvoice(
                 type: 'image',
                 source: {
                   type: 'base64',
-                  // image media types are constrained — fall back to jpeg
-                  // if Claude doesn't like the inferred type
-                  media_type: (mediaType === 'image/heic'
-                    ? 'image/jpeg'
-                    : mediaType) as
+                  // HEIC already converted to JPEG above; remaining types
+                  // pass through directly.
+                  media_type: mediaType as
                     | 'image/jpeg'
                     | 'image/png'
                     | 'image/gif'
