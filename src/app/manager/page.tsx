@@ -99,6 +99,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/me/profile"
+          title="My profile"
+          subtitle="Update your own details / bank / uniform"
+          cta="Open →"
+        />
+        <Card
           href="/manager/staffing-cost"
           title="Staffing cost"
           subtitle="PAYE baseline + rostered hourly, by day"
