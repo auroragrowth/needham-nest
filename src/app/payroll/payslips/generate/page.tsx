@@ -53,7 +53,7 @@ export default async function PayrollGeneratePage({
   const admin = createAdminClient()
   const { data: staffList } = await admin
     .from('profiles')
-    .select('id, name, role, employment_type')
+    .select('id, name, role, employment_type, paid_in_cash')
     .eq('active', true)
     .eq('payroll_included', true)
     .neq('role', 'payroll')
@@ -65,6 +65,8 @@ export default async function PayrollGeneratePage({
 
   // If a staff member is picked, pre-fill from the timesheet helper.
   const preview = staffId ? await buildStaffPayslip(staffId, from, to) : null
+  const cashStaff =
+    staffId && (staffList ?? []).find((s) => s.id === staffId)?.paid_in_cash
 
   return (
     <main className="mx-auto max-w-2xl">
@@ -149,6 +151,18 @@ export default async function PayrollGeneratePage({
           Load period
         </button>
       </form>
+
+      {preview && cashStaff && (
+        <div className="mt-6 rounded-xl border-2 border-brand-amber bg-brand-amber/20 p-4 text-brand-forest">
+          <p className="text-lg font-bold">
+            💵 {preview.staff_name} IS PAID IN CASH
+          </p>
+          <p className="mt-1 text-sm">
+            Pay the net from petty cash and mark the slip as <em>Cash</em>{' '}
+            on the next screen. <strong>Don&apos;t add to your BACS run.</strong>
+          </p>
+        </div>
+      )}
 
       {preview && (
         <form

@@ -13,7 +13,7 @@ export default async function PayrollStaffList() {
   const { data: staff } = await admin
     .from('profiles')
     .select(
-      'id, name, role, employment_type, hourly_rate, annual_salary, ni_number, tax_code, bank_sort_code, bank_account_number',
+      'id, name, role, employment_type, hourly_rate, annual_salary, ni_number, tax_code, bank_sort_code, bank_account_number, paid_in_cash',
     )
     .eq('active', true)
     .eq('payroll_included', true)
@@ -63,6 +63,11 @@ export default async function PayrollStaffList() {
                   <span className="text-[10px] uppercase text-brand-slate">
                     {s.role}
                   </span>
+                  {s.paid_in_cash && (
+                    <span className="ml-1 rounded bg-brand-amber px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-forest">
+                      💵 PAY IN CASH
+                    </span>
+                  )}
                 </Td>
                 <Td>
                   {s.employment_type === 'paye'

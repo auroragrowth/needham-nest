@@ -29,7 +29,7 @@ export default async function PayrollStaffDetail({
   const { data: p } = await admin
     .from('profiles')
     .select(
-      'id, name, role, employment_type, hourly_rate, annual_salary, contracted_weekly_hours, ni_number, tax_code, bank_sort_code, bank_account_number, address_line_1, address_line_2, address_city, address_postcode, date_of_birth, start_date, probation_end_date, notice_period_weeks, email, phone, pronouns, emergency_contact_name, emergency_contact_phone, allergies, medical_conditions, medication',
+      'id, name, role, employment_type, hourly_rate, annual_salary, contracted_weekly_hours, ni_number, tax_code, bank_sort_code, bank_account_number, address_line_1, address_line_2, address_city, address_postcode, date_of_birth, start_date, probation_end_date, notice_period_weeks, email, phone, pronouns, emergency_contact_name, emergency_contact_phone, allergies, medical_conditions, medication, paid_in_cash',
     )
     .eq('id', id)
     .maybeSingle()
@@ -55,6 +55,18 @@ export default async function PayrollStaffDetail({
             ? `Casual · ${fmtMoney(p.hourly_rate)}/h`
             : (p.employment_type ?? 'not set')}
       </p>
+
+      {p.paid_in_cash && (
+        <div className="mt-4 rounded-xl border-2 border-brand-amber bg-brand-amber/20 p-4 text-brand-forest">
+          <p className="text-lg font-bold">
+            💵 PAID IN CASH — DO NOT BACS
+          </p>
+          <p className="mt-1 text-sm">
+            Take the net pay from petty cash. Mark the slip as <em>Cash</em>{' '}
+            when paid; don&apos;t enter the bank details into your BACS file.
+          </p>
+        </div>
+      )}
 
       <Section title="Payroll">
         <Row label="NI number" value={p.ni_number} mono />

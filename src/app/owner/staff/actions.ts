@@ -180,6 +180,7 @@ export async function updateStaffDetails(
       String(formData.get('bank_account_number') ?? '').trim() || null,
     uniform_size: String(formData.get('uniform_size') ?? '').trim() || null,
     payroll_included: formData.get('payroll_included') === 'on',
+    paid_in_cash: formData.get('paid_in_cash') === 'on',
     probation_end_date:
       String(formData.get('probation_end_date') ?? '').trim() || null,
     notice_period_weeks: (() => {

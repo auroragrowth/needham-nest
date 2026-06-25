@@ -64,11 +64,15 @@ export default async function PayrollWeeklyHours({
   const admin = createAdminClient()
   const { data: staff } = await admin
     .from('profiles')
-    .select('id, name, role, employment_type')
+    .select('id, name, role, employment_type, paid_in_cash')
     .eq('active', true)
     .eq('payroll_included', true)
     .neq('role', 'payroll')
     .order('name')
+
+  const cashIds = new Set(
+    (staff ?? []).filter((s) => s.paid_in_cash).map((s) => s.id),
+  )
 
   const payslips = await Promise.all(
     (staff ?? []).map((s) => buildStaffPayslip(s.id, from, to)),
@@ -142,6 +146,11 @@ export default async function PayrollWeeklyHours({
             <header className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-base font-semibold text-brand-forest">
                 {p.staff_name}
+                {cashIds.has(p.staff_id) && (
+                  <span className="ml-2 rounded bg-brand-amber px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-brand-forest">
+                    💵 PAY IN CASH
+                  </span>
+                )}
               </h2>
               <span className="text-xs text-brand-slate">
                 {p.employment_type === 'paye' ? 'PAYE' : 'Casual / hourly'} ·{' '}
