@@ -11,7 +11,10 @@ export async function GET(
   context: { params: Promise<{ id: string; payslipId: string }> },
 ) {
   const session = await getSession()
-  if (!session || session.role !== 'owner') {
+  if (
+    !session ||
+    (session.role !== 'owner' && session.role !== 'payroll')
+  ) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

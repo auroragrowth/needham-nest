@@ -6,9 +6,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 
 async function requireOwner() {
+  // Owner or payroll can generate / mark paid / delete. Payroll users
+  // come from /payroll/* and need the same write access on the slip.
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role !== 'owner') redirect('/')
+  if (session.role !== 'owner' && session.role !== 'payroll') redirect('/')
   return session
 }
 
@@ -82,15 +84,24 @@ export async function savePayslip(staffId: string, formData: FormData) {
     .upsert(payload, { onConflict: 'staff_id,period_from,period_to' })
     .select('id')
     .single()
+  const isPayroll = session.role === 'payroll'
   if (error || !data) {
+    const dest = isPayroll
+      ? `/payroll/payslips/generate?staff=${staffId}`
+      : `/owner/payslips/${staffId}/generate`
     redirect(
-      `/owner/payslips/${staffId}/generate?error=${encodeURIComponent(error?.message ?? 'Save failed')}`,
+      `${dest}?error=${encodeURIComponent(error?.message ?? 'Save failed')}`,
     )
   }
 
   revalidatePath(`/owner/payslips/${staffId}`)
   revalidatePath(`/owner/payslips/${staffId}/generate`)
-  redirect(`/owner/payslips/${staffId}/${data.id}`)
+  revalidatePath('/payroll/payslips')
+  redirect(
+    isPayroll
+      ? `/payroll/payslips/${data.id}`
+      : `/owner/payslips/${staffId}/${data.id}`,
+  )
 }
 
 export async function deletePayslip(staffId: string, payslipId: string) {

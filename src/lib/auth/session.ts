@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { jwtVerify, SignJWT } from 'jose'
 import type { NextRequest } from 'next/server'
 
-export type Role = 'owner' | 'manager' | 'staff'
+export type Role = 'owner' | 'manager' | 'staff' | 'payroll'
 
 export type SessionPayload = {
   profileId: string
@@ -17,6 +17,7 @@ const SESSION_TTL_SECONDS: Record<Role, number> = {
   owner: 12 * 60 * 60,
   manager: 12 * 60 * 60,
   staff: 30 * 60,
+  payroll: 12 * 60 * 60,
 }
 
 function getSecret(): Uint8Array {
@@ -48,7 +49,8 @@ async function verifyToken(token: string): Promise<SessionPayload | null> {
       typeof payload.name === 'string' &&
       (payload.role === 'owner' ||
         payload.role === 'manager' ||
-        payload.role === 'staff')
+        payload.role === 'staff' ||
+        payload.role === 'payroll')
     ) {
       return {
         profileId: payload.profileId,

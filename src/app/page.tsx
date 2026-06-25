@@ -12,6 +12,8 @@ export default async function Home() {
       redirect('/manager')
     case 'staff':
       redirect('/staff')
+    case 'payroll':
+      redirect('/payroll')
     default:
       redirect('/login?error=Unknown+role')
   }

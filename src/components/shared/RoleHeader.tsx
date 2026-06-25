@@ -2,18 +2,20 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { logout } from '@/lib/auth/actions'
 
-type Role = 'owner' | 'manager' | 'staff'
+type Role = 'owner' | 'manager' | 'staff' | 'payroll'
 
 const ROLE_BADGE: Record<Role, string> = {
   owner: 'bg-brand-amber text-brand-forest',
   manager: 'bg-brand-teal-deep text-brand-cream',
   staff: 'bg-brand-sage text-brand-forest',
+  payroll: 'bg-brand-teal text-brand-cream',
 }
 
 const ROLE_LABEL: Record<Role, string> = {
   owner: 'Owner',
   manager: 'Manager',
   staff: 'Staff',
+  payroll: 'Payroll',
 }
 
 export function RoleHeader({ role, name }: { role: Role; name: string }) {
