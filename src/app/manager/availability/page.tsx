@@ -49,6 +49,7 @@ export default async function AvailabilityOverviewPage({
       .from('profiles')
       .select('id, name, role, colour_index')
       .eq('active', true)
+      .eq('on_rota', true)
       .order('name'),
     admin
       .from('staff_availability')

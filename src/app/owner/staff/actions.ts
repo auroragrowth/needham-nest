@@ -181,6 +181,7 @@ export async function updateStaffDetails(
     uniform_size: String(formData.get('uniform_size') ?? '').trim() || null,
     payroll_included: formData.get('payroll_included') === 'on',
     paid_in_cash: formData.get('paid_in_cash') === 'on',
+    on_rota: formData.get('on_rota') === 'on',
     probation_end_date:
       String(formData.get('probation_end_date') ?? '').trim() || null,
     notice_period_weeks: (() => {

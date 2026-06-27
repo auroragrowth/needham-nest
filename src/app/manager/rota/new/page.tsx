@@ -16,6 +16,7 @@ export default async function NewShiftPage({
         .from('profiles')
         .select('id, name, role')
         .eq('active', true)
+        .eq('on_rota', true)
         .order('name'),
       admin
         .from('settings')

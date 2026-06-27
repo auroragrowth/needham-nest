@@ -80,6 +80,7 @@ export default async function RotaPage({
         'id, name, role, contracted_weekly_hours, date_of_birth, colour_index',
       )
       .eq('active', true)
+      .eq('on_rota', true)
       .order('name'),
     admin
       .from('rota_shifts')
