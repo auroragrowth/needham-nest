@@ -77,7 +77,7 @@ export default async function RotaPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, contracted_weekly_hours, date_of_birth, colour_index',
+        'id, name, role, contracted_weekly_hours, date_of_birth, colour_index, employment_type',
       )
       .eq('active', true)
       .eq('on_rota', true)
@@ -202,8 +202,8 @@ export default async function RotaPage({
           </p>
           <p className="mt-1 text-xs text-brand-slate">
             <span className="mr-1 inline-block h-3 w-3 rounded-sm bg-red-100 align-middle" />
-            Red cells = staff hasn&apos;t marked their availability for that
-            day yet.
+            Red cells = staff hasn&apos;t marked availability yet (PAYE staff
+            don&apos;t need to).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -357,8 +357,12 @@ export default async function RotaPage({
                   const dayAvail = availByStaffDay.get(key) ?? []
                   // Red the cell if the staff member hasn't marked their
                   // availability yet — makes 'who hasn't replied' obvious
-                  // at a glance, regardless of whether a shift's planned.
-                  const noAvailability = dayAvail.length === 0
+                  // at a glance. PAYE / salaried staff (e.g. Vic) work to
+                  // their contract not a weekly self-assessment, so they
+                  // skip this flag.
+                  const needsAvailability = s.employment_type !== 'paye'
+                  const noAvailability =
+                    needsAvailability && dayAvail.length === 0
                   return (
                     <td
                       key={key}
