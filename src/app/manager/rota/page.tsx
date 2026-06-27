@@ -200,6 +200,11 @@ export default async function RotaPage({
               year: 'numeric',
             })}
           </p>
+          <p className="mt-1 text-xs text-brand-slate">
+            <span className="mr-1 inline-block h-3 w-3 rounded-sm bg-red-100 align-middle" />
+            Red cells = staff hasn&apos;t marked their availability for that
+            day yet.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
@@ -350,12 +355,16 @@ export default async function RotaPage({
                   const key = `${s.id}|${isoDate(d)}`
                   const dayShifts = byStaffDay.get(key) ?? []
                   const dayAvail = availByStaffDay.get(key) ?? []
+                  // Red the cell if the staff member hasn't marked their
+                  // availability yet — makes 'who hasn't replied' obvious
+                  // at a glance, regardless of whether a shift's planned.
+                  const noAvailability = dayAvail.length === 0
                   return (
                     <td
                       key={key}
                       className={`border-b border-brand-sage/30 px-2 py-2 ${
-                        dayAvail.length === 0 && dayShifts.length === 0
-                          ? 'bg-brand-sage/5'
+                        noAvailability
+                          ? 'bg-red-100'
                           : ''
                       }`}
                     >
