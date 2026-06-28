@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
+  cleanupDuplicates,
   manuallyMatchExpense,
   markExpenseAsDirectorPaid,
   markExpenseAsPaidInCash,
@@ -154,6 +155,20 @@ export default async function ReconcilePage({
               className="rounded-lg border border-brand-sage/60 px-4 py-2 text-sm text-brand-forest hover:bg-brand-sage/10"
             >
               Re-run auto-match
+            </button>
+          </form>
+          <form
+            action={async () => {
+              'use server'
+              await cleanupDuplicates()
+            }}
+          >
+            <button
+              type="submit"
+              className="rounded-lg border border-brand-sage/60 px-4 py-2 text-sm text-brand-forest hover:bg-brand-sage/10"
+              title="Delete unreconciled receipts that duplicate one already settled"
+            >
+              🧹 Clean duplicates
             </button>
           </form>
         </div>

@@ -40,6 +40,29 @@ export async function uploadAndExtractInvoices(formData: FormData) {
 
   const admin = createAdminClient()
   const errors: string[] = []
+  let duplicatesSkipped = 0
+
+  // Pre-fetch already-reconciled receipts so we can dedupe against them
+  // BEFORE inserting a new row — saves Paul having to clean up later.
+  const { data: reconciledRowsRaw } = await admin
+    .from('expenses')
+    .select('id, vendor, amount, date, paid_in_cash, director_loan_id')
+  const { data: matchedRowsRaw } = await admin
+    .from('bank_transactions')
+    .select('matched_expense_id')
+    .not('matched_expense_id', 'is', null)
+  const matchedSet = new Set(
+    (matchedRowsRaw ?? []).map((r) => r.matched_expense_id),
+  )
+  const reconciledSignatures = (reconciledRowsRaw ?? [])
+    .filter((r) =>
+      isReconciledRow({
+        paid_in_cash: r.paid_in_cash,
+        director_loan_id: r.director_loan_id,
+        matched: matchedSet.has(r.id),
+      }),
+    )
+    .map((r) => signatureOf(r))
 
   // Process files in parallel so a batch of 15 doesn't take 15× a single
   // file's time. Each task does: read bytes → upload to storage → call
@@ -74,6 +97,21 @@ export async function uploadAndExtractInvoices(formData: FormData) {
           }
         }
 
+        // Skip if this looks like a duplicate of an already-reconciled
+        // receipt. Drop the file from storage so we don't accumulate
+        // garbage in the bucket.
+        const sig = signatureOf({
+          vendor: extracted.supplier,
+          amount: extracted.amount,
+          date: extracted.date ?? new Date().toISOString().slice(0, 10),
+        })
+        if (reconciledSignatures.some((rs) => isSameReceipt(rs, sig))) {
+          await admin.storage
+            .from('supplier-invoices')
+            .remove([storagePath])
+          return { ok: false as const, skipped: true as const }
+        }
+
         const payeeId = extracted.supplier
           ? await findOrCreatePayee(extracted.supplier)
           : null
@@ -103,7 +141,10 @@ export async function uploadAndExtractInvoices(formData: FormData) {
   )
 
   const processed = results.filter((r) => r.ok).length
-  const failures = results.length - processed
+  duplicatesSkipped = results.filter(
+    (r) => 'skipped' in r && r.skipped === true,
+  ).length
+  const failures = results.length - processed - duplicatesSkipped
 
   // Auto-match every unmatched expense after the batch lands — but only
   // when an owner is uploading. For staff snaps we skip it; Paul can
@@ -119,8 +160,10 @@ export async function uploadAndExtractInvoices(formData: FormData) {
   params.set(
     'notice',
     `Uploaded ${processed} receipt${processed === 1 ? '' : 's'}${
-      failures > 0 ? `, ${failures} failed` : ''
-    }.`,
+      duplicatesSkipped > 0
+        ? `, ${duplicatesSkipped} duplicate${duplicatesSkipped === 1 ? '' : 's'} skipped`
+        : ''
+    }${failures > 0 ? `, ${failures} failed` : ''}.`,
   )
   if (errors.length > 0) {
     params.set('errors', errors.slice(0, 5).join(' | '))
@@ -155,6 +198,45 @@ function normalize(s: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
+}
+
+type DupeSignature = {
+  vendor_norm: string
+  amount_cents: number
+  date_bucket: string // ISO date the receipt falls on (we allow ±3 days when comparing)
+}
+
+function signatureOf(e: {
+  vendor: string | null
+  amount: number | string | null
+  date: string
+}): DupeSignature {
+  return {
+    vendor_norm: normalize(e.vendor ?? ''),
+    amount_cents: Math.round(Number(e.amount ?? 0) * 100),
+    date_bucket: e.date,
+  }
+}
+
+function isSameReceipt(a: DupeSignature, b: DupeSignature): boolean {
+  if (a.amount_cents !== b.amount_cents) return false
+  if (a.amount_cents === 0) return false // nothing to dedupe against
+  if (!a.vendor_norm || !b.vendor_norm) return false
+  if (a.vendor_norm !== b.vendor_norm) return false
+  // ±3 days
+  const ms = Math.abs(
+    new Date(a.date_bucket + 'T00:00:00Z').getTime() -
+      new Date(b.date_bucket + 'T00:00:00Z').getTime(),
+  )
+  return ms <= 3 * 24 * 60 * 60 * 1000
+}
+
+function isReconciledRow(row: {
+  paid_in_cash: boolean | null
+  director_loan_id: string | null
+  matched: boolean
+}): boolean {
+  return row.matched || row.paid_in_cash === true || row.director_loan_id !== null
 }
 
 function describeMatch(
@@ -321,6 +403,60 @@ export async function markExpenseAsDirectorPaid(
   }
   revalidatePath('/owner/invoices-reconcile')
   revalidatePath('/owner/director-loan')
+}
+
+/**
+ * Sweep the expense ledger for unreconciled duplicates of receipts
+ * already settled (matched, paid in cash, or director loan). Each
+ * unreconciled dupe is removed via deleteExpense so storage stays
+ * tidy and totals don't double-count.
+ *
+ * Returns the number of duplicates that were removed.
+ */
+export async function cleanupDuplicates(): Promise<number> {
+  await requireOwner()
+  const admin = createAdminClient()
+
+  const { data: all } = await admin
+    .from('expenses')
+    .select('id, vendor, amount, date, paid_in_cash, director_loan_id')
+  const { data: matchedRows } = await admin
+    .from('bank_transactions')
+    .select('matched_expense_id')
+    .not('matched_expense_id', 'is', null)
+  const matchedSet = new Set(
+    (matchedRows ?? []).map((r) => r.matched_expense_id),
+  )
+
+  const reconciled = (all ?? []).filter((r) =>
+    isReconciledRow({
+      paid_in_cash: r.paid_in_cash,
+      director_loan_id: r.director_loan_id,
+      matched: matchedSet.has(r.id),
+    }),
+  )
+  const unreconciled = (all ?? []).filter(
+    (r) =>
+      !isReconciledRow({
+        paid_in_cash: r.paid_in_cash,
+        director_loan_id: r.director_loan_id,
+        matched: matchedSet.has(r.id),
+      }),
+  )
+
+  const reconciledSigs = reconciled.map((r) => signatureOf(r))
+
+  let deleted = 0
+  for (const u of unreconciled) {
+    const sig = signatureOf(u)
+    if (reconciledSigs.some((rs) => isSameReceipt(rs, sig))) {
+      await deleteExpense(u.id)
+      deleted += 1
+    }
+  }
+
+  revalidatePath('/owner/invoices-reconcile')
+  return deleted
 }
 
 /**
