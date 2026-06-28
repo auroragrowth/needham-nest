@@ -84,6 +84,17 @@ export default async function ReconcilePage({
   }
   const cashTotal = cashPaid.reduce((a, e) => a + Number(e.amount), 0)
 
+  // Sign URLs for every receipt that has a stored file so the Preview
+  // link opens the image / PDF in a new tab without a round trip.
+  const previewUrls = new Map<string, string>()
+  for (const e of expenses) {
+    if (!e.receipt_path) continue
+    const { data: signed } = await admin.storage
+      .from('supplier-invoices')
+      .createSignedUrl(e.receipt_path, 60 * 60)
+    if (signed?.signedUrl) previewUrls.set(e.id, signed.signedUrl)
+  }
+
   // Build a quick lookup of candidate bank txns (debits with no match yet)
   // for the manual-match dropdown on the unmatched panel.
   const unmatchedTxns = txns.filter(
@@ -202,6 +213,16 @@ export default async function ReconcilePage({
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {previewUrls.get(e.id) && (
+                      <a
+                        href={previewUrls.get(e.id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg border border-brand-sage/60 bg-white px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-sage/10"
+                      >
+                        👁 Preview
+                      </a>
+                    )}
                     <form action={markExpenseAsPaidInCash.bind(null, e.id)}>
                       <button
                         type="submit"
@@ -299,8 +320,20 @@ export default async function ReconcilePage({
                     {e.reference && ` · ${e.reference}`}
                   </span>
                 </span>
-                <span className="font-mono text-xs">
-                  {fmtMoney(Number(e.amount))}
+                <span className="flex items-center gap-2">
+                  {previewUrls.get(e.id) && (
+                    <a
+                      href={previewUrls.get(e.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brand-amber hover:underline"
+                    >
+                      👁
+                    </a>
+                  )}
+                  <span className="font-mono text-xs">
+                    {fmtMoney(Number(e.amount))}
+                  </span>
                 </span>
               </li>
             ))}
@@ -329,8 +362,20 @@ export default async function ReconcilePage({
                     {e.reference && ` · ${e.reference}`}
                   </span>
                 </span>
-                <span className="font-mono text-xs">
-                  {fmtMoney(Number(e.amount))}
+                <span className="flex items-center gap-2">
+                  {previewUrls.get(e.id) && (
+                    <a
+                      href={previewUrls.get(e.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brand-amber hover:underline"
+                    >
+                      👁
+                    </a>
+                  )}
+                  <span className="font-mono text-xs">
+                    {fmtMoney(Number(e.amount))}
+                  </span>
                 </span>
               </li>
             ))}
@@ -366,8 +411,20 @@ export default async function ReconcilePage({
                     {e.reference && ` · ${e.reference}`}
                   </span>
                 </span>
-                <span className="font-mono text-xs">
-                  {fmtMoney(Number(e.amount))}
+                <span className="flex items-center gap-2">
+                  {previewUrls.get(e.id) && (
+                    <a
+                      href={previewUrls.get(e.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brand-amber hover:underline"
+                    >
+                      👁
+                    </a>
+                  )}
+                  <span className="font-mono text-xs">
+                    {fmtMoney(Number(e.amount))}
+                  </span>
                 </span>
               </li>
             ))}
