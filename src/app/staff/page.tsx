@@ -179,6 +179,12 @@ export default async function StaffHub({
           accent="off"
         />
         <HubTile
+          href="/staff/allergens"
+          title="Allergens"
+          status="Tap a dish, see what's in it"
+          accent="off"
+        />
+        <HubTile
           href="/me/profile"
           title="My profile"
           status="Update bank, uniform, address"
