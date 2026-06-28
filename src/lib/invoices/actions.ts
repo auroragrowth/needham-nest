@@ -323,6 +323,47 @@ export async function markExpenseAsDirectorPaid(
   revalidatePath('/owner/director-loan')
 }
 
+/**
+ * Delete a receipt entirely — the expense row, the file in storage, and
+ * any linked cash_movement (so the till's balance returns to what it
+ * was before the receipt was logged). Director loan entries are left
+ * intact so the lender side of the books isn't silently rewritten.
+ */
+export async function deleteExpense(expenseId: string): Promise<void> {
+  await requireOwner()
+  const admin = createAdminClient()
+
+  const { data: e } = await admin
+    .from('expenses')
+    .select('id, receipt_path, cash_movement_id')
+    .eq('id', expenseId)
+    .maybeSingle()
+  if (!e) return
+
+  // Clear any matched bank transaction so the bank line is free again.
+  await admin
+    .from('bank_transactions')
+    .update({ matched_expense_id: null, manual_match: false })
+    .eq('matched_expense_id', expenseId)
+
+  // Drop the file from storage (best-effort — don't block on errors).
+  if (e.receipt_path) {
+    await admin.storage.from('supplier-invoices').remove([e.receipt_path])
+  }
+
+  await admin.from('expenses').delete().eq('id', expenseId)
+
+  // Roll back the till hit if this was a cash-paid receipt.
+  if (e.cash_movement_id) {
+    await admin.from('cash_movements').delete().eq('id', e.cash_movement_id)
+  }
+
+  revalidatePath('/owner/invoices-reconcile')
+  revalidatePath('/owner/receipts')
+  revalidatePath('/manager/cash')
+  revalidatePath('/owner/expenses')
+}
+
 export async function manuallyMatchExpense(
   expenseId: string,
   bankTransactionId: string,

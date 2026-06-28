@@ -6,6 +6,7 @@ import {
   markExpenseAsPaidInCash,
   runAutoMatch,
 } from '@/lib/invoices/actions'
+import { DeleteReceiptButton } from './DeleteReceiptButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -240,6 +241,11 @@ export default async function ReconcilePage({
                         🏛 Director&apos;s loan →
                       </button>
                     </form>
+                    <DeleteReceiptButton
+                      expenseId={e.id}
+                      vendor={e.vendor}
+                      amount={Number(e.amount)}
+                    />
                   </div>
                 </div>
                 <form
@@ -331,6 +337,12 @@ export default async function ReconcilePage({
                       👁
                     </a>
                   )}
+                  <DeleteReceiptButton
+                    expenseId={e.id}
+                    vendor={e.vendor}
+                    amount={Number(e.amount)}
+                    compact
+                  />
                   <span className="font-mono text-xs">
                     {fmtMoney(Number(e.amount))}
                   </span>
@@ -373,6 +385,12 @@ export default async function ReconcilePage({
                       👁
                     </a>
                   )}
+                  <DeleteReceiptButton
+                    expenseId={e.id}
+                    vendor={e.vendor}
+                    amount={Number(e.amount)}
+                    compact
+                  />
                   <span className="font-mono text-xs">
                     {fmtMoney(Number(e.amount))}
                   </span>
@@ -422,6 +440,12 @@ export default async function ReconcilePage({
                       👁
                     </a>
                   )}
+                  <DeleteReceiptButton
+                    expenseId={e.id}
+                    vendor={e.vendor}
+                    amount={Number(e.amount)}
+                    compact
+                  />
                   <span className="font-mono text-xs">
                     {fmtMoney(Number(e.amount))}
                   </span>
