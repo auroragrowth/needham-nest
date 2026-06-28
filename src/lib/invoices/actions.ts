@@ -364,6 +364,70 @@ export async function deleteExpense(expenseId: string): Promise<void> {
   revalidatePath('/owner/expenses')
 }
 
+/**
+ * Merge two expenses into one — useful for multi-page receipts (Makro,
+ * Booker, etc.) that uploaded as separate rows. The 'source' row's
+ * receipt file(s) get appended to the 'target' as additional pages,
+ * then the source row is deleted. Bank match on the source is cleared
+ * so the bank line is freed (the target's match, if any, stays).
+ */
+export async function mergeIntoExpense(
+  sourceId: string,
+  targetId: string,
+): Promise<void> {
+  await requireOwner()
+  if (sourceId === targetId) return
+  const admin = createAdminClient()
+
+  const [{ data: src }, { data: tgt }] = await Promise.all([
+    admin
+      .from('expenses')
+      .select('id, receipt_path, additional_receipt_paths, cash_movement_id')
+      .eq('id', sourceId)
+      .maybeSingle(),
+    admin
+      .from('expenses')
+      .select('id, additional_receipt_paths')
+      .eq('id', targetId)
+      .maybeSingle(),
+  ])
+  if (!src || !tgt) return
+
+  // Build the new attachment list on the target.
+  const merged = [
+    ...(tgt.additional_receipt_paths ?? []),
+    ...(src.receipt_path ? [src.receipt_path] : []),
+    ...(src.additional_receipt_paths ?? []),
+  ]
+
+  await admin
+    .from('expenses')
+    .update({ additional_receipt_paths: merged })
+    .eq('id', targetId)
+
+  // Free any bank match on the source so the bank line is reusable.
+  await admin
+    .from('bank_transactions')
+    .update({ matched_expense_id: null, manual_match: false })
+    .eq('matched_expense_id', sourceId)
+
+  // Roll back source's till hit (it was a separate row pretending to be
+  // a separate cash withdrawal — the target keeps its own movement).
+  if (src.cash_movement_id) {
+    await admin
+      .from('cash_movements')
+      .delete()
+      .eq('id', src.cash_movement_id)
+  }
+
+  // Delete the source row but DON'T remove the files — they're now
+  // attached to the target.
+  await admin.from('expenses').delete().eq('id', sourceId)
+
+  revalidatePath('/owner/invoices-reconcile')
+  revalidatePath('/owner/expenses')
+}
+
 export async function manuallyMatchExpense(
   expenseId: string,
   bankTransactionId: string,

@@ -4,6 +4,7 @@ import {
   manuallyMatchExpense,
   markExpenseAsDirectorPaid,
   markExpenseAsPaidInCash,
+  mergeIntoExpense,
   runAutoMatch,
 } from '@/lib/invoices/actions'
 import { DeleteReceiptButton } from './DeleteReceiptButton'
@@ -17,6 +18,7 @@ type Expense = {
   amount: number
   reference: string | null
   receipt_path: string | null
+  additional_receipt_paths: string[] | null
   ai_extracted: boolean
   director_loan_id: string | null
   paid_in_cash: boolean
@@ -56,7 +58,7 @@ export default async function ReconcilePage({
     admin
       .from('expenses')
       .select(
-        'id, date, vendor, amount, reference, receipt_path, ai_extracted, director_loan_id, paid_in_cash, reconciled_at',
+        'id, date, vendor, amount, reference, receipt_path, additional_receipt_paths, ai_extracted, director_loan_id, paid_in_cash, reconciled_at',
       )
       .order('date', { ascending: false })
       .limit(200),
@@ -85,15 +87,24 @@ export default async function ReconcilePage({
   }
   const cashTotal = cashPaid.reduce((a, e) => a + Number(e.amount), 0)
 
-  // Sign URLs for every receipt that has a stored file so the Preview
-  // link opens the image / PDF in a new tab without a round trip.
-  const previewUrls = new Map<string, string>()
+  // Sign URLs for every receipt + any additional pages from merged
+  // multi-page uploads. previewUrls maps expense id → ordered list of
+  // signed URLs (primary first, then merged-in pages).
+  const previewUrls = new Map<string, string[]>()
   for (const e of expenses) {
-    if (!e.receipt_path) continue
-    const { data: signed } = await admin.storage
-      .from('supplier-invoices')
-      .createSignedUrl(e.receipt_path, 60 * 60)
-    if (signed?.signedUrl) previewUrls.set(e.id, signed.signedUrl)
+    const paths = [
+      ...(e.receipt_path ? [e.receipt_path] : []),
+      ...(e.additional_receipt_paths ?? []),
+    ]
+    if (paths.length === 0) continue
+    const signedList: string[] = []
+    for (const p of paths) {
+      const { data: signed } = await admin.storage
+        .from('supplier-invoices')
+        .createSignedUrl(p, 60 * 60)
+      if (signed?.signedUrl) signedList.push(signed.signedUrl)
+    }
+    if (signedList.length > 0) previewUrls.set(e.id, signedList)
   }
 
   // Build a quick lookup of candidate bank txns (debits with no match yet)
@@ -101,6 +112,10 @@ export default async function ReconcilePage({
   const unmatchedTxns = txns.filter(
     (t) => t.matched_expense_id === null && Number(t.amount) < 0,
   )
+
+  // For the merge dropdown — every other expense is a potential target.
+  // Sort by date desc so the most recent options come first.
+  const allOtherExpensesById = new Map(expenses.map((e) => [e.id, e]))
 
   return (
     <main className="mx-auto max-w-5xl">
@@ -214,15 +229,20 @@ export default async function ReconcilePage({
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {previewUrls.get(e.id) && (
-                      <a
-                        href={previewUrls.get(e.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg border border-brand-sage/60 bg-white px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-sage/10"
-                      >
-                        👁 Preview
-                      </a>
+                    {(previewUrls.get(e.id) ?? []).length > 0 && (
+                      <span className="flex flex-wrap items-center gap-1">
+                        {(previewUrls.get(e.id) ?? []).map((url, i, arr) => (
+                          <a
+                            key={i}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg border border-brand-sage/60 bg-white px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-sage/10"
+                          >
+                            👁 {arr.length === 1 ? 'Preview' : `Page ${i + 1}`}
+                          </a>
+                        ))}
+                      </span>
                     )}
                     <form action={markExpenseAsPaidInCash.bind(null, e.id)}>
                       <button
@@ -299,6 +319,40 @@ export default async function ReconcilePage({
                     Match
                   </button>
                 </form>
+                <form
+                  action={async (fd: FormData) => {
+                    'use server'
+                    const tid = String(fd.get('merge_target_id') ?? '')
+                    if (tid) await mergeIntoExpense(e.id, tid)
+                  }}
+                  className="mt-2 flex flex-wrap items-center gap-2 text-xs"
+                >
+                  <span className="text-brand-slate">
+                    Or merge this into another (multi-page receipt):
+                  </span>
+                  <select
+                    name="merge_target_id"
+                    className="rounded-md border border-brand-sage/60 bg-white px-2 py-1 text-xs"
+                  >
+                    <option value="">— pick the primary —</option>
+                    {expenses
+                      .filter((other) => other.id !== e.id)
+                      .slice(0, 30)
+                      .map((other) => (
+                        <option key={other.id} value={other.id}>
+                          {fmtDate(other.date)} ·{' '}
+                          {(other.vendor ?? 'Unknown').slice(0, 25)} ·{' '}
+                          {fmtMoney(Number(other.amount))}
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="submit"
+                    className="rounded-md border border-brand-sage/60 px-2 py-1 text-xs text-brand-forest hover:bg-brand-sage/10"
+                  >
+                    Merge →
+                  </button>
+                </form>
               </li>
             ))}
           </ul>
@@ -327,16 +381,18 @@ export default async function ReconcilePage({
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
-                  {previewUrls.get(e.id) && (
+                  {(previewUrls.get(e.id) ?? []).map((url, i, arr) => (
                     <a
-                      href={previewUrls.get(e.id)}
+                      key={i}
+                      href={url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-brand-amber hover:underline"
+                      title={arr.length > 1 ? `Page ${i + 1} of ${arr.length}` : 'Preview'}
                     >
-                      👁
+                      👁{arr.length > 1 ? ` p${i + 1}` : ''}
                     </a>
-                  )}
+                  ))}
                   <DeleteReceiptButton
                     expenseId={e.id}
                     vendor={e.vendor}
@@ -375,16 +431,18 @@ export default async function ReconcilePage({
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
-                  {previewUrls.get(e.id) && (
+                  {(previewUrls.get(e.id) ?? []).map((url, i, arr) => (
                     <a
-                      href={previewUrls.get(e.id)}
+                      key={i}
+                      href={url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-brand-amber hover:underline"
+                      title={arr.length > 1 ? `Page ${i + 1} of ${arr.length}` : 'Preview'}
                     >
-                      👁
+                      👁{arr.length > 1 ? ` p${i + 1}` : ''}
                     </a>
-                  )}
+                  ))}
                   <DeleteReceiptButton
                     expenseId={e.id}
                     vendor={e.vendor}
@@ -430,16 +488,18 @@ export default async function ReconcilePage({
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
-                  {previewUrls.get(e.id) && (
+                  {(previewUrls.get(e.id) ?? []).map((url, i, arr) => (
                     <a
-                      href={previewUrls.get(e.id)}
+                      key={i}
+                      href={url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-brand-amber hover:underline"
+                      title={arr.length > 1 ? `Page ${i + 1} of ${arr.length}` : 'Preview'}
                     >
-                      👁
+                      👁{arr.length > 1 ? ` p${i + 1}` : ''}
                     </a>
-                  )}
+                  ))}
                   <DeleteReceiptButton
                     expenseId={e.id}
                     vendor={e.vendor}
