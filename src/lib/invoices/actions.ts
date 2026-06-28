@@ -202,8 +202,9 @@ export async function runAutoMatch(): Promise<{
 
   const { data: expenses } = await admin
     .from('expenses')
-    .select('id, vendor, amount, director_loan_id')
+    .select('id, vendor, amount, director_loan_id, paid_in_cash')
     .is('director_loan_id', null)
+    .eq('paid_in_cash', false)
 
   const candidateExpenses = (expenses ?? []).filter(
     (e) => !alreadyMatched.has(e.id),
@@ -233,6 +234,56 @@ export async function runAutoMatch(): Promise<{
   revalidatePath('/owner/invoices-reconcile')
   revalidatePath('/owner/bank')
   return { matched, unmatched }
+}
+
+/**
+ * Mark a receipt as paid in cash from the till. Creates a corresponding
+ * cash_movements 'out' entry so the till total is reduced automatically,
+ * and links it back via expense.cash_movement_id for the audit trail.
+ */
+export async function markExpenseAsPaidInCash(
+  expenseId: string,
+): Promise<void> {
+  const session = await requireOwner()
+  const admin = createAdminClient()
+  const { data: e } = await admin
+    .from('expenses')
+    .select('id, date, amount, vendor, reference, cash_movement_id')
+    .eq('id', expenseId)
+    .maybeSingle()
+  if (!e) return
+
+  // Idempotent: don't double-deduct if already marked.
+  if (e.cash_movement_id) {
+    revalidatePath('/owner/invoices-reconcile')
+    return
+  }
+
+  const { data: mv } = await admin
+    .from('cash_movements')
+    .insert({
+      user_id: session.profileId,
+      date: e.date,
+      direction: 'out',
+      amount: e.amount,
+      reason: `Receipt — ${e.vendor ?? 'unknown supplier'}`,
+      reference: e.reference,
+    })
+    .select('id')
+    .single()
+
+  if (mv) {
+    await admin
+      .from('expenses')
+      .update({
+        paid_in_cash: true,
+        cash_movement_id: mv.id,
+        reconciled_at: new Date().toISOString(),
+      })
+      .eq('id', expenseId)
+  }
+  revalidatePath('/owner/invoices-reconcile')
+  revalidatePath('/manager/cash')
 }
 
 export async function markExpenseAsDirectorPaid(

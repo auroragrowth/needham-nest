@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import {
   manuallyMatchExpense,
   markExpenseAsDirectorPaid,
+  markExpenseAsPaidInCash,
   runAutoMatch,
 } from '@/lib/invoices/actions'
 
@@ -17,6 +18,7 @@ type Expense = {
   receipt_path: string | null
   ai_extracted: boolean
   director_loan_id: string | null
+  paid_in_cash: boolean
   reconciled_at: string | null
 }
 
@@ -53,7 +55,7 @@ export default async function ReconcilePage({
     admin
       .from('expenses')
       .select(
-        'id, date, vendor, amount, reference, receipt_path, ai_extracted, director_loan_id, reconciled_at',
+        'id, date, vendor, amount, reference, receipt_path, ai_extracted, director_loan_id, paid_in_cash, reconciled_at',
       )
       .order('date', { ascending: false })
       .limit(200),
@@ -72,12 +74,15 @@ export default async function ReconcilePage({
 
   const matched: Expense[] = []
   const directorPaid: Expense[] = []
+  const cashPaid: Expense[] = []
   const unmatched: Expense[] = []
   for (const e of expenses) {
-    if (e.director_loan_id) directorPaid.push(e)
+    if (e.paid_in_cash) cashPaid.push(e)
+    else if (e.director_loan_id) directorPaid.push(e)
     else if (matchedExpenseIds.has(e.id)) matched.push(e)
     else unmatched.push(e)
   }
+  const cashTotal = cashPaid.reduce((a, e) => a + Number(e.amount), 0)
 
   // Build a quick lookup of candidate bank txns (debits with no match yet)
   // for the manual-match dropdown on the unmatched panel.
@@ -138,7 +143,7 @@ export default async function ReconcilePage({
         </p>
       )}
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+      <section className="mt-6 grid gap-3 sm:grid-cols-4">
         <Stat
           label="Matched"
           value={`${matched.length}`}
@@ -148,6 +153,12 @@ export default async function ReconcilePage({
           label="Unmatched (flagged)"
           value={`${unmatched.length}`}
           tone={unmatched.length === 0 ? 'ok' : 'warn'}
+        />
+        <Stat
+          label="Paid from till"
+          value={`${cashPaid.length}`}
+          sub={cashTotal > 0 ? `£${cashTotal.toFixed(2)} cash out` : undefined}
+          tone="info"
         />
         <Stat
           label="Director-paid"
@@ -190,14 +201,25 @@ export default async function ReconcilePage({
                       {e.ai_extracted && ' · AI-extracted'}
                     </p>
                   </div>
-                  <form action={markExpenseAsDirectorPaid.bind(null, e.id)}>
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-brand-amber px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-amber/90"
-                    >
-                      Move to director&apos;s loan →
-                    </button>
-                  </form>
+                  <div className="flex flex-wrap gap-2">
+                    <form action={markExpenseAsPaidInCash.bind(null, e.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-brand-teal px-3 py-1.5 text-sm font-semibold text-brand-cream hover:bg-brand-teal-deep"
+                        title="Deduct this amount from the till's cash on hand"
+                      >
+                        💵 Paid from till
+                      </button>
+                    </form>
+                    <form action={markExpenseAsDirectorPaid.bind(null, e.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-brand-amber px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-amber/90"
+                      >
+                        🏛 Director&apos;s loan →
+                      </button>
+                    </form>
+                  </div>
                 </div>
                 <form
                   action={async (fd: FormData) => {
@@ -286,6 +308,43 @@ export default async function ReconcilePage({
         </section>
       )}
 
+      {/* CASH PAID */}
+      {cashPaid.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+            💵 Paid from till ({fmtMoney(cashTotal)} cash out)
+          </h2>
+          <ul className="mt-3 space-y-1">
+            {cashPaid.map((e) => (
+              <li
+                key={e.id}
+                className="flex items-baseline justify-between gap-2 rounded-md border border-brand-sage/30 bg-white px-3 py-2 text-sm"
+              >
+                <span>
+                  <span className="font-semibold">
+                    {e.vendor ?? 'Unknown'}
+                  </span>
+                  <span className="ml-2 text-xs text-brand-slate">
+                    {fmtDate(e.date)}
+                    {e.reference && ` · ${e.reference}`}
+                  </span>
+                </span>
+                <span className="font-mono text-xs">
+                  {fmtMoney(Number(e.amount))}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-brand-slate">
+            Each line above created a matching cash-out movement on{' '}
+            <Link className="text-brand-amber hover:underline" href="/manager/cash">
+              /manager/cash
+            </Link>
+            , so the till balance reflects the cost.
+          </p>
+        </section>
+      )}
+
       {/* DIRECTOR PAID */}
       {directorPaid.length > 0 && (
         <section className="mt-8">
@@ -326,10 +385,12 @@ export default async function ReconcilePage({
 function Stat({
   label,
   value,
+  sub,
   tone,
 }: {
   label: string
   value: string
+  sub?: string
   tone: 'ok' | 'warn' | 'info'
 }) {
   const border =
@@ -344,6 +405,7 @@ function Stat({
         {label}
       </p>
       <p className="mt-1 text-2xl font-semibold text-brand-forest">{value}</p>
+      {sub && <p className="mt-1 text-xs text-brand-slate">{sub}</p>}
     </div>
   )
 }
