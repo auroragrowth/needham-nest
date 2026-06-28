@@ -371,18 +371,23 @@ export async function markExpenseAsPaidInCash(
 export async function markExpenseAsDirectorPaid(
   expenseId: string,
 ): Promise<void> {
-  await requireOwner()
+  const session = await requireOwner()
   const admin = createAdminClient()
   const { data: e } = await admin
     .from('expenses')
-    .select('id, date, amount, vendor, reference')
+    .select('id, date, amount, vendor, reference, director_loan_id')
     .eq('id', expenseId)
     .maybeSingle()
   if (!e) return
+  // Idempotent — don't double-post if the button gets tapped twice.
+  if (e.director_loan_id) return
 
-  const { data: dl } = await admin
+  const { data: dl, error: dlErr } = await admin
     .from('director_loans')
     .insert({
+      // user_id FKs to profiles(id) and is NOT NULL — was the cause of
+      // the silent failure on this button. Use the signed-in owner.
+      user_id: session.profileId,
       date: e.date,
       direction: 'in', // director put money in (paid an expense personally)
       amount: e.amount,
@@ -391,6 +396,12 @@ export async function markExpenseAsDirectorPaid(
     })
     .select('id')
     .single()
+
+  if (dlErr) {
+    redirect(
+      `/owner/invoices-reconcile?errors=${encodeURIComponent('Director loan post failed: ' + dlErr.message)}`,
+    )
+  }
 
   if (dl) {
     await admin
