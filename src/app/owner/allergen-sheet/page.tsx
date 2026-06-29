@@ -51,7 +51,16 @@ export default async function AllergenSheetPage() {
             law (Natasha&apos;s Law for PPDS items).
           </p>
         </div>
-        <PrintButton />
+        <div className="flex gap-2">
+          <a
+            href="/owner/allergen-sheet/pdf"
+            download
+            className="rounded-lg bg-brand-teal px-3 py-1.5 text-sm font-semibold text-brand-cream hover:bg-brand-teal-deep"
+          >
+            Download PDF
+          </a>
+          <PrintButton />
+        </div>
       </div>
 
       <section className="border-b border-black/20 pb-3">
