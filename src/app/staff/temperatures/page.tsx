@@ -87,6 +87,21 @@ export default async function TemperaturesListPage({
         Tap an appliance to log its current temperature.
       </p>
 
+      <Link
+        href="/staff/cooked-meats"
+        className="mt-4 flex items-center justify-between rounded-xl border-2 border-brand-amber bg-brand-amber/10 p-4 text-brand-forest transition hover:bg-brand-amber/20"
+      >
+        <span>
+          <span className="block text-base font-semibold">
+            🍗 Cooked meat probe check
+          </span>
+          <span className="block text-xs text-brand-slate">
+            Log core temperature (must be ≥75 °C)
+          </span>
+        </span>
+        <span className="text-2xl text-brand-amber">→</span>
+      </Link>
+
       {params.notice && (
         <p className="mt-4 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
           {params.notice}
