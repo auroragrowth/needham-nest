@@ -120,17 +120,64 @@ export async function markPayslipPaid(
   const session = await requireOwner()
   const method = String(formData.get('paid_method') ?? '').trim() || 'BACS'
   const admin = createAdminClient()
+
+  // If paid in cash, create a matching till cash-out so the cash on
+  // hand drops by the net pay automatically. Link the movement back
+  // on the payslip so unmarkPayslipPaid can roll it back.
+  let cashMovementId: string | null = null
+  if (method === 'Cash') {
+    const { data: ps } = await admin
+      .from('payslips')
+      .select(
+        'net_pay, pay_date, cash_movement_id, staff_id, profiles!inner(name)',
+      )
+      .eq('id', payslipId)
+      .maybeSingle()
+    type PayslipRow = {
+      net_pay: number
+      pay_date: string
+      cash_movement_id: string | null
+      profiles: { name: string } | { name: string }[] | null
+    }
+    const row = ps as unknown as PayslipRow | null
+    const staffName = Array.isArray(row?.profiles)
+      ? (row?.profiles?.[0]?.name ?? 'staff')
+      : (row?.profiles?.name ?? 'staff')
+    // Idempotent — don't double-deduct if the button gets tapped twice
+    // (e.g. from a bad connection).
+    if (row && !row.cash_movement_id && Number(row.net_pay) > 0) {
+      const { data: mv } = await admin
+        .from('cash_movements')
+        .insert({
+          user_id: session.profileId,
+          date: row.pay_date,
+          direction: 'out',
+          amount: row.net_pay,
+          reason: `Wages (cash) — ${staffName}`,
+          reference: payslipId,
+        })
+        .select('id')
+        .single()
+      cashMovementId = mv?.id ?? null
+    } else if (row?.cash_movement_id) {
+      cashMovementId = row.cash_movement_id
+    }
+  }
+
   await admin
     .from('payslips')
     .update({
       paid_at: new Date().toISOString(),
       paid_method: method,
       paid_by: session.profileId,
+      ...(cashMovementId ? { cash_movement_id: cashMovementId } : {}),
     })
     .eq('id', payslipId)
+
   revalidatePath(`/owner/payslips/${staffId}`)
   revalidatePath(`/owner/payslips/${staffId}/${payslipId}`)
   revalidatePath('/staff/me/payslips')
+  revalidatePath('/manager/cash')
   redirect(`/owner/payslips/${staffId}/${payslipId}?notice=Marked+paid`)
 }
 
@@ -140,13 +187,34 @@ export async function unmarkPayslipPaid(
 ) {
   await requireOwner()
   const admin = createAdminClient()
+
+  // If the payment created a till cash-out, roll it back so the cash
+  // total returns to what it was before.
+  const { data: ps } = await admin
+    .from('payslips')
+    .select('cash_movement_id')
+    .eq('id', payslipId)
+    .maybeSingle()
+  if (ps?.cash_movement_id) {
+    await admin
+      .from('cash_movements')
+      .delete()
+      .eq('id', ps.cash_movement_id)
+  }
+
   await admin
     .from('payslips')
-    .update({ paid_at: null, paid_method: null, paid_by: null })
+    .update({
+      paid_at: null,
+      paid_method: null,
+      paid_by: null,
+      cash_movement_id: null,
+    })
     .eq('id', payslipId)
   revalidatePath(`/owner/payslips/${staffId}`)
   revalidatePath(`/owner/payslips/${staffId}/${payslipId}`)
   revalidatePath('/staff/me/payslips')
+  revalidatePath('/manager/cash')
   redirect(
     `/owner/payslips/${staffId}/${payslipId}?notice=Marked+unpaid`,
   )
