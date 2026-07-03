@@ -82,32 +82,49 @@ export default async function GeneratePayslipPage({
         </p>
       )}
 
+      {/* Period picker — GET form, reloads the page with new URL params
+          so Hours worked + Gross pay recompute against the timesheet.
+          Change the dates here, tap 'Load period', THEN edit the save
+          form below. */}
+      <form
+        method="get"
+        className="mt-6 space-y-3 rounded-xl border-2 border-brand-teal/50 bg-brand-teal/5 p-4"
+      >
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+          Period · change dates and tap Load
+        </p>
+        <p className="text-xs text-brand-slate">
+          Wages run Mon → Sun, paid the following Friday (one week in
+          arrears). The default below is the last completed week.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="From" name="from" type="date" defaultValue={from} required />
+          <Field label="To" name="to" type="date" defaultValue={to} required />
+        </div>
+        <button
+          type="submit"
+          className="rounded-lg bg-brand-teal-deep px-4 py-2 text-sm font-semibold text-brand-cream hover:bg-brand-teal"
+        >
+          Load period →
+        </button>
+      </form>
+
+      <p className="mt-4 text-xs text-brand-slate">
+        Currently showing timesheet for <strong>{from}</strong> →{' '}
+        <strong>{to}</strong>. Below is what will be saved.
+      </p>
+
       <form
         action={save}
-        className="mt-6 space-y-4 rounded-xl border border-brand-sage/40 bg-white p-6"
+        className="mt-4 space-y-4 rounded-xl border border-brand-sage/40 bg-white p-6"
       >
+        <input type="hidden" name="period_from" value={from} />
+        <input type="hidden" name="period_to" value={to} />
+
         <fieldset className="grid grid-cols-2 gap-3">
           <legend className="col-span-2 text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
-            Period
+            Pay date + tax
           </legend>
-          <p className="col-span-2 text-xs text-brand-slate">
-            Wages run Mon → Sun, paid the following Friday (one week
-            in arrears). Defaults below cover the last completed week.
-          </p>
-          <Field
-            label="From"
-            name="period_from"
-            type="date"
-            defaultValue={from}
-            required
-          />
-          <Field
-            label="To"
-            name="period_to"
-            type="date"
-            defaultValue={to}
-            required
-          />
           <Field
             label="Pay date"
             name="pay_date"
