@@ -17,6 +17,9 @@ function fmtDate(d: string): string {
 export default async function MyPayslipsPage() {
   const session = await getSession()
   if (!session) redirect('/login')
+  // Payslips are owner-only per Paul's request — staff / manager can't
+  // reach this page even if they type the URL manually.
+  if (session.role !== 'owner') redirect('/staff')
 
   const admin = createAdminClient()
   const { data: payslips } = await admin
