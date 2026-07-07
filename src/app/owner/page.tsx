@@ -261,6 +261,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/payroll-runs"
+          title="🏦 Payroll runs + HMRC pot"
+          subtitle="Track weekly + monthly Sage runs. What to put aside."
+          cta="Open →"
+        />
+        <Card
           href="/manager/staffing-cost/history"
           title="Staffing cost history"
           subtitle="Day-by-day totals with running cumulative"
