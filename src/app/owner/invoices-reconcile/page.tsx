@@ -67,7 +67,7 @@ export default async function ReconcilePage({
       .from('bank_transactions')
       .select('id, date, description, amount, matched_expense_id')
       .order('date', { ascending: false })
-      .limit(500),
+      .limit(5000),
   ])
 
   const expenses = (expensesRaw ?? []) as Expense[]
@@ -318,7 +318,6 @@ export default async function ReconcilePage({
                             Number(t.amount) + Math.abs(Number(e.amount)),
                           ) >= 0.01,
                       )
-                      .slice(0, 20)
                       .map((t) => (
                         <option key={t.id} value={t.id}>
                           (other) {fmtDate(t.date)} ·{' '}
