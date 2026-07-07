@@ -29,9 +29,9 @@ function addDays(d: Date, n: number): Date {
 function dayLabel(iso: string): { day: string; date: string } {
   const d = new Date(iso + 'T00:00:00Z')
   return {
-    day: d.toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short' }),
+    day: d.toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short' }),
     date: d.toLocaleDateString('en-GB', {
-      timeZone: 'UTC',
+      timeZone: 'Europe/London',
       day: 'numeric',
       month: 'short',
     }),
@@ -70,7 +70,7 @@ export default async function StaffCostsWeekPage({
             Staff cost — week overview
           </h1>
           <p className="mt-1 text-sm text-brand-slate">
-            {dayLabel(from).date} – {dayLabel(to).date} · GMT
+            {dayLabel(from).date} – {dayLabel(to).date} · UK time
           </p>
         </div>
         <div className="flex gap-2 print:hidden">

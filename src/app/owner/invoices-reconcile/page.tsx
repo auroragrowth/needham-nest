@@ -40,7 +40,7 @@ function fmtMoney(n: number): string {
 
 function fmtDate(d: string): string {
   return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     day: 'numeric',
     month: 'short',
     year: 'numeric',

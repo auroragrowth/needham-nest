@@ -26,7 +26,7 @@ function addDays(d: Date, n: number): Date {
 function fmtTime(iso: string | null): string {
   if (!iso) return '— still on —'
   return new Date(iso).toLocaleTimeString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     hour: '2-digit',
     minute: '2-digit',
   })
@@ -34,7 +34,7 @@ function fmtTime(iso: string | null): string {
 
 function fmtDate(iso: string): string {
   return new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     weekday: 'short',
     day: 'numeric',
     month: 'short',

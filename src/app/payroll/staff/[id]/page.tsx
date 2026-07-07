@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 function fmtDate(d: string | null): string {
   if (!d) return '—'
   return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     day: 'numeric',
     month: 'short',
     year: 'numeric',

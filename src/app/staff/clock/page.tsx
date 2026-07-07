@@ -143,7 +143,7 @@ export default async function StaffDashboard({
                 {new Date(openShift.break_start_at).toLocaleTimeString(
                   'en-GB',
                   {
-                    timeZone: 'UTC',
+                    timeZone: 'Europe/London',
                     hour: '2-digit',
                     minute: '2-digit',
                   },
@@ -169,7 +169,7 @@ export default async function StaffDashboard({
               <p className="mt-1 text-sm text-brand-slate">
                 Clocked in at{' '}
                 {onShiftSince!.toLocaleTimeString('en-GB', {
-                  timeZone: 'UTC',
+                  timeZone: 'Europe/London',
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
@@ -214,7 +214,7 @@ export default async function StaffDashboard({
             </p>
             <p className="mt-2 text-4xl font-semibold text-brand-forest">
               {now.toLocaleTimeString('en-GB', {
-                timeZone: 'UTC',
+                timeZone: 'Europe/London',
                 hour: '2-digit',
                 minute: '2-digit',
               })}
@@ -261,7 +261,7 @@ export default async function StaffDashboard({
                 <div>
                   <p className="text-brand-forest">
                     {start.toLocaleDateString('en-GB', {
-                      timeZone: 'UTC',
+                      timeZone: 'Europe/London',
                       weekday: 'short',
                       day: 'numeric',
                       month: 'short',
@@ -269,14 +269,14 @@ export default async function StaffDashboard({
                   </p>
                   <p className="text-xs text-brand-slate">
                     {start.toLocaleTimeString('en-GB', {
-                      timeZone: 'UTC',
+                      timeZone: 'Europe/London',
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                     {' → '}
                     {end
                       ? end.toLocaleTimeString('en-GB', {
-                          timeZone: 'UTC',
+                          timeZone: 'Europe/London',
                           hour: '2-digit',
                           minute: '2-digit',
                         })

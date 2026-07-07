@@ -26,7 +26,7 @@ function startOfMonUTC(d: Date): Date {
 
 function fmtDate(d: string): string {
   return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -36,7 +36,7 @@ function fmtDate(d: string): string {
 function fmtTime(iso: string | null): string {
   if (!iso) return '— on shift —'
   return new Date(iso).toLocaleTimeString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     hour: '2-digit',
     minute: '2-digit',
   })
@@ -94,7 +94,7 @@ export default async function PayrollWeeklyHours({
         Weekly hours
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        {fmtDate(from)} – {fmtDate(to)} · GMT · every shift below counts
+        {fmtDate(from)} – {fmtDate(to)} · UK time · every shift below counts
         clocked time minus unpaid breaks.
       </p>
 

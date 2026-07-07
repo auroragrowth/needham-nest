@@ -124,7 +124,7 @@ export type PdfEmployer = {
 
 function fmtDate(iso: string): string {
   return new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     day: 'numeric',
     month: 'short',
     year: 'numeric',

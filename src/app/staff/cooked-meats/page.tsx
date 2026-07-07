@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 function fmtWhen(iso: string): string {
   const d = new Date(iso)
   return d.toLocaleString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     day: 'numeric',
     month: 'short',
     hour: '2-digit',

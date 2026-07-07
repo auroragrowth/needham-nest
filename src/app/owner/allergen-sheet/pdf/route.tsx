@@ -138,7 +138,7 @@ type Item = {
 
 function AllergenDocument({ items }: { items: Item[] }) {
   const today = new Date().toLocaleDateString('en-GB', {
-    timeZone: 'UTC',
+    timeZone: 'Europe/London',
     day: 'numeric',
     month: 'long',
     year: 'numeric',

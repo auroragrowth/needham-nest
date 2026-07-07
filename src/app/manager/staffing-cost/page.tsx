@@ -135,7 +135,7 @@ export default async function StaffingCostPage({
                     {p.segments.map((seg, i) => (
                       <li key={i} className="font-mono">
                         {new Date(seg.clock_in).toLocaleTimeString('en-GB', {
-                          timeZone: 'UTC',
+                          timeZone: 'Europe/London',
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
@@ -144,7 +144,7 @@ export default async function StaffingCostPage({
                           ? new Date(seg.clock_out).toLocaleTimeString(
                               'en-GB',
                               {
-                                timeZone: 'UTC',
+                                timeZone: 'Europe/London',
                                 hour: '2-digit',
                                 minute: '2-digit',
                               },
