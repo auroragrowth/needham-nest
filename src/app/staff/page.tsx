@@ -231,6 +231,12 @@ export default async function StaffHub({
           accent="off"
         />
         <HubTile
+          href="/risk-assessments"
+          title="Risk assessments"
+          status="Fire · manual handling · slips · COSHH"
+          accent="off"
+        />
+        <HubTile
           href="/shopping-list"
           title="Shopping list"
           status="Add what we need"

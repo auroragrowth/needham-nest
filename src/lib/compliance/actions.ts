@@ -23,7 +23,7 @@ export async function addRiskAssessment(formData: FormData) {
   const notes = String(formData.get('notes') ?? '').trim() || null
 
   if (!title) {
-    redirect('/owner/risk-assessments?error=Title+is+required')
+    redirect('/risk-assessments?error=Title+is+required')
   }
 
   const admin = createAdminClient()
@@ -32,11 +32,11 @@ export async function addRiskAssessment(formData: FormData) {
     .insert({ title, reviewed_at, next_review_at, notes })
   if (error) {
     redirect(
-      `/owner/risk-assessments?error=${encodeURIComponent(error.message)}`,
+      `/risk-assessments?error=${encodeURIComponent(error.message)}`,
     )
   }
-  revalidatePath('/owner/risk-assessments')
-  redirect('/owner/risk-assessments?notice=Assessment+added')
+  revalidatePath('/risk-assessments')
+  redirect('/risk-assessments?notice=Assessment+added')
 }
 
 export async function deleteRiskAssessment(id: string) {
@@ -48,11 +48,11 @@ export async function deleteRiskAssessment(id: string) {
     .eq('id', id)
   if (error) {
     redirect(
-      `/owner/risk-assessments?error=${encodeURIComponent(error.message)}`,
+      `/risk-assessments?error=${encodeURIComponent(error.message)}`,
     )
   }
-  revalidatePath('/owner/risk-assessments')
-  redirect('/owner/risk-assessments?notice=Removed')
+  revalidatePath('/risk-assessments')
+  redirect('/risk-assessments?notice=Removed')
 }
 
 // ---------- Accident log ----------
