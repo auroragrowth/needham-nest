@@ -158,12 +158,22 @@ export default async function StaffHub({
             accent="off"
           />
         )}
-        <HubTile
+        <Link
           href="/stock/locations"
-          title="Stock by location"
-          status="Move stock between fridges + storage"
-          accent="off"
-        />
+          className="block rounded-2xl border-2 p-5 transition active:scale-[0.98]"
+          style={{
+            backgroundColor: '#efd9f1',
+            borderColor: '#a066a3',
+            color: '#3a1f42',
+          }}
+        >
+          <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
+            📦 Stock by location
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
+            Move stock between fridges + storage
+          </p>
+        </Link>
         {hasPermission(session.role, perms, 'wastage') && (
           <HubTile
             href="/staff/wastage"
