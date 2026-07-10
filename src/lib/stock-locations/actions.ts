@@ -68,7 +68,7 @@ export async function moveStock(formData: FormData) {
   const to = String(formData.get('to_location_id') ?? '').trim()
   const qty = toNumber(formData.get('quantity'))
   const notes = String(formData.get('notes') ?? '').trim() || null
-  const back = String(formData.get('back') ?? '/staff/stock/locations')
+  const back = String(formData.get('back') ?? '/stock/locations')
 
   if (!itemId || !from || !to || !Number.isFinite(qty) || qty <= 0) {
     redirect(`${back}?error=Missing+item%2C+locations+or+quantity`)
@@ -100,7 +100,7 @@ export async function moveStock(formData: FormData) {
     moved_by: session.profileId,
   })
 
-  revalidatePath('/staff/stock/locations')
+  revalidatePath('/stock/locations')
   revalidatePath('/owner/stock/overview')
   revalidatePath('/owner/stock/alerts')
   revalidatePath('/owner')
@@ -115,7 +115,7 @@ export async function adjustPlacement(formData: FormData) {
   const locationId = String(formData.get('location_id') ?? '').trim()
   const qty = toNumber(formData.get('quantity'))
   const notes = String(formData.get('notes') ?? '').trim() || null
-  const back = String(formData.get('back') ?? '/staff/stock/locations')
+  const back = String(formData.get('back') ?? '/stock/locations')
 
   if (!itemId || !locationId || !Number.isFinite(qty) || qty < 0) {
     redirect(`${back}?error=Enter+a+quantity+of+0+or+more`)
@@ -157,7 +157,7 @@ export async function adjustPlacement(formData: FormData) {
     moved_by: session.profileId,
   })
 
-  revalidatePath('/staff/stock/locations')
+  revalidatePath('/stock/locations')
   revalidatePath('/owner/stock/overview')
   revalidatePath('/owner/stock/alerts')
   revalidatePath('/owner')
@@ -172,7 +172,7 @@ export async function receiveStock(formData: FormData) {
   const locationId = String(formData.get('location_id') ?? '').trim()
   const qty = toNumber(formData.get('quantity'))
   const notes = String(formData.get('notes') ?? '').trim() || null
-  const back = String(formData.get('back') ?? '/staff/stock/locations')
+  const back = String(formData.get('back') ?? '/stock/locations')
 
   if (!itemId || !locationId || !Number.isFinite(qty) || qty <= 0) {
     redirect(`${back}?error=Enter+a+positive+quantity`)
@@ -194,7 +194,7 @@ export async function receiveStock(formData: FormData) {
     moved_by: session.profileId,
   })
 
-  revalidatePath('/staff/stock/locations')
+  revalidatePath('/stock/locations')
   revalidatePath('/owner/stock/overview')
   revalidatePath('/owner/stock/alerts')
   revalidatePath('/owner')
@@ -237,7 +237,7 @@ export async function createLocation(formData: FormData) {
     redirect(`/owner/stock/locations?error=${encodeURIComponent(error.message)}`)
   }
   revalidatePath('/owner/stock/locations')
-  revalidatePath('/staff/stock/locations')
+  revalidatePath('/stock/locations')
   redirect('/owner/stock/locations?notice=Location+added')
 }
 
@@ -247,7 +247,7 @@ export async function deactivateLocation(id: string) {
   const admin = createAdminClient()
   await admin.from('stock_locations').update({ active: false }).eq('id', id)
   revalidatePath('/owner/stock/locations')
-  revalidatePath('/staff/stock/locations')
+  revalidatePath('/stock/locations')
   redirect('/owner/stock/locations?notice=Location+deactivated')
 }
 
@@ -256,6 +256,6 @@ export async function reactivateLocation(id: string) {
   const admin = createAdminClient()
   await admin.from('stock_locations').update({ active: true }).eq('id', id)
   revalidatePath('/owner/stock/locations')
-  revalidatePath('/staff/stock/locations')
+  revalidatePath('/stock/locations')
   redirect('/owner/stock/locations?notice=Location+reactivated')
 }

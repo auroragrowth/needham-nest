@@ -64,12 +64,12 @@ export default async function LocationDetailPage({
       (a.stock_items!.name ?? '').localeCompare(b.stock_items!.name ?? ''),
     )
 
-  const back = `/staff/stock/locations/${id}`
+  const back = `/stock/locations/${id}`
 
   return (
     <main className="mx-auto max-w-2xl">
       <Link
-        href="/staff/stock/locations"
+        href="/stock/locations"
         className="text-sm text-brand-amber hover:underline"
       >
         ← All locations

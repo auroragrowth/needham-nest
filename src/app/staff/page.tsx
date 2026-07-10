@@ -159,7 +159,7 @@ export default async function StaffHub({
           />
         )}
         <HubTile
-          href="/staff/stock/locations"
+          href="/stock/locations"
           title="Stock by location"
           status="Move stock between fridges + storage"
           accent="off"

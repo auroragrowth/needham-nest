@@ -180,6 +180,27 @@ export default async function OwnerDashboard({
         <span className="text-2xl text-brand-amber">→</span>
       </Link>
 
+      <Link
+        href="/stock/locations"
+        className="mt-4 flex items-center justify-between rounded-2xl border-2 p-5 transition"
+        style={{
+          backgroundColor: '#efd9f1',
+          borderColor: '#a066a3',
+          color: '#3a1f42',
+        }}
+      >
+        <span className="flex items-center gap-3">
+          <span className="text-3xl" aria-hidden>📦</span>
+          <span>
+            <span className="block text-lg font-semibold">Move stock between locations</span>
+            <span className="block text-sm" style={{ color: '#6a4670' }}>
+              Same view as the staff — pick a fridge, move / receive / adjust
+            </span>
+          </span>
+        </span>
+        <span className="text-2xl" style={{ color: '#a066a3' }}>→</span>
+      </Link>
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Card
           href="/owner/staff"

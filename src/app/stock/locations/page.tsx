@@ -70,10 +70,13 @@ export default async function StockLocationsIndex({
     grouped.set(l.zone, arr)
   }
 
+  const backHref = session.role === 'owner' ? '/owner' : '/staff'
+  const backLabel = session.role === 'owner' ? 'Dashboard' : 'Staff home'
+
   return (
     <main className="mx-auto max-w-2xl">
-      <Link href="/staff" className="text-sm text-brand-amber hover:underline">
-        ← Staff home
+      <Link href={backHref} className="text-sm text-brand-amber hover:underline">
+        ← {backLabel}
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
         Stock by location
@@ -111,7 +114,7 @@ export default async function StockLocationsIndex({
                 return (
                   <Link
                     key={l.id}
-                    href={`/staff/stock/locations/${l.id}`}
+                    href={`/stock/locations/${l.id}`}
                     className="block rounded-xl border border-brand-sage/40 bg-white p-4 transition hover:border-brand-teal/60 hover:bg-brand-teal/5"
                   >
                     <div className="flex items-baseline justify-between gap-2">
