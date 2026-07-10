@@ -29,7 +29,12 @@ export default async function OrderPadPage({
 
   const admin = createAdminClient()
 
-  const [{ data: items }, { data: counts }, { data: settings }] = await Promise.all([
+  const [
+    { data: items },
+    { data: counts },
+    { data: placements },
+    { data: settings },
+  ] = await Promise.all([
     admin
       .from('stock_items')
       .select('id, name, unit, par_level, reorder_at, cost_price, supplier_name, category')
@@ -42,6 +47,7 @@ export default async function OrderPadPage({
       .select('stock_item_id, on_hand, date')
       .order('date', { ascending: false })
       .order('created_at', { ascending: false }),
+    admin.from('stock_placements').select('stock_item_id, quantity'),
     session.authUserId
       ? admin
           .from('settings')
@@ -51,12 +57,23 @@ export default async function OrderPadPage({
       : Promise.resolve({ data: null } as { data: null }),
   ])
 
-  // Latest count per item
+  // Prefer live placement sums (source of truth for the new location system).
+  // Fall back to latest stock_counts row if an item has no placements at all.
+  const totalByPlacement = new Map<string, number>()
+  for (const p of placements ?? []) {
+    totalByPlacement.set(
+      p.stock_item_id,
+      (totalByPlacement.get(p.stock_item_id) ?? 0) + Number(p.quantity),
+    )
+  }
   const latestByItem = new Map<string, number>()
   for (const c of counts ?? []) {
     if (!latestByItem.has(c.stock_item_id)) {
       latestByItem.set(c.stock_item_id, Number(c.on_hand))
     }
+  }
+  for (const [id, qty] of totalByPlacement) {
+    latestByItem.set(id, qty)
   }
 
   // Filter: items below par (or no par set and no recent count, surface them too)

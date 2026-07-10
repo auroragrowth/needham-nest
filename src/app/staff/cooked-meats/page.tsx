@@ -54,9 +54,10 @@ export default async function CookedMeatsPage({
         Cooked meat check
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        UK law: cooked meat must reach{' '}
-        <span className="font-semibold">75 °C or above</span> at the thickest
-        part. Probe the centre and log it.
+        Use this for anything cooked from raw (baking sausages, grilling
+        bacon, cooking mince) AND for reheats. UK law:{' '}
+        <span className="font-semibold">75 °C or above</span> at the
+        thickest part. Probe the centre and log it.
       </p>
 
       {sp.notice && (
@@ -97,13 +98,20 @@ export default async function CookedMeatsPage({
             }}
           />
           <datalist id="cooked-meat-suggestions">
-            <option value="Chicken curry" />
-            <option value="Beef chilli" />
-            <option value="Ham (jacket)" />
-            <option value="Bacon (jacket / panini)" />
+            <option value="Sausages (raw bake — oven)" />
+            <option value="Sausage roll (raw bake — oven)" />
             <option value="Sausage roll (reheat)" />
-            <option value="Sausage (panini)" />
+            <option value="Sausage (panini / grill)" />
+            <option value="Bacon (raw grill)" />
+            <option value="Bacon (jacket / panini)" />
+            <option value="Chicken breast (raw cook)" />
+            <option value="Chicken curry (reheat)" />
+            <option value="Beef mince (chilli / bolognese cook)" />
+            <option value="Beef chilli (reheat)" />
+            <option value="Ham (jacket / hot filling)" />
             <option value="Tuna melt (panini)" />
+            <option value="Quiche (reheat)" />
+            <option value="Pasty (reheat)" />
           </datalist>
         </div>
 

@@ -26,6 +26,8 @@ export default async function OwnerDashboard({
     { count: stockCount },
     { data: expenses90 },
     { data: takings90 },
+    { data: parItems },
+    { data: allPlacements },
   ] = await Promise.all([
     session.authUserId
       ? admin
@@ -53,7 +55,25 @@ export default async function OwnerDashboard({
       .eq('active', true),
     admin.from('expenses').select('amount').gte('date', since90),
     admin.from('takings').select('amount').gte('date', since90),
+    admin
+      .from('stock_items')
+      .select('id, name, par_level')
+      .eq('active', true)
+      .not('par_level', 'is', null),
+    admin.from('stock_placements').select('stock_item_id, quantity'),
   ])
+
+  // Below-par: whole-shop total per item ≤ par level
+  const totalByItem = new Map<string, number>()
+  for (const p of allPlacements ?? []) {
+    totalByItem.set(
+      p.stock_item_id,
+      (totalByItem.get(p.stock_item_id) ?? 0) + Number(p.quantity),
+    )
+  }
+  const belowPar = (parItems ?? []).filter(
+    (i) => (totalByItem.get(i.id) ?? 0) <= Number(i.par_level),
+  )
 
   const expenseTotal90 = (expenses90 ?? []).reduce(
     (a, r) => a + Number(r.amount ?? 0),
@@ -85,6 +105,27 @@ export default async function OwnerDashboard({
         <p className="mt-4 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
           {params.notice}
         </p>
+      )}
+
+      {belowPar.length > 0 && (
+        <Link
+          href="/owner/stock/alerts"
+          className="mt-4 flex items-center justify-between rounded-xl border-2 border-brand-amber bg-brand-amber/10 p-4 text-brand-forest transition hover:bg-brand-amber/20"
+        >
+          <div>
+            <p className="text-sm font-semibold">
+              ⚠️ {belowPar.length} item{belowPar.length === 1 ? '' : 's'} below par
+            </p>
+            <p className="mt-1 text-xs text-brand-slate">
+              {belowPar
+                .slice(0, 3)
+                .map((i) => i.name)
+                .join(' · ')}
+              {belowPar.length > 3 ? ` · +${belowPar.length - 3} more` : ''}
+            </p>
+          </div>
+          <span className="text-lg text-brand-amber">→</span>
+        </Link>
       )}
 
       {!hasPin && (
@@ -162,6 +203,28 @@ export default async function OwnerDashboard({
           href="/owner/stock"
           title="Stock items"
           subtitle={`${stockCount ?? 0} active items`}
+          cta="Manage →"
+        />
+        <Card
+          href="/owner/stock/overview"
+          title="📦 Stock by location"
+          subtitle="Every item × every fridge / freezer / store"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/stock/alerts"
+          title="⚠️ Par alerts"
+          subtitle={
+            belowPar.length > 0
+              ? `${belowPar.length} below par right now`
+              : 'All above par'
+          }
+          cta="Open →"
+        />
+        <Card
+          href="/owner/stock/locations"
+          title="Stock locations"
+          subtitle="Add / edit fridges, freezers, storage areas"
           cta="Manage →"
         />
         <Card

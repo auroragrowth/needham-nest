@@ -158,6 +158,12 @@ export default async function StaffHub({
             accent="off"
           />
         )}
+        <HubTile
+          href="/staff/stock/locations"
+          title="Stock by location"
+          status="Move stock between fridges + storage"
+          accent="off"
+        />
         {hasPermission(session.role, perms, 'wastage') && (
           <HubTile
             href="/staff/wastage"
