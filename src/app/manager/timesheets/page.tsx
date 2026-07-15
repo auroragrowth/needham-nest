@@ -47,11 +47,18 @@ type Row = {
 export default async function TimesheetsPage() {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role !== 'manager' && session.role !== 'owner') {
-    redirect('/')
-  }
 
   const admin = createAdminClient()
+
+  if (session.role === 'staff') {
+    const { data } = await admin
+      .from('profiles')
+      .select('manager_access')
+      .eq('id', session.profileId)
+      .maybeSingle()
+    if (!data?.manager_access) redirect('/')
+  }
+
   const now = new Date()
 
   const [{ data: staff }, { data: weekLogs }] = await Promise.all([

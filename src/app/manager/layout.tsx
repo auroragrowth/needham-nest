@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { requireDob } from '@/lib/auth/dob-gate'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { RoleHeader } from '@/components/shared/RoleHeader'
 
 export default async function ManagerLayout({
@@ -10,9 +11,18 @@ export default async function ManagerLayout({
 }) {
   const session = await getSession()
   if (!session) redirect('/login')
-  // Owner + manager both use the manager area (rota, leave, compliance,
-  // timesheets, cash, wastage). Staff stays out.
-  if (session.role === 'staff') redirect('/staff')
+  // Owner + manager use the manager area (rota, leave, compliance,
+  // timesheets, cash, wastage). Staff with manager_access=true also pass —
+  // covers casual keyholders / supervisors who are HR-classified as staff.
+  if (session.role === 'staff') {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from('profiles')
+      .select('manager_access')
+      .eq('id', session.profileId)
+      .maybeSingle()
+    if (!data?.manager_access) redirect('/staff')
+  }
   await requireDob(session.profileId)
 
   return (
