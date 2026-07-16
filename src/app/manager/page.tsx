@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSession } from '@/lib/auth/session'
 
 function startOfTodayIso(): string {
   const d = new Date()
@@ -7,8 +8,18 @@ function startOfTodayIso(): string {
   return d.toISOString()
 }
 
+function formatDuration(ms: number): string {
+  const mins = Math.max(0, Math.floor(ms / 60000))
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
+
 export default async function ManagerDashboard() {
   const admin = createAdminClient()
+  const session = await getSession()
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     .toISOString()
@@ -22,6 +33,7 @@ export default async function ManagerDashboard() {
     { data: tasks },
     { data: cleanLogsToday },
     { data: wastageWeek },
+    { data: myOpenShift },
   ] = await Promise.all([
     admin
       .from('time_logs')
@@ -46,7 +58,20 @@ export default async function ManagerDashboard() {
       .select('quantity, unit_cost')
       .not('wastage_reason', 'is', null)
       .gte('date', sevenDaysAgo),
+    session
+      ? admin
+          .from('time_logs')
+          .select('clock_in')
+          .eq('user_id', session.profileId)
+          .is('clock_out', null)
+          .maybeSingle()
+      : Promise.resolve({ data: null } as { data: null }),
   ])
+
+  const isOnShift = Boolean(myOpenShift)
+  const shiftDurationMs = isOnShift
+    ? Date.now() - new Date(myOpenShift!.clock_in).getTime()
+    : 0
 
   const wastageCostWeek = (wastageWeek ?? []).reduce(
     (a, r) =>
@@ -76,8 +101,32 @@ export default async function ManagerDashboard() {
       </p>
 
       <Link
+        href="/staff/clock"
+        className={`mt-6 flex items-center justify-between rounded-2xl border-2 p-5 transition ${
+          isOnShift
+            ? 'border-brand-teal-deep bg-brand-teal/10 text-brand-teal-deep hover:bg-brand-teal/20'
+            : 'border-brand-forest bg-brand-forest/5 text-brand-forest hover:bg-brand-forest/10'
+        }`}
+      >
+        <span className="flex items-center gap-3">
+          <span className="text-3xl" aria-hidden>⏱️</span>
+          <span>
+            <span className="block text-lg font-semibold">
+              {isOnShift ? 'Clock out' : 'Clock in'}
+            </span>
+            <span className="block text-sm text-brand-slate">
+              {isOnShift
+                ? `On shift · ${formatDuration(shiftDurationMs)}`
+                : 'Tap to start your shift'}
+            </span>
+          </span>
+        </span>
+        <span className="text-2xl">→</span>
+      </Link>
+
+      <Link
         href="/pick-mix"
-        className="mt-6 flex items-center justify-between rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-5 text-brand-forest transition hover:bg-brand-amber/20"
+        className="mt-4 flex items-center justify-between rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-5 text-brand-forest transition hover:bg-brand-amber/20"
       >
         <span className="flex items-center gap-3">
           <span className="text-3xl" aria-hidden>🍬</span>
