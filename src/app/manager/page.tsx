@@ -148,6 +148,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/owner/clock-qr?download=1"
+          title="📱 Clock QR posters"
+          subtitle="Printable codes: clock in / out, break start / end"
+          cta="Download PDF →"
+        />
+        <Card
           href="/me/profile"
           title="My profile"
           subtitle="Update your own details / bank / uniform"

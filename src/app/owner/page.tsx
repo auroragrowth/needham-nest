@@ -374,6 +374,12 @@ export default async function OwnerDashboard({
           subtitle="Printable PDF for inspectors"
           cta="Generate →"
         />
+        <Card
+          href="/owner/clock-qr?download=1"
+          title="📱 Clock QR posters"
+          subtitle="Printable codes: clock in / out, break start / end"
+          cta="Download PDF →"
+        />
       </div>
 
       <h2 className="mt-8 text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">

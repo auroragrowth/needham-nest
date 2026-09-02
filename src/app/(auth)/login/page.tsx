@@ -6,7 +6,7 @@ import { PinPad } from '@/components/shared/PinPad'
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; notice?: string }>
+  searchParams: Promise<{ error?: string; notice?: string; next?: string }>
 }) {
   const params = await searchParams
 
@@ -37,7 +37,7 @@ export default async function LoginPage({
       )}
 
       <div className="mt-6">
-        <PinPad action={signInWithPin} />
+        <PinPad action={signInWithPin} next={params.next} />
       </div>
 
       <p className="mt-8 text-xs text-brand-slate">

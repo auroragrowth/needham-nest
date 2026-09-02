@@ -45,10 +45,15 @@ function shiftMs(
 export default async function StaffDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; error?: string }>
+  searchParams: Promise<{ notice?: string; error?: string; action?: string }>
 }) {
   const params = await searchParams
-  const session = await requireStaffFeature('clock')
+  // A scanned clock QR lands here as e.g. ?action=clock-in. Preserve that
+  // intent through the login redirect if the session has expired.
+  const returnTo = params.action
+    ? `/staff/clock?action=${encodeURIComponent(params.action)}`
+    : undefined
+  const session = await requireStaffFeature('clock', returnTo)
 
   const admin = createAdminClient()
   const now = new Date()
@@ -108,6 +113,45 @@ export default async function StaffDashboard({
   })()
   const requiredBreakMinutes = isUnder18 ? 30 : 20
 
+  // Deep-linked action from a scanned QR (?action=clock-in|clock-out|
+  // break-start|break-end). We only ever show a one-tap CONFIRM here — the
+  // GET itself never mutates, so a stray scan can't clock anyone in/out.
+  const onBreak = Boolean(openShift?.break_start_at)
+  type ActionKind = 'clockIn' | 'clockOut' | 'startBreak' | 'endBreak'
+  const actionSpecs: Record<
+    string,
+    { verb: string; valid: boolean; kind: ActionKind }
+  > = {
+    'clock-in': { verb: 'clock in', valid: !isOnShift, kind: 'clockIn' },
+    'clock-out': {
+      verb: 'clock out',
+      valid: isOnShift && !onBreak,
+      kind: 'clockOut',
+    },
+    'break-start': {
+      verb: 'go on break',
+      valid: isOnShift && !onBreak,
+      kind: 'startBreak',
+    },
+    'break-end': {
+      verb: 'return from break',
+      valid: isOnShift && onBreak,
+      kind: 'endBreak',
+    },
+  }
+  const requested = params.action ? actionSpecs[params.action] : undefined
+  let invalidMsg = ''
+  if (requested && !requested.valid) {
+    if (!isOnShift) invalidMsg = "You're not clocked in yet."
+    else if (onBreak && requested.kind !== 'endBreak')
+      invalidMsg = "You're on a break — tap Return from break first."
+    else if (!onBreak && requested.kind === 'endBreak')
+      invalidMsg = "You're not on a break right now."
+    else if (isOnShift && requested.kind === 'clockIn')
+      invalidMsg = "You're already clocked in."
+    else invalidMsg = "That action isn't available right now."
+  }
+
   const todayMs = (todays ?? []).reduce((acc, l) => acc + shiftMs(l, now), 0)
   const weekMs = (weekly ?? []).reduce((acc, l) => acc + shiftMs(l, now), 0)
 
@@ -122,6 +166,66 @@ export default async function StaffDashboard({
         <p className="mb-4 rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-center text-sm text-brand-forest">
           {params.error}
         </p>
+      )}
+
+      {params.action && (
+        <section className="mb-4 rounded-xl border-2 border-brand-forest bg-white p-6 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-slate">
+            {session.name}
+          </p>
+          {requested && requested.valid ? (
+            <>
+              <p className="mt-1 text-lg font-semibold text-brand-forest">
+                Tap to {requested.verb}
+              </p>
+              <div className="mt-4">
+                {requested.kind === 'clockIn' && (
+                  <form action={clockIn}>
+                    <button
+                      type="submit"
+                      className="w-full rounded-2xl bg-brand-forest px-6 py-5 text-xl font-semibold text-brand-cream shadow-sm transition active:scale-[0.98] hover:bg-brand-olive"
+                    >
+                      Clock in
+                    </button>
+                  </form>
+                )}
+                {requested.kind === 'clockOut' && (
+                  <form action={clockOut}>
+                    <button
+                      type="submit"
+                      className="w-full rounded-2xl bg-brand-amber px-6 py-5 text-xl font-semibold text-brand-forest shadow-sm transition active:scale-[0.98] hover:bg-brand-amber/90"
+                    >
+                      Clock out
+                    </button>
+                  </form>
+                )}
+                {requested.kind === 'startBreak' && (
+                  <form action={startBreak}>
+                    <button
+                      type="submit"
+                      className="w-full rounded-2xl bg-brand-sage px-6 py-5 text-xl font-semibold text-brand-forest shadow-sm transition active:scale-[0.98] hover:bg-brand-sage/80"
+                    >
+                      Go on break
+                    </button>
+                  </form>
+                )}
+                {requested.kind === 'endBreak' && (
+                  <BackToWorkButton
+                    breakStartAt={openShift!.break_start_at!}
+                    requiredMinutes={requiredBreakMinutes}
+                  />
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-brand-slate">
+              {requested
+                ? invalidMsg
+                : 'That link is not recognised.'}{' '}
+              Use the buttons below.
+            </p>
+          )}
+        </section>
       )}
 
       <section className="rounded-xl border border-brand-sage/40 bg-white p-6 text-center">

@@ -12,20 +12,33 @@ import { clearSession, createSession } from './session'
 export async function signInWithPin(formData: FormData) {
   const pin = String(formData.get('pin') ?? '').trim()
 
+  // Optional return path (e.g. a scanned clock QR). Only accept internal
+  // paths — never an absolute/protocol-relative URL that could redirect
+  // off-site after login.
+  const nextRaw = String(formData.get('next') ?? '')
+  const nextPath =
+    nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : null
+
   if (!/^\d{4}$/.test(pin)) {
-    redirect('/login?error=PIN+must+be+4+digits')
+    redirect(
+      `/login?error=PIN+must+be+4+digits${
+        nextPath ? `&next=${encodeURIComponent(nextPath)}` : ''
+      }`,
+    )
   }
+
+  const nextQs = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ''
 
   const admin = createAdminClient()
   const { data, error } = await admin.rpc('verify_pin', { p_pin: pin })
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`)
+    redirect(`/login?error=${encodeURIComponent(error.message)}${nextQs}`)
   }
 
   const match = Array.isArray(data) ? data[0] : null
   if (!match) {
-    redirect('/login?error=PIN+not+recognised')
+    redirect(`/login?error=PIN+not+recognised${nextQs}`)
   }
 
   await createSession({
@@ -36,7 +49,7 @@ export async function signInWithPin(formData: FormData) {
   })
 
   revalidatePath('/', 'layout')
-  redirect('/')
+  redirect(nextPath ?? '/')
 }
 
 /**

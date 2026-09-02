@@ -32,9 +32,18 @@ export function hasPermission(
  */
 export async function requireStaffFeature(
   feature: StaffFeature,
+  returnTo?: string,
 ): Promise<SessionPayload> {
   const session = await getSession()
-  if (!session) redirect('/login')
+  if (!session) {
+    // Send them back to where they were headed after they sign in — e.g. a
+    // scanned clock QR at /staff/clock?action=…. Only internal paths.
+    const safe =
+      returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
+        ? returnTo
+        : null
+    redirect(safe ? `/login?next=${encodeURIComponent(safe)}` : '/login')
+  }
 
   // Owner / manager bypass entirely
   if (session.role !== 'staff') return session

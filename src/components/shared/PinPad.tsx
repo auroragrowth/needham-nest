@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 
 type Props = {
   action: (formData: FormData) => Promise<void>
+  /** Optional internal path to return to after a successful sign-in. */
+  next?: string
 }
 
 /**
@@ -11,7 +13,7 @@ type Props = {
  * entered. Works on iPad iOS 15 (legacy .click() path) and modern Safari
  * (requestSubmit). The visible Sign in button is the manual fallback.
  */
-export function PinPad({ action }: Props) {
+export function PinPad({ action, next }: Props) {
   const [pin, setPin] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -47,6 +49,7 @@ export function PinPad({ action }: Props) {
       action={action}
       className="flex flex-col items-center gap-6"
     >
+      {next && <input type="hidden" name="next" value={next} />}
       <input
         name="pin"
         type="text"
