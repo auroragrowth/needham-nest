@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
+import { getClosingStatus, isBlocked } from '@/lib/checklist/closing'
 
 export async function clockIn() {
   const session = await requireStaffFeature('clock')
@@ -34,18 +35,31 @@ export async function clockIn() {
 
   revalidatePath('/staff')
   revalidatePath('/staff/clock')
+  revalidatePath('/staff/checklist')
   revalidatePath('/manager/timesheets')
   redirect('/staff/clock?notice=Clocked+in')
 }
 
-export async function clockOut() {
+export async function clockOut(formData?: FormData) {
   const session = await requireStaffFeature('clock')
 
   const admin = createAdminClient()
 
+  // Closing up means finishing the closing list first. Enforced here rather
+  // than in the page so a scanned QR can't slip past it either.
+  const closing = await getClosingStatus(session.profileId)
+  const override = String(formData?.get('override_reason') ?? '').trim()
+  if (isBlocked(closing) && !override) {
+    redirect(
+      `/staff/checklist?error=${encodeURIComponent(
+        `Finish the closing list before you sign out — ${closing.outstanding.length} still to do.`,
+      )}`,
+    )
+  }
+
   const { data: openShift } = await admin
     .from('time_logs')
-    .select('id, break_start_at, break_minutes_total')
+    .select('id, break_start_at, break_minutes_total, notes')
     .eq('user_id', session.profileId)
     .is('clock_out', null)
     .maybeSingle()
@@ -62,12 +76,27 @@ export async function clockOut() {
     breakTotal += Math.max(0, Math.floor(ms / 60000))
   }
 
+  // An override is a deliberate exception — record it on the timesheet so
+  // the manager sees what was left and why.
+  const notes =
+    isBlocked(closing) && override
+      ? [
+          openShift.notes,
+          `Signed out with ${closing.outstanding.length} closing job(s) outstanding (${closing.outstanding
+            .map((t) => t.name)
+            .join('; ')}). Reason given: ${override}`,
+        ]
+          .filter(Boolean)
+          .join('\n')
+      : openShift.notes
+
   const { error } = await admin
     .from('time_logs')
     .update({
       clock_out: new Date().toISOString(),
       break_start_at: null,
       break_minutes_total: breakTotal,
+      notes,
     })
     .eq('id', openShift.id)
 
@@ -77,6 +106,7 @@ export async function clockOut() {
 
   revalidatePath('/staff')
   revalidatePath('/staff/clock')
+  revalidatePath('/staff/checklist')
   revalidatePath('/manager/timesheets')
   redirect('/staff/clock?notice=Clocked+out')
 }

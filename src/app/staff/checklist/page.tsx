@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
 import { completeTask } from '@/lib/checklist/actions'
+import { clockIn, clockOut } from '@/lib/time-logs/actions'
+import { getClosingStatus, isBlocked } from '@/lib/checklist/closing'
 
 const FREQ_LABEL: Record<string, string> = {
   open: 'Opening',
@@ -41,7 +43,7 @@ export default async function StaffChecklistPage({
 }: {
   searchParams: Promise<{ notice?: string; error?: string }>
 }) {
-  await requireStaffFeature('checklist')
+  const session = await requireStaffFeature('checklist')
   const params = await searchParams
   const admin = createAdminClient()
 
@@ -59,6 +61,21 @@ export default async function StaffChecklistPage({
     admin.from('profiles').select('id, name'),
   ])
 
+  // Clocking in is the first item of the opening list and signing out the
+  // last item of the closing list — both derived from the real time log, so
+  // neither can be ticked without actually happening.
+  const [{ data: openShift }, closing] = await Promise.all([
+    admin
+      .from('time_logs')
+      .select('id, clock_in')
+      .eq('user_id', session.profileId)
+      .is('clock_out', null)
+      .maybeSingle(),
+    getClosingStatus(session.profileId),
+  ])
+  const onShift = Boolean(openShift)
+  const signOutBlocked = isBlocked(closing)
+
   const nameById = new Map((people ?? []).map((p) => [p.id, p.name]))
   const completedByTask = new Map<string, Log>()
   for (const l of (logs ?? []) as Log[]) {
@@ -71,8 +88,8 @@ export default async function StaffChecklistPage({
     grouped.get(t.frequency)?.push(t)
   }
 
-  const totalTasks = tasks?.length ?? 0
-  const doneCount = completedByTask.size
+  const totalTasks = (tasks?.length ?? 0) + 2
+  const doneCount = completedByTask.size + (onShift ? 1 : 0)
 
   return (
     <main className="mx-auto max-w-md">
@@ -83,9 +100,7 @@ export default async function StaffChecklistPage({
         Daily checklist
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        {totalTasks === 0
-          ? 'No tasks configured yet.'
-          : `${doneCount} of ${totalTasks} done today.`}
+        {`${doneCount} of ${totalTasks} done today.`}
       </p>
 
       {params.notice && (
@@ -102,13 +117,23 @@ export default async function StaffChecklistPage({
       <div className="mt-6 space-y-6">
         {FREQ_ORDER.map((f) => {
           const items = grouped.get(f) ?? []
-          if (items.length === 0) return null
+          // Opening and closing always render — they carry the clock-in and
+          // sign-out items even when no cleaning tasks are configured.
+          if (items.length === 0 && f !== 'open' && f !== 'close') return null
           return (
             <section key={f}>
               <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
                 {FREQ_LABEL[f]}
               </h2>
               <ul className="mt-2 space-y-2">
+                {f === 'open' && (
+                  <li>
+                    <ClockInItem
+                      onShift={onShift}
+                      clockInAt={openShift?.clock_in ?? null}
+                    />
+                  </li>
+                )}
                 {items.map((t) => {
                   const log = completedByTask.get(t.id)
                   const done = Boolean(log)
@@ -163,12 +188,21 @@ export default async function StaffChecklistPage({
                     </li>
                   )
                 })}
+                {f === 'close' && (
+                  <li>
+                    <SignOutItem
+                      onShift={onShift}
+                      blocked={signOutBlocked}
+                      outstanding={closing.outstanding.length}
+                    />
+                  </li>
+                )}
               </ul>
             </section>
           )
         })}
 
-        {totalTasks === 0 && (
+        {(tasks?.length ?? 0) === 0 && (
           <div className="rounded-xl border border-brand-sage/40 bg-white p-5 text-center text-sm text-brand-slate">
             Ask the owner to add tasks in{' '}
             <span className="text-brand-amber">Daily checklist</span>.
@@ -176,5 +210,131 @@ export default async function StaffChecklistPage({
         )}
       </div>
     </main>
+  )
+}
+
+/** First item of the opening list — ticks itself once you're clocked in. */
+function ClockInItem({
+  onShift,
+  clockInAt,
+}: {
+  onShift: boolean
+  clockInAt: string | null
+}) {
+  if (onShift) {
+    return (
+      <div className="rounded-2xl border border-brand-teal/40 bg-brand-teal/10 p-4">
+        <p className="font-medium text-brand-forest line-through decoration-brand-teal-deep/40">
+          Clock in
+        </p>
+        <p className="mt-1 text-xs text-brand-teal-deep">
+          ✓ You clocked in at{' '}
+          {clockInAt
+            ? new Date(clockInAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+            : '—'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <form action={clockIn}>
+      <button
+        type="submit"
+        className="block w-full rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-4 text-left transition active:scale-[0.98] hover:bg-brand-amber/20"
+      >
+        <p className="font-medium text-brand-forest">Clock in</p>
+        <p className="text-xs text-brand-slate">Do this first, before anything else</p>
+        <p className="mt-2 text-xs font-medium text-brand-amber">
+          Tap to start your shift
+        </p>
+      </button>
+    </form>
+  )
+}
+
+/**
+ * Last item of the closing list — the real clock-out. Blocked while closing
+ * jobs are outstanding, unless they give a reason (which lands on the
+ * timesheet for the manager to see).
+ */
+function SignOutItem({
+  onShift,
+  blocked,
+  outstanding,
+}: {
+  onShift: boolean
+  blocked: boolean
+  outstanding: number
+}) {
+  if (!onShift) {
+    return (
+      <div className="rounded-2xl border border-brand-sage/40 bg-brand-sage/5 p-4">
+        <p className="font-medium text-brand-slate">Sign out</p>
+        <p className="mt-1 text-xs text-brand-slate">
+          You are not clocked in.
+        </p>
+      </div>
+    )
+  }
+
+  if (blocked) {
+    return (
+      <div className="rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-4">
+        <p className="font-medium text-brand-forest">Sign out</p>
+        <p className="mt-1 text-sm text-brand-forest">
+          🔒 {outstanding} closing{' '}
+          {outstanding === 1 ? 'job is' : 'jobs are'} still to tick off. You are
+          the last one on shift, so please finish the list before you go.
+        </p>
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-brand-amber">
+            Something can&apos;t be done tonight?
+          </summary>
+          <form action={clockOut} className="mt-2">
+            <label
+              htmlFor="override_reason"
+              className="block text-xs text-brand-slate"
+            >
+              Tell us why — this goes on your timesheet for May and Paul.
+            </label>
+            <textarea
+              id="override_reason"
+              name="override_reason"
+              rows={3}
+              required
+              minLength={4}
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+            />
+            <button
+              type="submit"
+              className="mt-2 rounded-lg border border-brand-sage/60 px-4 py-2 text-sm font-medium text-brand-forest hover:bg-brand-sage/10"
+            >
+              Sign out anyway
+            </button>
+          </form>
+        </details>
+      </div>
+    )
+  }
+
+  return (
+    <form action={clockOut}>
+      <button
+        type="submit"
+        className="block w-full rounded-2xl border-2 border-brand-forest bg-brand-forest p-4 text-left text-brand-cream transition active:scale-[0.98] hover:bg-brand-olive"
+      >
+        <p className="font-medium">Sign out</p>
+        <p className="text-xs text-brand-cream/80">
+          The last thing you do before you leave
+        </p>
+        <p className="mt-2 text-xs font-medium text-brand-amber">
+          Tap to end your shift
+        </p>
+      </button>
+    </form>
   )
 }
