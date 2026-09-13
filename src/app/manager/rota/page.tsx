@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { publishWeek } from '@/lib/rota/actions'
 import { colourForProfile } from '@/lib/colours'
+import { taxWeekLabel } from '@/lib/payroll/tax-week'
 import {
   checkShiftBreak,
   checkRest,
@@ -192,13 +193,8 @@ export default async function RotaPage({
           <h1 className="text-2xl font-semibold tracking-tight text-brand-forest">
             Rota
           </h1>
-          <p className="mt-1 text-sm text-brand-slate">
-            Week of{' '}
-            {weekStart.toLocaleDateString([], {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
+          <p className="mt-1 text-sm font-medium text-brand-forest">
+            {taxWeekLabel(weekStart)}
           </p>
           <p className="mt-1 text-xs text-brand-slate">
             <span className="mr-1 inline-block h-3 w-3 rounded-sm bg-red-100 align-middle" />
