@@ -30,6 +30,11 @@ type Task = {
   frequency: 'open' | 'mid' | 'close' | 'daily'
   area: string | null
   sort_order: number
+  /** Method or guidance shown under the name — e.g. which waste reason to pick. */
+  detail: string | null
+  /** Internal path this task sends staff to, e.g. /staff/wastage. */
+  link_href: string | null
+  link_label: string | null
 }
 
 type Log = {
@@ -50,7 +55,9 @@ export default async function StaffChecklistPage({
   const [{ data: tasks }, { data: logs }, { data: people }] = await Promise.all([
     admin
       .from('cleaning_tasks')
-      .select('id, name, frequency, area, sort_order')
+      .select(
+        'id, name, frequency, area, sort_order, detail, link_href, link_label',
+      )
       .eq('active', true)
       .order('sort_order')
       .order('name'),
@@ -135,56 +142,16 @@ export default async function StaffChecklistPage({
                   </li>
                 )}
                 {items.map((t) => {
-                  const log = completedByTask.get(t.id)
-                  const done = Boolean(log)
-                  const action = completeTask.bind(null, t.id)
+                  const log = completedByTask.get(t.id) ?? null
                   return (
                     <li key={t.id}>
-                      {done ? (
-                        <div className="rounded-2xl border border-brand-teal/40 bg-brand-teal/10 p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-medium text-brand-forest line-through decoration-brand-teal-deep/40">
-                                {t.name}
-                              </p>
-                              {t.area && (
-                                <p className="text-xs text-brand-slate">
-                                  {t.area}
-                                </p>
-                              )}
-                              <p className="mt-1 text-xs text-brand-teal-deep">
-                                ✓ {nameById.get(log!.user_id) ?? 'Unknown'} ·{' '}
-                                {new Date(log!.completed_at).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  },
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <form action={action}>
-                          <button
-                            type="submit"
-                            className="block w-full rounded-2xl border border-brand-sage/40 bg-white p-4 text-left transition active:scale-[0.98] hover:border-brand-teal/60 hover:bg-brand-teal/5"
-                          >
-                            <p className="font-medium text-brand-forest">
-                              {t.name}
-                            </p>
-                            {t.area && (
-                              <p className="text-xs text-brand-slate">
-                                {t.area}
-                              </p>
-                            )}
-                            <p className="mt-2 text-xs font-medium text-brand-amber">
-                              Tap to tick off
-                            </p>
-                          </button>
-                        </form>
-                      )}
+                      <TaskCard
+                        task={t}
+                        log={log}
+                        doneByName={
+                          log ? (nameById.get(log.user_id) ?? 'Unknown') : null
+                        }
+                      />
                     </li>
                   )
                 })}
@@ -210,6 +177,88 @@ export default async function StaffChecklistPage({
         )}
       </div>
     </main>
+  )
+}
+
+/**
+ * One checklist task.
+ *
+ * A task that links somewhere can't be one big button — an <a> can't live
+ * inside a <button> — so it gets a card with the link and the tick as separate
+ * controls: go and do the job, then come back and confirm. Everything else
+ * keeps the single-tap card it has always had.
+ */
+function TaskCard({
+  task,
+  log,
+  doneByName,
+}: {
+  task: Task
+  log: Log | null
+  doneByName: string | null
+}) {
+  if (log) {
+    return (
+      <div className="rounded-2xl border border-brand-teal/40 bg-brand-teal/10 p-4">
+        <p className="font-medium text-brand-forest line-through decoration-brand-teal-deep/40">
+          {task.name}
+        </p>
+        {task.area && <p className="text-xs text-brand-slate">{task.area}</p>}
+        <p className="mt-1 text-xs text-brand-teal-deep">
+          ✓ {doneByName ?? 'Unknown'} ·{' '}
+          {new Date(log.completed_at).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </p>
+      </div>
+    )
+  }
+
+  const tick = completeTask.bind(null, task.id)
+
+  if (task.link_href) {
+    return (
+      <div className="rounded-2xl border border-brand-sage/40 bg-white p-4">
+        <p className="font-medium text-brand-forest">{task.name}</p>
+        {task.area && <p className="text-xs text-brand-slate">{task.area}</p>}
+        {task.detail && (
+          <p className="mt-2 text-sm text-brand-slate">{task.detail}</p>
+        )}
+        <Link
+          href={task.link_href}
+          className="mt-3 block rounded-xl border-2 border-brand-teal bg-brand-teal/10 px-4 py-3 text-center text-sm font-semibold text-brand-teal-deep transition active:scale-[0.98] hover:bg-brand-teal/20"
+        >
+          {task.link_label ?? 'Open'} →
+        </Link>
+        <form action={tick}>
+          <button
+            type="submit"
+            className="mt-2 block w-full rounded-xl border border-brand-sage/60 px-4 py-3 text-sm font-medium text-brand-forest transition active:scale-[0.98] hover:bg-brand-sage/10"
+          >
+            Tick off
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  return (
+    <form action={tick}>
+      <button
+        type="submit"
+        className="block w-full rounded-2xl border border-brand-sage/40 bg-white p-4 text-left transition active:scale-[0.98] hover:border-brand-teal/60 hover:bg-brand-teal/5"
+      >
+        <p className="font-medium text-brand-forest">{task.name}</p>
+        {task.area && <p className="text-xs text-brand-slate">{task.area}</p>}
+        {task.detail && (
+          <p className="mt-2 text-sm text-brand-slate">{task.detail}</p>
+        )}
+        <p className="mt-2 text-xs font-medium text-brand-amber">
+          Tap to tick off
+        </p>
+      </button>
+    </form>
   )
 }
 

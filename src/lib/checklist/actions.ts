@@ -16,6 +16,16 @@ async function requireOwnerOrManager() {
   return session
 }
 
+/**
+ * A task may link to a page in the app — e.g. the closing waste task points at
+ * /staff/wastage. Links must stay internal: `//evil.example` and `/\evil.example`
+ * are both treated as protocol-relative by browsers, so neither is allowed.
+ * The database carries the same rule as a check constraint.
+ */
+function isInternalPath(href: string): boolean {
+  return /^\/($|[^/\\])/.test(href)
+}
+
 function parseTaskPayload(formData: FormData) {
   const name = String(formData.get('name') ?? '').trim()
   const freqRaw = String(formData.get('frequency') ?? '').trim()
@@ -25,20 +35,41 @@ function parseTaskPayload(formData: FormData) {
   const area = String(formData.get('area') ?? '').trim() || null
   const sortOrderStr = String(formData.get('sort_order') ?? '').trim()
   const sort_order = sortOrderStr === '' ? 0 : Number(sortOrderStr)
-  return { name, frequency, area, sort_order }
+  const detail = String(formData.get('detail') ?? '').trim() || null
+  const link_href = String(formData.get('link_href') ?? '').trim() || null
+  // A label on its own has nothing to label.
+  const link_label = link_href
+    ? String(formData.get('link_label') ?? '').trim() || null
+    : null
+  return { name, frequency, area, sort_order, detail, link_href, link_label }
 }
+
+const BAD_LINK =
+  'Link must be a page in this app, starting with a single / — e.g. /staff/wastage'
 
 export async function createTask(formData: FormData) {
   await requireOwnerOrManager()
-  const { name, frequency, area, sort_order } = parseTaskPayload(formData)
+  const { name, frequency, area, sort_order, detail, link_href, link_label } =
+    parseTaskPayload(formData)
   if (!name) redirect('/admin/checklist/new?error=Name+is+required')
   if (!frequency)
     redirect('/admin/checklist/new?error=Pick+a+frequency')
+  if (link_href && !isInternalPath(link_href))
+    redirect(`/admin/checklist/new?error=${encodeURIComponent(BAD_LINK)}`)
 
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('cleaning_tasks')
-    .insert({ name, frequency, area, sort_order, active: true })
+    .insert({
+      name,
+      frequency,
+      area,
+      sort_order,
+      detail,
+      link_href,
+      link_label,
+      active: true,
+    })
     .select('id')
     .single()
 
@@ -54,15 +85,18 @@ export async function createTask(formData: FormData) {
 
 export async function updateTask(id: string, formData: FormData) {
   await requireOwnerOrManager()
-  const { name, frequency, area, sort_order } = parseTaskPayload(formData)
+  const { name, frequency, area, sort_order, detail, link_href, link_label } =
+    parseTaskPayload(formData)
   if (!name) redirect(`/admin/checklist/${id}?error=Name+is+required`)
   if (!frequency)
     redirect(`/admin/checklist/${id}?error=Pick+a+frequency`)
+  if (link_href && !isInternalPath(link_href))
+    redirect(`/admin/checklist/${id}?error=${encodeURIComponent(BAD_LINK)}`)
 
   const admin = createAdminClient()
   const { error } = await admin
     .from('cleaning_tasks')
-    .update({ name, frequency, area, sort_order })
+    .update({ name, frequency, area, sort_order, detail, link_href, link_label })
     .eq('id', id)
 
   if (error) {

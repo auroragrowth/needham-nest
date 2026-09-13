@@ -26,7 +26,9 @@ export default async function EditTaskPage({
   const admin = createAdminClient()
   const { data: t } = await admin
     .from('cleaning_tasks')
-    .select('id, name, frequency, area, sort_order, active')
+    .select(
+      'id, name, frequency, area, sort_order, active, detail, link_href, link_label',
+    )
     .eq('id', id)
     .maybeSingle()
   if (!t) notFound()
@@ -117,6 +119,68 @@ export default async function EditTaskPage({
             defaultValue={t.area ?? ''}
             className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
           />
+        </div>
+
+        <div>
+          <label
+            htmlFor="detail"
+            className="block text-sm font-medium text-brand-forest"
+          >
+            Guidance
+          </label>
+          <textarea
+            id="detail"
+            name="detail"
+            rows={3}
+            defaultValue={t.detail ?? ''}
+            placeholder="e.g. Never boiling water — it perishes the rubber seals"
+            className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+          />
+          <p className="mt-1 text-xs text-brand-slate">
+            Shown under the task name on the tablet, so the method travels with
+            the job.
+          </p>
+        </div>
+
+        <div>
+          <label
+            htmlFor="link_href"
+            className="block text-sm font-medium text-brand-forest"
+          >
+            Link to a page
+          </label>
+          <input
+            id="link_href"
+            name="link_href"
+            type="text"
+            defaultValue={t.link_href ?? ''}
+            placeholder="/staff/wastage"
+            className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+          />
+          <p className="mt-1 text-xs text-brand-slate">
+            A page in this app, starting with a single /. The task then shows a
+            button that takes staff straight there.
+          </p>
+        </div>
+
+        <div>
+          <label
+            htmlFor="link_label"
+            className="block text-sm font-medium text-brand-forest"
+          >
+            Button text
+          </label>
+          <input
+            id="link_label"
+            name="link_label"
+            type="text"
+            defaultValue={t.link_label ?? ''}
+            placeholder="Open the waste form"
+            className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+          />
+          <p className="mt-1 text-xs text-brand-slate">
+            Defaults to &ldquo;Open&rdquo;.
+          </p>
         </div>
 
         <div>

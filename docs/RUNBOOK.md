@@ -117,6 +117,21 @@ Tasks live in four buckets: **open**, **mid**, **close**, **daily**. You can edi
 | "Add 'Descale the coffee machine' to the closing list" | New task in the close bucket |
 | "Drop 'Put on music' from opening" | Deactivates it — history stays |
 | "What didn't get ticked off last night?" | Lists closing tasks with no tick for that day |
+| "Put the method on the Pepsi nozzle task" | Sets the task's **guidance** line |
+| "Make the waste task link to the waste form" | Sets the task's **link** |
+
+A task can carry two optional extras beyond its name and area:
+
+- **Guidance** — a line shown underneath on the tablet, so the method travels with the job
+  rather than living in someone's head. The Pepsi gun nozzle task uses it to say *never
+  boiling water — it perishes the rubber seals*.
+- **A link** to a page in the app, which turns the task into a card with a button. The
+  closing waste task links to `/staff/wastage`, so recording waste is one tap from the
+  list. Links must stay inside the app (a single leading `/`); the database rejects
+  anything else.
+
+Linked tasks are ticked separately from following the link — on a night with nothing to
+waste, staff still tick to confirm they checked.
 
 **The closing rule** (`src/lib/checklist/closing.ts`): the opening list starts with
 **Clock in** and the closing list ends with **Sign out**, both derived from the real time
