@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildStaffPayslip } from '@/lib/staffing/cost'
+import { taxWeek } from '@/lib/payroll/tax-week'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,7 +92,7 @@ export default async function PayrollWeeklyHours({
         ← Payroll
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
-        Weekly hours
+        Weekly hours · Week {taxWeek(new Date(from + 'T12:00:00Z'))}
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
         {fmtDate(from)} – {fmtDate(to)} · UK time · every shift below counts
