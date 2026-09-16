@@ -13,6 +13,7 @@ export type ParamKind = 'none' | 'date' | 'range' | 'week' | 'search' | 'include
 export type Report =
   | { kind: 'sql'; fn: string; params: ParamKind; about: string }
   | { kind: 'staffing'; params: 'date' | 'week' | 'range'; about: string }
+  | { kind: 'labour'; params: 'range'; about: string }
 
 export const REPORTS: Record<string, Report> = {
   // Shifts and people
@@ -42,7 +43,8 @@ export const REPORTS: Record<string, Report> = {
   'staffing-cost-day': { kind: 'staffing', params: 'date', about: 'Staffing cost for one day, per person' },
   'staffing-cost-week': { kind: 'staffing', params: 'week', about: 'Staffing cost grid for a Monday–Sunday week' },
   'staffing-cost-range': { kind: 'staffing', params: 'range', about: 'Staffing cost day by day' },
-  takings: { kind: 'sql', fn: 'nesty_takings', params: 'range', about: 'Takings entered in the app, by source' },
+  'labour-percent': { kind: 'labour', params: 'range', about: 'Staffing cost as a share of takings, day by day and overall' },
+  takings: { kind: 'sql', fn: 'nesty_takings', params: 'range', about: 'Takings by source (till card and cash are imported nightly)' },
   expenses: { kind: 'sql', fn: 'nesty_expenses', params: 'range', about: 'Expenses by category and entry' },
   'invoices-outstanding': { kind: 'sql', fn: 'nesty_invoices_outstanding', params: 'none', about: 'Unpaid and overdue invoices' },
   pl: { kind: 'sql', fn: 'nesty_pl', params: 'range', about: 'Profit and loss as the P&L page works it out' },

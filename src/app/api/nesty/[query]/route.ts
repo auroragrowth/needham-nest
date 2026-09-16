@@ -38,6 +38,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ quer
   try {
     const args = argumentsFor(report.params, new URL(request.url).searchParams)
 
+    if (report.kind === 'labour') {
+      const { p_from, p_to } = args as { p_from: string; p_to: string }
+      return json({ report: query, args, money: 'pounds', data: await labourPercent(p_from, p_to) })
+    }
+
     if (report.kind === 'staffing') {
       const data =
         report.params === 'date'
@@ -54,6 +59,36 @@ export async function GET(request: Request, { params }: { params: Promise<{ quer
   } catch (e) {
     if (e instanceof BadRequest) return json({ error: e.message }, 400)
     throw e
+  }
+}
+
+/**
+ * Staffing cost (the app's own calculation) against takings for each day. Till
+ * card and cash takings arrive through the nightly import, so today's sales are
+ * only counted once that has run; the note says so.
+ */
+async function labourPercent(from: string, to: string) {
+  const [costs, { data: takings, error }] = await Promise.all([
+    computeStaffingCostRange(from, to),
+    createAdminClient().from('takings').select('date, amount').gte('date', from).lte('date', to),
+  ])
+  if (error) throw new Error(error.message)
+
+  const sales = new Map<string, number>()
+  for (const t of takings ?? []) sales.set(t.date, (sales.get(t.date) ?? 0) + Number(t.amount))
+
+  const pct = (cost: number, sold: number) => (sold > 0 ? Math.round((cost / sold) * 1000) / 10 : null)
+  const round = (n: number) => Math.round(n * 100) / 100
+  const days = costs.map((d) => {
+    const sold = round(sales.get(d.date) ?? 0)
+    return { date: d.date, takings: sold, staffing_cost: round(d.total), labour_percent: pct(d.total, sold) }
+  })
+  const totalCost = round(days.reduce((s, d) => s + d.staffing_cost, 0))
+  const totalSales = round(days.reduce((s, d) => s + d.takings, 0))
+  return {
+    days,
+    total: { takings: totalSales, staffing_cost: totalCost, labour_percent: pct(totalCost, totalSales) },
+    note: 'Takings include till card and cash imported nightly, so today may not be in yet. Days with no takings have no percentage.',
   }
 }
 
