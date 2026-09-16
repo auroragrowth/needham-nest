@@ -117,8 +117,9 @@ returns jsonb language sql stable as $$
 $$;
 
 create or replace function public.nesty_leave(p_from date, p_to date)
-returns jsonb language sql stable as $$
+returns jsonb language sql stable set search_path = public, pg_temp as $$
   select coalesce(jsonb_agg(jsonb_build_object(
+           'leave_id', l.id,
            'name', p.name, 'kind', l.kind::text,
            'start_date', l.start_date, 'end_date', l.end_date,
            'status', l.status::text,
@@ -128,6 +129,17 @@ returns jsonb language sql stable as $$
          ) order by l.start_date), '[]'::jsonb)
     from leave_requests l join profiles p on p.id = l.staff_user_id
    where l.start_date <= p_to and l.end_date >= p_from
+$$;
+
+-- Unpublished rota shifts for a range, so Nesty can show what publishing would do.
+create or replace function public.nesty_rota_drafts(p_from date, p_to date)
+returns jsonb language sql stable set search_path = public, pg_temp as $$
+  select jsonb_build_object(
+    'drafts', count(*),
+    'shifts', coalesce(jsonb_agg(jsonb_build_object('date', r.date, 'name', p.name, 'start', to_char(r.start_time, 'HH24:MI'), 'end', to_char(r.end_time, 'HH24:MI')) order by r.date, r.start_time), '[]'::jsonb)
+  )
+    from rota_shifts r join profiles p on p.id = r.staff_user_id
+   where r.date between p_from and p_to and not r.published
 $$;
 
 create or replace function public.nesty_availability(p_from date, p_to date)
@@ -182,8 +194,9 @@ returns jsonb language sql stable as $$
 $$;
 
 create or replace function public.nesty_temperature_checks(p_from date, p_to date)
-returns jsonb language sql stable as $$
+returns jsonb language sql stable set search_path = public, pg_temp as $$
   select coalesce(jsonb_agg(jsonb_build_object(
+           'reading_id', l.id,
            'appliance', a.name, 'kind', a.kind::text, 'location', a.location,
            'recorded', nesty_local(l.recorded_at),
            'temperature', l.temperature,
@@ -328,12 +341,13 @@ returns jsonb language sql stable as $$
 $$;
 
 create or replace function public.nesty_expenses(p_from date, p_to date)
-returns jsonb language sql stable as $$
+returns jsonb language sql stable set search_path = public, pg_temp as $$
   select jsonb_build_object(
     'by_category', coalesce((select jsonb_agg(jsonb_build_object('category', c, 'amount', a) order by a desc)
                                from (select category::text c, sum(amount) a from expenses
                                       where date between p_from and p_to group by category) s), '[]'::jsonb),
     'entries', coalesce((select jsonb_agg(jsonb_build_object(
+                           'expense_id', id,
                            'date', date, 'category', category::text, 'vendor', vendor, 'amount', amount,
                            'payment_method', payment_method, 'paid_in_cash', paid_in_cash,
                            'reconciled', reconciled_at is not null) order by date)
@@ -431,9 +445,9 @@ returns jsonb language sql stable as $$
 $$;
 
 create or replace function public.nesty_bank_unreconciled(p_from date, p_to date)
-returns jsonb language sql stable as $$
+returns jsonb language sql stable set search_path = public, pg_temp as $$
   select jsonb_build_object(
-    'transactions', coalesce(jsonb_agg(jsonb_build_object('date', date, 'description', description, 'amount', amount, 'source', source) order by date), '[]'::jsonb),
+    'transactions', coalesce(jsonb_agg(jsonb_build_object('bank_transaction_id', id, 'date', date, 'description', description, 'amount', amount, 'source', source) order by date), '[]'::jsonb),
     'count', count(*),
     'money_in', coalesce(sum(amount) filter (where amount > 0), 0),
     'money_out', coalesce(sum(amount) filter (where amount < 0), 0)
