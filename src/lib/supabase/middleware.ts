@@ -2,7 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth/session'
 
-const PUBLIC_PREFIXES = ['/login', '/auth']
+// /api/nesty has no login cookie; its routes check NESTY_READ_TOKEN instead.
+const PUBLIC_PREFIXES = ['/login', '/auth', '/api/nesty']
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request })
