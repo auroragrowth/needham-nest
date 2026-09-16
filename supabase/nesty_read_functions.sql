@@ -289,6 +289,38 @@ returns jsonb language sql stable as $$
   ) s
 $$;
 
+-- What to order, by supplier, worked out the way /owner/order-pad does.
+create or replace function public.nesty_order_pad()
+returns jsonb language sql stable set search_path = public, pg_temp as $$
+  with current_stock as (
+    select i.id, i.name, i.unit, i.category, i.par_level, i.cost_price,
+           coalesce(i.supplier_name, '(no supplier)') as supplier,
+           coalesce(
+             (select sum(sp.quantity) from stock_placements sp where sp.stock_item_id = i.id having count(*) > 0),
+             (select c.on_hand from stock_counts c where c.stock_item_id = i.id order by c.date desc, c.created_at desc limit 1)
+           ) as on_hand
+      from stock_items i
+     where i.active and i.par_level is not null
+  ), needed as (
+    select *, case when on_hand is null then null else greatest(par_level - on_hand, 0) end as suggested
+      from current_stock
+     where on_hand is null or on_hand < par_level
+  )
+  select coalesce(jsonb_agg(s order by s->>'supplier'), '[]'::jsonb) from (
+    select jsonb_build_object(
+      'supplier', supplier,
+      'items', jsonb_agg(jsonb_build_object(
+                 'item', name, 'unit', unit, 'category', category,
+                 'on_hand', on_hand, 'par_level', par_level,
+                 'suggested_quantity', suggested,
+                 'never_counted', on_hand is null,
+                 'estimated_cost', case when suggested is null or cost_price is null then null else round(suggested * cost_price, 2) end
+               ) order by category, name)
+    ) as s
+      from needed group by supplier
+  ) grouped
+$$;
+
 create or replace function public.nesty_wastage(p_from date, p_to date)
 returns jsonb language sql stable as $$
   with w as (
