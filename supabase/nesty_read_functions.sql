@@ -116,6 +116,57 @@ returns jsonb language sql stable as $$
    where r.date between p_from and p_to
 $$;
 
+-- A planned rota, costed (as src/lib/staffing/cost.ts does for actual hours) and
+-- laid out by hour. Totals only, never a person's rate or pay.
+create or replace function public.nesty_rota_plan(p_from date, p_to date)
+returns jsonb language sql stable set search_path = public, pg_temp as $$
+  with people as (
+    select id, name, employment_type, annual_salary, hourly_rate
+      from profiles where active and payroll_included
+  ), shifts as (
+    select r.date, p.id as person, p.name, p.employment_type, p.hourly_rate, r.published,
+           r.start_time, r.end_time,
+           greatest(0, extract(epoch from (r.end_time - r.start_time)) / 3600 - coalesce(r.break_minutes, 0) / 60.0) as hours
+      from rota_shifts r join profiles p on p.id = r.staff_user_id
+     where r.date between p_from and p_to
+  ), days as (
+    select d::date as date from generate_series(p_from, p_to, interval '1 day') d
+  ), paye as (
+    select coalesce(sum(annual_salary / 365), 0) as daily
+      from people where employment_type = 'paye' and annual_salary is not null
+  ), by_day as (
+    select d.date,
+           coalesce(sum(s.hours), 0) as rota_hours,
+           coalesce(sum(case when s.employment_type in ('paye', 'owner_draw') then 0 else s.hours * coalesce(s.hourly_rate, 0) end), 0) as hourly_cost,
+           count(s.person) as shifts,
+           count(s.person) filter (where not s.published) as draft_shifts,
+           count(s.person) filter (where s.hourly_rate is null and coalesce(s.employment_type, '') not in ('paye', 'owner_draw')) as shifts_without_rate
+      from days d left join shifts s on s.date = d.date
+     group by d.date
+  )
+  select jsonb_build_object(
+    'days', (select jsonb_agg(jsonb_build_object(
+               'date', b.date, 'weekday', to_char(b.date, 'Dy'),
+               'shifts', b.shifts, 'draft_shifts', b.draft_shifts,
+               'rota_hours', round(b.rota_hours::numeric, 2),
+               'planned_cost', round((b.hourly_cost + (select daily from paye))::numeric, 2),
+               'shifts_without_rate', b.shifts_without_rate,
+               'people_on_by_hour', (select jsonb_object_agg(h, n) from (
+                   select h, count(s.person) n
+                     from generate_series(6, 19) h
+                     left join shifts s on s.date = b.date
+                                        and s.start_time <= make_time(h, 30, 0)
+                                        and s.end_time > make_time(h, 30, 0)
+                    group by h order by h) x)
+             ) order by b.date) from by_day b),
+    'total', (select jsonb_build_object(
+               'rota_hours', round(sum(rota_hours)::numeric, 2),
+               'planned_cost', round((sum(hourly_cost) + (select daily from paye) * count(*))::numeric, 2),
+               'draft_shifts', sum(draft_shifts)) from by_day),
+    'note', 'Planned cost uses rota hours after breaks at current rates, plus salaried staff every day, as the staffing cost page does for actual hours. people_on_by_hour counts who is rostered at half past each hour.'
+  )
+$$;
+
 create or replace function public.nesty_leave(p_from date, p_to date)
 returns jsonb language sql stable set search_path = public, pg_temp as $$
   select coalesce(jsonb_agg(jsonb_build_object(

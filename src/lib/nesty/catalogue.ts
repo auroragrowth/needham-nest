@@ -22,6 +22,7 @@ export const REPORTS: Record<string, Report> = {
   'missing-clock-outs': { kind: 'sql', fn: 'nesty_missing_clock_outs', params: 'none', about: 'Forgotten clock-outs and shifts over 12 hours' },
   rota: { kind: 'sql', fn: 'nesty_rota', params: 'range', about: 'Rota shifts, published and draft' },
   'rota-drafts': { kind: 'sql', fn: 'nesty_rota_drafts', params: 'range', about: 'Unpublished rota shifts in the range' },
+  'rota-plan': { kind: 'sql', fn: 'nesty_rota_plan', params: 'range', about: 'Planned rota hours and cost per day, and how many people are on each hour' },
   leave: { kind: 'sql', fn: 'nesty_leave', params: 'range', about: 'Holiday, sick and unpaid leave overlapping the range' },
   availability: { kind: 'sql', fn: 'nesty_availability', params: 'range', about: 'Staff availability' },
   'staff-list': { kind: 'sql', fn: 'nesty_staff_list', params: 'include-inactive', about: 'The team: roles, start dates, onboarding' },
