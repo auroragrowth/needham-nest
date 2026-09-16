@@ -98,6 +98,23 @@ A runaway clock-out is the classic one: someone forgets, and the shift runs on f
 until the next person taps clock-out. It inflates hours enormously (one was 52 hours), so
 it's worth catching before payroll.
 
+### Long-shift alerts
+
+Runaways have gone all the way through payroll before (Taylor and Deacon, summer 2026), so
+the app now tells you as soon as **any shift passes 10 hours** of clock time (breaks not
+deducted — a genuine long day alerts too, once).
+
+- **Your phone, via Pushover.** A cron (`/api/cron/long-shifts`) checks every 15 minutes
+  and pushes one alert per shift, e.g. *"Taylor Cutting has been clocked in 10h 04m (since
+  07:29). Rota ended 16:30."* Needs `PUSHOVER_APP_TOKEN` and `PUSHOVER_USER_KEY` in Vercel.
+  To check the setup, call the cron with `?test=1` and the `CRON_SECRET` bearer token — it
+  sends a test push and touches nothing.
+- **Nesty.** Reads the `long-shifts` report, shows a Mac notification, and puts up a card
+  offering to clock the person out at their rota end. Nothing changes until you click
+  Apply; the action (`time-log-clock-out`) refuses if the shift changed since the card was
+  made, and adds the usual audit note. No rota that day → Nesty asks you for the time.
+- **Or just ask:** "Anyone over 10 hours?" runs the same report.
+
 ## Rota
 
 | Say this | What happens |

@@ -19,7 +19,8 @@ export const REPORTS: Record<string, Report> = {
   // Shifts and people
   'clocked-in-now': { kind: 'sql', fn: 'nesty_clocked_in_now', params: 'none', about: 'Who is clocked in right now' },
   timesheets: { kind: 'sql', fn: 'nesty_timesheets', params: 'range', about: 'Shifts and net hours per person' },
-  'missing-clock-outs': { kind: 'sql', fn: 'nesty_missing_clock_outs', params: 'none', about: 'Forgotten clock-outs and shifts over 12 hours' },
+  'missing-clock-outs': { kind: 'sql', fn: 'nesty_missing_clock_outs', params: 'none', about: 'Forgotten clock-outs and shifts over 10 hours' },
+  'long-shifts': { kind: 'sql', fn: 'nesty_long_shifts', params: 'none', about: 'Shifts over 10 hours in the last 2 days, open or closed, with the rota end and a suggested clock-out' },
   rota: { kind: 'sql', fn: 'nesty_rota', params: 'range', about: 'Rota shifts, published and draft' },
   'rota-drafts': { kind: 'sql', fn: 'nesty_rota_drafts', params: 'range', about: 'Unpublished rota shifts in the range' },
   'rota-plan': { kind: 'sql', fn: 'nesty_rota_plan', params: 'range', about: 'Planned rota hours and cost per day, and how many people are on each hour' },

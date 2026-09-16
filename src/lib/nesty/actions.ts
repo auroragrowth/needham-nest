@@ -149,6 +149,96 @@ export const ACTIONS: Record<string, Action> = {
     if (after?.matched_expense_id !== expenseId) throw new Error('the match did not save')
     return 'Bank line matched to the expense.'
   },
+  /**
+   * Sets a forgotten clock-out, from a long-shift card (report long-shifts).
+   * An owner correction, like fixing a timesheet by hand, so it does not run the
+   * closing-list check in clockOut (src/lib/time-logs/actions.ts). A break still
+   * in progress is folded into the total up to the new clock-out, as clockOut does.
+   */
+  'time-log-clock-out': async (admin, _ownerId, params) => {
+    const logId = id(params, 'time_log_id')
+    const time = text(params, 'clock_out', { min: 5, max: 5 })!
+    if (!HHMM.test(time)) throw new ActionError('clock_out must be HH:MM, UK time')
+    const expected = params.expected_clock_out
+    if (expected !== null && expected !== undefined && typeof expected !== 'string') {
+      throw new ActionError('expected_clock_out must be the clock_out from the report, or null')
+    }
+
+    const { data: log } = await admin
+      .from('time_logs')
+      .select('id, user_id, clock_in, clock_out, break_start_at, break_minutes_total, notes')
+      .eq('id', logId)
+      .maybeSingle()
+    if (!log) throw new ActionError('That shift no longer exists.')
+    const current = log.clock_out ? londonStamp(log.clock_out) : null
+    if (current !== (expected || null)) {
+      throw new ActionError(
+        current ? `That shift has changed since the card was made: it now ends ${current}.` : 'That shift has changed since the card was made.',
+      )
+    }
+
+    const clockIn = new Date(log.clock_in)
+    const clockOut = londonInstant(londonParts(clockIn).day, time)
+    if (clockOut <= clockIn) throw new ActionError(`${time} is before they clocked in at ${londonParts(clockIn).time}.`)
+    if (clockOut.getTime() > Date.now()) throw new ActionError(`${time} hasn't happened yet.`)
+    if (clockOut.getTime() - clockIn.getTime() > TEN_HOURS_MS) {
+      throw new ActionError(`Clocking out at ${time} would still be over 10 hours. Pick an earlier time, or leave the shift as it is.`)
+    }
+
+    let breakMinutes = log.break_minutes_total ?? 0
+    if (log.break_start_at && new Date(log.break_start_at) < clockOut) {
+      breakMinutes += Math.floor((clockOut.getTime() - new Date(log.break_start_at).getTime()) / 60000)
+    }
+    const was = current ? `recorded clock-out was ${current}` : 'was still clocked in'
+    const note = `Clock-out set to ${time} via Nesty — ${was}. Approved by Paul, ${stamp()}.`
+    const notes = log.notes ? `${log.notes}\n${note}` : note
+
+    let update = admin
+      .from('time_logs')
+      .update({ clock_out: clockOut.toISOString(), break_start_at: null, break_minutes_total: breakMinutes, notes })
+      .eq('id', logId)
+    update = log.clock_out ? update.eq('clock_out', log.clock_out) : update.is('clock_out', null)
+    const { error } = await update
+    if (error) throw new Error(error.message)
+
+    const [{ data: after }, { data: person }] = await Promise.all([
+      admin.from('time_logs').select('clock_out, break_minutes_total').eq('id', logId).single(),
+      admin.from('profiles').select('name').eq('id', log.user_id).maybeSingle(),
+    ])
+    if (!after?.clock_out || new Date(after.clock_out).getTime() !== clockOut.getTime()) {
+      throw new Error('the clock-out did not save')
+    }
+    const hours = (clockOut.getTime() - clockIn.getTime()) / 3_600_000 - (after.break_minutes_total ?? 0) / 60
+    return `${person?.name ?? 'They'} clocked out at ${time} — ${hours.toFixed(2)}h after breaks.`
+  },
+}
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
+const TEN_HOURS_MS = 10 * 60 * 60 * 1000
+
+function londonParts(d: Date) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(d)
+  const get = (type: string) => parts.find((p) => p.type === type)!.value
+  return { day: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` }
+}
+
+/** 'YYYY-MM-DD HH:MM' in UK time, the format the reports use. */
+function londonStamp(iso: string): string {
+  const { day, time } = londonParts(new Date(iso))
+  return `${day} ${time}`
+}
+
+/** The instant a UK wall-clock time on a UK day happened, through BST and GMT. */
+function londonInstant(day: string, time: string): Date {
+  const [y, mo, d] = day.split('-').map(Number)
+  const [h, mi] = time.split(':').map(Number)
+  const guess = Date.UTC(y, mo - 1, d, h, mi)
+  const shown = londonParts(new Date(guess))
+  const [sy, smo, sd] = shown.day.split('-').map(Number)
+  const [sh, smi] = shown.time.split(':').map(Number)
+  return new Date(guess - (Date.UTC(sy, smo - 1, sd, sh, smi) - guess))
 }
 
 export async function ownerProfileId(admin: Admin): Promise<string> {

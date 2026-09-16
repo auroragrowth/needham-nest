@@ -1,3 +1,18 @@
+# Long-shift alerts (17 Sep 2026)
+
+Plan: `~/.claude/plans/prancy-singing-quasar.md`
+
+- [x] Migration `long_shift_alerts`: `time_logs.long_shift_alerted_at`, `nesty_long_shifts()`, missing-clock-outs 12h → 10h
+- [x] `src/lib/alerts/long-shifts.ts` + `/api/cron/long-shifts` (every 15 min, `?test=1`), Pushover via fetch
+- [x] Nesty report `long-shifts` and action `time-log-clock-out`
+- [x] SQL recorded in `supabase/`; runbook section
+- [x] Time helpers and alert messages tested (BST, GMT, both clock-change days)
+- [ ] tsc / lint / build, commit, push, deployment READY
+- [ ] Paul: Pushover app + `PUSHOVER_APP_TOKEN` / `PUSHOVER_USER_KEY` in Vercel, then `?test=1`
+- [ ] Nesty side handed to the Desktop avatar session (hub-desktop)
+
+---
+
 # Closing list: waste recording + Pepsi post-mix pump
 
 Plan: `~/.claude/plans/prancy-singing-quasar.md`

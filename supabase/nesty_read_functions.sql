@@ -90,7 +90,7 @@ returns jsonb language sql stable as $$
            'clock_in', nesty_local(t.clock_in),
            'clock_out', case when t.clock_out is null then null else nesty_local(t.clock_out) end,
            'problem', case when t.clock_out is null then 'never clocked out'
-                           else 'shift longer than 12 hours' end,
+                           else 'shift longer than 10 hours' end,
            'rota_end_that_day', (select to_char(r.end_time, 'HH24:MI') from rota_shifts r
                                   where r.staff_user_id = t.user_id
                                     and r.date = (t.clock_in at time zone 'Europe/London')::date
@@ -98,8 +98,40 @@ returns jsonb language sql stable as $$
          ) order by t.clock_in desc), '[]'::jsonb)
     from time_logs t join profiles p on p.id = t.user_id
    where (t.clock_out is null and t.clock_in < nesty_day_start(nesty_london_today()))
-      or (t.clock_out is not null and t.clock_out - t.clock_in > interval '12 hours'
+      or (t.clock_out is not null and t.clock_out - t.clock_in > interval '10 hours'
           and t.clock_in >= now() - interval '60 days')
+$$;
+
+-- Shifts over 10 hours of clock time (breaks not deducted) that started in the
+-- last 2 days, open or closed. Read by Nesty's long-shift cards and by the
+-- phone alert cron (src/lib/alerts/long-shifts.ts). suggested_clock_out is the
+-- rota end that day, or null when there is no rota: never an invented time.
+create or replace function public.nesty_long_shifts()
+returns jsonb language sql stable as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'time_log_id', t.id,
+           'name', p.name,
+           'clock_in', nesty_local(t.clock_in),
+           'clock_out', case when t.clock_out is null then null else nesty_local(t.clock_out) end,
+           'still_clocked_in', t.clock_out is null,
+           'on_break', t.clock_out is null and t.break_start_at is not null,
+           'hours_so_far', round((extract(epoch from coalesce(t.clock_out, now()) - t.clock_in) / 3600)::numeric, 2),
+           'rota_end_that_day', r.rota_end,
+           'suggested_clock_out', r.rota_end,
+           'alerted_at', case when t.long_shift_alerted_at is null then null else nesty_local(t.long_shift_alerted_at) end
+         ) order by t.clock_in), '[]'::jsonb)
+    from time_logs t
+    join profiles p on p.id = t.user_id
+    left join lateral (
+      select to_char(rs.end_time, 'HH24:MI') as rota_end
+        from rota_shifts rs
+       where rs.staff_user_id = t.user_id
+         and rs.date = (t.clock_in at time zone 'Europe/London')::date
+       order by rs.end_time desc
+       limit 1
+    ) r on true
+   where t.clock_in >= now() - interval '2 days'
+     and coalesce(t.clock_out, now()) - t.clock_in > interval '10 hours'
 $$;
 
 create or replace function public.nesty_rota(p_from date, p_to date)
