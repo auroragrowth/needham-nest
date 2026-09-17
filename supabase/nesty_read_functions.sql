@@ -426,7 +426,7 @@ returns jsonb language sql stable as $$
   ) s
 $$;
 
--- What to order, by supplier, worked out the way /owner/order-pad does.
+-- What to order, by supplier, worked out the way /stock/order-pad does.
 create or replace function public.nesty_order_pad()
 returns jsonb language sql stable set search_path = public, pg_temp as $$
   with current_stock as (

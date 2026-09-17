@@ -33,7 +33,7 @@ export default async function EditSupplierPage({
   return (
     <main className="mx-auto max-w-3xl">
       <Link
-        href="/owner/suppliers"
+        href="/stock/suppliers"
         className="text-sm text-brand-amber hover:underline"
       >
         ← Suppliers

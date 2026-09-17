@@ -30,7 +30,7 @@ export default async function EditStockItemPage({
   return (
     <main className="mx-auto max-w-md">
       <Link
-        href="/owner/stock"
+        href="/stock/items"
         className="text-sm text-brand-amber hover:underline"
       >
         ← Stock items

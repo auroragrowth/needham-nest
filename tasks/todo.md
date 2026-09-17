@@ -1,3 +1,15 @@
+# Stock control for May (17 Sep 2026)
+
+Plan: `~/.claude/plans/prancy-singing-quasar.md`
+
+- [x] `requireStockControl()` (owner, manager, staff with manager_access) + `stock/(control)` layout
+- [x] Moved items, overview, alerts, locations setup, suppliers, deliveries, order pad from /owner to /stock (git mv); in-page owner checks swapped for the gate; role-aware back links
+- [x] Actions gated with `requireStockControl`, redirects/revalidates repathed
+- [x] Owner dashboard links repathed; manager home gains the Stock cards + below-par banner (shared `belowParItems()`)
+- [x] Old /owner addresses redirect (next.config.ts)
+- [ ] build, commit, push, deployment READY, old addresses 307 on live
+- [ ] May signs in and tries it
+
 # Makro invoice upload fix (17 Sep 2026)
 
 Plan: `~/.claude/plans/prancy-singing-quasar.md` (the parked 16 Sep plan)

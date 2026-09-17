@@ -29,7 +29,7 @@ export default async function NewDeliveryPage({
   return (
     <main className="mx-auto max-w-3xl">
       <Link
-        href="/owner/deliveries"
+        href="/stock/deliveries"
         className="text-sm text-brand-amber hover:underline"
       >
         ← Deliveries
@@ -51,7 +51,7 @@ export default async function NewDeliveryPage({
         <p className="mt-6 rounded-xl border border-brand-amber/50 bg-brand-amber/10 p-5 text-sm text-brand-forest">
           You need at least one supplier first.{' '}
           <Link
-            href="/owner/suppliers/new"
+            href="/stock/suppliers/new"
             className="font-medium text-brand-amber hover:underline"
           >
             Add a supplier →
@@ -61,7 +61,7 @@ export default async function NewDeliveryPage({
         <p className="mt-6 rounded-xl border border-brand-amber/50 bg-brand-amber/10 p-5 text-sm text-brand-forest">
           You need at least one stock item first.{' '}
           <Link
-            href="/owner/stock/new"
+            href="/stock/items/new"
             className="font-medium text-brand-amber hover:underline"
           >
             Add stock →

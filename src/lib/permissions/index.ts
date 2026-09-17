@@ -26,6 +26,26 @@ export function hasPermission(
 }
 
 /**
+ * Server-side guard for stock control: stock items and par levels, locations
+ * setup, suppliers, deliveries and the order pad. The owner, managers, and
+ * staff with manager_access (the same people the manager area lets in).
+ */
+export async function requireStockControl(): Promise<SessionPayload> {
+  const session = await getSession()
+  if (!session) redirect('/login')
+  if (session.role === 'owner' || session.role === 'manager') return session
+  if (session.role === 'staff') {
+    const { data } = await createAdminClient()
+      .from('profiles')
+      .select('manager_access')
+      .eq('id', session.profileId)
+      .maybeSingle()
+    if (data?.manager_access) return session
+  }
+  redirect(`/staff?error=${encodeURIComponent('You do not have access to that section')}`)
+}
+
+/**
  * Server-side guard for staff pages. Reads the current session, loads the
  * profile's permissions, redirects to /staff if the feature is denied.
  * Returns the session for convenience.

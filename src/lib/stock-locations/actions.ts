@@ -4,16 +4,11 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireStockControl } from '@/lib/permissions'
 
 async function requireSignedIn() {
   const session = await getSession()
   if (!session) redirect('/login')
-  return session
-}
-async function requireOwner() {
-  const session = await getSession()
-  if (!session) redirect('/login')
-  if (session.role !== 'owner') redirect('/')
   return session
 }
 
@@ -101,10 +96,10 @@ export async function moveStock(formData: FormData) {
   })
 
   revalidatePath('/stock/locations')
-  revalidatePath('/owner/stock/overview')
-  revalidatePath('/owner/stock/alerts')
+  revalidatePath('/stock/overview')
+  revalidatePath('/stock/alerts')
   revalidatePath('/owner')
-  revalidatePath('/owner/order-pad')
+  revalidatePath('/stock/order-pad')
   redirect(`${back}?notice=Moved+${qty}`)
 }
 
@@ -158,10 +153,10 @@ export async function adjustPlacement(formData: FormData) {
   })
 
   revalidatePath('/stock/locations')
-  revalidatePath('/owner/stock/overview')
-  revalidatePath('/owner/stock/alerts')
+  revalidatePath('/stock/overview')
+  revalidatePath('/stock/alerts')
   revalidatePath('/owner')
-  revalidatePath('/owner/order-pad')
+  revalidatePath('/stock/order-pad')
   redirect(`${back}?notice=Count+set+to+${qty}`)
 }
 
@@ -195,36 +190,36 @@ export async function receiveStock(formData: FormData) {
   })
 
   revalidatePath('/stock/locations')
-  revalidatePath('/owner/stock/overview')
-  revalidatePath('/owner/stock/alerts')
+  revalidatePath('/stock/overview')
+  revalidatePath('/stock/alerts')
   revalidatePath('/owner')
-  revalidatePath('/owner/order-pad')
+  revalidatePath('/stock/order-pad')
   redirect(`${back}?notice=Received+${qty}`)
 }
 
 /** Owner: set item par level (drives alerts). */
 export async function setParLevel(itemId: string, formData: FormData) {
-  await requireOwner()
+  await requireStockControl()
   const par = toNumber(formData.get('par_level'))
   const admin = createAdminClient()
   await admin
     .from('stock_items')
     .update({ par_level: Number.isFinite(par) && par >= 0 ? par : null })
     .eq('id', itemId)
-  revalidatePath('/owner/stock/alerts')
-  revalidatePath('/owner/stock/overview')
+  revalidatePath('/stock/alerts')
+  revalidatePath('/stock/overview')
   revalidatePath('/owner')
-  revalidatePath('/owner/order-pad')
-  redirect('/owner/stock/alerts?notice=Par+updated')
+  revalidatePath('/stock/order-pad')
+  redirect('/stock/alerts?notice=Par+updated')
 }
 
 /** Owner: create a location. */
 export async function createLocation(formData: FormData) {
-  await requireOwner()
+  await requireStockControl()
   const name = String(formData.get('name') ?? '').trim()
   const zone = String(formData.get('zone') ?? 'kitchen').trim()
   const cold_type = String(formData.get('cold_type') ?? '').trim() || null
-  if (!name) redirect('/owner/stock/locations?error=Name+required')
+  if (!name) redirect('/stock/location-setup?error=Name+required')
 
   const admin = createAdminClient()
   const { error } = await admin.from('stock_locations').insert({
@@ -234,28 +229,28 @@ export async function createLocation(formData: FormData) {
     active: true,
   })
   if (error) {
-    redirect(`/owner/stock/locations?error=${encodeURIComponent(error.message)}`)
+    redirect(`/stock/location-setup?error=${encodeURIComponent(error.message)}`)
   }
-  revalidatePath('/owner/stock/locations')
+  revalidatePath('/stock/location-setup')
   revalidatePath('/stock/locations')
-  redirect('/owner/stock/locations?notice=Location+added')
+  redirect('/stock/location-setup?notice=Location+added')
 }
 
 /** Owner: deactivate a location (soft-delete). */
 export async function deactivateLocation(id: string) {
-  await requireOwner()
+  await requireStockControl()
   const admin = createAdminClient()
   await admin.from('stock_locations').update({ active: false }).eq('id', id)
-  revalidatePath('/owner/stock/locations')
+  revalidatePath('/stock/location-setup')
   revalidatePath('/stock/locations')
-  redirect('/owner/stock/locations?notice=Location+deactivated')
+  redirect('/stock/location-setup?notice=Location+deactivated')
 }
 
 export async function reactivateLocation(id: string) {
-  await requireOwner()
+  await requireStockControl()
   const admin = createAdminClient()
   await admin.from('stock_locations').update({ active: true }).eq('id', id)
-  revalidatePath('/owner/stock/locations')
+  revalidatePath('/stock/location-setup')
   revalidatePath('/stock/locations')
-  redirect('/owner/stock/locations?notice=Location+reactivated')
+  redirect('/stock/location-setup?notice=Location+reactivated')
 }

@@ -3,8 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
-import { requireStaffFeature } from '@/lib/permissions'
+import { requireStaffFeature, requireStockControl } from '@/lib/permissions'
 
 const WASTAGE_REASONS = [
   'out_of_date',
@@ -17,12 +16,6 @@ const WASTAGE_REASONS = [
 ] as const
 type WastageReason = (typeof WASTAGE_REASONS)[number]
 
-async function requireOwner() {
-  const session = await getSession()
-  if (!session) redirect('/login')
-  if (session.role !== 'owner') redirect('/')
-  return session
-}
 
 function parseItem(formData: FormData) {
   const sku = String(formData.get('sku') ?? '').trim() || null
@@ -48,10 +41,10 @@ function parseItem(formData: FormData) {
 }
 
 export async function createItem(formData: FormData) {
-  await requireOwner()
+  await requireStockControl()
   const payload = parseItem(formData)
   if (!payload.name) {
-    redirect('/owner/stock/new?error=Name+is+required')
+    redirect('/stock/items/new?error=Name+is+required')
   }
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -61,20 +54,20 @@ export async function createItem(formData: FormData) {
     .single()
   if (error || !data) {
     redirect(
-      `/owner/stock/new?error=${encodeURIComponent(error?.message ?? 'Failed')}`,
+      `/stock/items/new?error=${encodeURIComponent(error?.message ?? 'Failed')}`,
     )
   }
-  revalidatePath('/owner/stock')
+  revalidatePath('/stock/items')
   revalidatePath('/staff/wastage')
   revalidatePath('/staff/stock-count')
-  redirect(`/owner/stock/${data.id}?notice=Item+added`)
+  redirect(`/stock/items/${data.id}?notice=Item+added`)
 }
 
 export async function updateItem(id: string, formData: FormData) {
-  await requireOwner()
+  await requireStockControl()
   const payload = parseItem(formData)
   if (!payload.name) {
-    redirect(`/owner/stock/${id}?error=Name+is+required`)
+    redirect(`/stock/items/${id}?error=Name+is+required`)
   }
   const admin = createAdminClient()
   const { error } = await admin
@@ -82,31 +75,31 @@ export async function updateItem(id: string, formData: FormData) {
     .update(payload)
     .eq('id', id)
   if (error) {
-    redirect(`/owner/stock/${id}?error=${encodeURIComponent(error.message)}`)
+    redirect(`/stock/items/${id}?error=${encodeURIComponent(error.message)}`)
   }
-  revalidatePath('/owner/stock')
-  revalidatePath(`/owner/stock/${id}`)
+  revalidatePath('/stock/items')
+  revalidatePath(`/stock/items/${id}`)
   revalidatePath('/staff/wastage')
   revalidatePath('/staff/stock-count')
-  redirect(`/owner/stock/${id}?notice=Saved`)
+  redirect(`/stock/items/${id}?notice=Saved`)
 }
 
 async function setItemActive(id: string, active: boolean) {
-  await requireOwner()
+  await requireStockControl()
   const admin = createAdminClient()
   const { error } = await admin
     .from('stock_items')
     .update({ active })
     .eq('id', id)
   if (error) {
-    redirect(`/owner/stock/${id}?error=${encodeURIComponent(error.message)}`)
+    redirect(`/stock/items/${id}?error=${encodeURIComponent(error.message)}`)
   }
-  revalidatePath('/owner/stock')
-  revalidatePath(`/owner/stock/${id}`)
+  revalidatePath('/stock/items')
+  revalidatePath(`/stock/items/${id}`)
   revalidatePath('/staff/wastage')
   revalidatePath('/staff/stock-count')
   redirect(
-    `/owner/stock/${id}?notice=${active ? 'Reactivated' : 'Deactivated'}`,
+    `/stock/items/${id}?notice=${active ? 'Reactivated' : 'Deactivated'}`,
   )
 }
 export async function deactivateItem(id: string) {

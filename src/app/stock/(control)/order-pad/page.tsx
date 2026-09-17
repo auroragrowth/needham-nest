@@ -1,7 +1,6 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
+import { requireStockControl } from '@/lib/permissions'
 import { PrintButton } from '@/components/shared/PrintButton'
 import './print.css'
 
@@ -22,10 +21,7 @@ export default async function OrderPadPage({
   searchParams: Promise<{ supplier?: string }>
 }) {
   const sp = await searchParams
-  const session = await getSession()
-  if (!session || (session.role !== 'owner' && session.role !== 'manager')) {
-    redirect('/login')
-  }
+  const session = await requireStockControl()
 
   const admin = createAdminClient()
 
@@ -114,10 +110,10 @@ export default async function OrderPadPage({
       <div className="no-print mb-4 flex items-center justify-between gap-3 rounded-lg border border-brand-sage/40 bg-brand-cream p-4">
         <div>
           <Link
-            href="/owner"
+            href={session.role === 'owner' ? '/owner' : '/manager'}
             className="text-sm text-brand-amber hover:underline"
           >
-            ← Back to dashboard
+            ← {session.role === 'owner' ? 'Back to dashboard' : 'Back to manager home'}
           </Link>
           <p className="mt-1 text-sm text-brand-slate">
             Items below par based on the latest stock count. Items never

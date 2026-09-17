@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { belowParItems } from '@/lib/stock/below-par'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
@@ -26,8 +27,7 @@ export default async function OwnerDashboard({
     { count: stockCount },
     { data: expenses90 },
     { data: takings90 },
-    { data: parItems },
-    { data: allPlacements },
+    belowPar,
   ] = await Promise.all([
     session.authUserId
       ? admin
@@ -55,25 +55,8 @@ export default async function OwnerDashboard({
       .eq('active', true),
     admin.from('expenses').select('amount').gte('date', since90),
     admin.from('takings').select('amount').gte('date', since90),
-    admin
-      .from('stock_items')
-      .select('id, name, par_level')
-      .eq('active', true)
-      .not('par_level', 'is', null),
-    admin.from('stock_placements').select('stock_item_id, quantity'),
+    belowParItems(),
   ])
-
-  // Below-par: whole-shop total per item ≤ par level
-  const totalByItem = new Map<string, number>()
-  for (const p of allPlacements ?? []) {
-    totalByItem.set(
-      p.stock_item_id,
-      (totalByItem.get(p.stock_item_id) ?? 0) + Number(p.quantity),
-    )
-  }
-  const belowPar = (parItems ?? []).filter(
-    (i) => (totalByItem.get(i.id) ?? 0) <= Number(i.par_level),
-  )
 
   const expenseTotal90 = (expenses90 ?? []).reduce(
     (a, r) => a + Number(r.amount ?? 0),
@@ -109,7 +92,7 @@ export default async function OwnerDashboard({
 
       {belowPar.length > 0 && (
         <Link
-          href="/owner/stock/alerts"
+          href="/stock/alerts"
           className="mt-4 flex items-center justify-between rounded-xl border-2 border-brand-amber bg-brand-amber/10 p-4 text-brand-forest transition hover:bg-brand-amber/20"
         >
           <div>
@@ -221,19 +204,19 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
-          href="/owner/stock"
+          href="/stock/items"
           title="Stock items"
           subtitle={`${stockCount ?? 0} active items`}
           cta="Manage →"
         />
         <Card
-          href="/owner/stock/overview"
+          href="/stock/overview"
           title="📦 Stock by location"
           subtitle="Every item × every fridge / freezer / store"
           cta="Open →"
         />
         <Card
-          href="/owner/stock/alerts"
+          href="/stock/alerts"
           title="⚠️ Par alerts"
           subtitle={
             belowPar.length > 0
@@ -243,7 +226,7 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
-          href="/owner/stock/locations"
+          href="/stock/location-setup"
           title="Stock locations"
           subtitle="Add / edit fridges, freezers, storage areas"
           cta="Manage →"
@@ -255,19 +238,19 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
-          href="/owner/suppliers"
+          href="/stock/suppliers"
           title="Suppliers"
           subtitle="Vendors, delivery days, terms"
           cta="Manage →"
         />
         <Card
-          href="/owner/deliveries"
+          href="/stock/deliveries"
           title="Deliveries"
           subtitle="Record incoming stock + auto-create expense"
           cta="Open →"
         />
         <Card
-          href="/owner/order-pad"
+          href="/stock/order-pad"
           title="Order pad"
           subtitle="Below-par items grouped by supplier"
           cta="Open →"

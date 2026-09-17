@@ -1,7 +1,6 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
+import { requireStockControl } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,8 +14,7 @@ type Item = {
 type Location = { id: string; name: string; zone: string }
 
 export default async function StockOverviewPage() {
-  const session = await getSession()
-  if (!session || session.role !== 'owner') redirect('/login')
+  const session = await requireStockControl()
 
   const admin = createAdminClient()
   const [{ data: items }, { data: locations }, { data: placements }] =
@@ -52,8 +50,8 @@ export default async function StockOverviewPage() {
 
   return (
     <main className="mx-auto max-w-6xl">
-      <Link href="/owner" className="text-sm text-brand-amber hover:underline">
-        ← Dashboard
+      <Link href={session.role === 'owner' ? '/owner' : '/manager'} className="text-sm text-brand-amber hover:underline">
+        ← {session.role === 'owner' ? 'Dashboard' : 'Manager home'}
       </Link>
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
         <div>
@@ -67,13 +65,13 @@ export default async function StockOverviewPage() {
         </div>
         <div className="flex gap-2">
           <Link
-            href="/owner/stock/locations"
+            href="/stock/location-setup"
             className="rounded-lg border border-brand-sage/60 px-3 py-1.5 text-sm text-brand-forest hover:bg-brand-sage/10"
           >
             Manage locations
           </Link>
           <Link
-            href="/owner/stock/alerts"
+            href="/stock/alerts"
             className="rounded-lg bg-brand-amber px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-amber/90"
           >
             Below-par alerts
@@ -84,7 +82,7 @@ export default async function StockOverviewPage() {
       {its.length === 0 ? (
         <p className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-6 text-sm text-brand-slate">
           No stock items yet.{' '}
-          <Link href="/owner/stock/new" className="text-brand-amber underline">
+          <Link href="/stock/items/new" className="text-brand-amber underline">
             Add your first item →
           </Link>
         </p>

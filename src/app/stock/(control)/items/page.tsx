@@ -27,7 +27,7 @@ export default async function StockListPage({
           </p>
         </div>
         <Link
-          href="/owner/stock/new"
+          href="/stock/items/new"
           className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
         >
           + Add item
@@ -92,7 +92,7 @@ export default async function StockListPage({
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link
-                    href={`/owner/stock/${it.id}`}
+                    href={`/stock/items/${it.id}`}
                     className="text-sm font-medium text-brand-amber hover:underline"
                   >
                     Edit

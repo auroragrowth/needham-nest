@@ -26,7 +26,7 @@ export default async function SuppliersListPage({
           </p>
         </div>
         <Link
-          href="/owner/suppliers/new"
+          href="/stock/suppliers/new"
           className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
         >
           + Add supplier
@@ -70,7 +70,7 @@ export default async function SuppliersListPage({
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link
-                    href={`/owner/suppliers/${s.id}`}
+                    href={`/stock/suppliers/${s.id}`}
                     className="text-sm font-medium text-brand-amber hover:underline"
                   >
                     Edit

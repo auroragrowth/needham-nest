@@ -40,7 +40,8 @@ when touching live data, so you don't have to repeat them every time.
 | Deploy | Push to `main` → Vercel builds production automatically |
 | Staff tablet | `/staff/*` — PIN login, clock, temps, checklist, stock, wastage |
 | Manager | `/manager/*` — rota, timesheets, compliance, cash, staffing cost |
-| Owner (you) | `/owner/*` — people, payslips, expenses, P&L, menu, stock |
+| Owner (you) | `/owner/*` — people, payslips, expenses, P&L, menu |
+| Stock control | `/stock/*` — items and par levels, stock by location, par alerts, locations setup, suppliers, deliveries, order pad. **You and managers (May)**; old `/owner/stock…`, `/owner/suppliers`, `/owner/deliveries`, `/owner/order-pad` addresses redirect. `/stock/locations` (moving stock) is open to all staff |
 | Checklist admin | `/admin/checklist` |
 
 **How Claude reaches the data:** the Supabase connector, as you. The service-role key is

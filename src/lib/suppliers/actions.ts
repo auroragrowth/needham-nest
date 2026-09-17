@@ -3,14 +3,8 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
+import { requireStockControl } from '@/lib/permissions'
 
-async function requireOwnerOrManager() {
-  const session = await getSession()
-  if (!session) redirect('/login')
-  if (session.role !== 'owner' && session.role !== 'manager') redirect('/')
-  return session
-}
 
 function parseSupplier(formData: FormData) {
   const delivery_days_raw = String(formData.get('delivery_days') ?? '').trim()
@@ -35,10 +29,10 @@ function parseSupplier(formData: FormData) {
 }
 
 export async function createSupplier(formData: FormData) {
-  await requireOwnerOrManager()
+  await requireStockControl()
   const payload = parseSupplier(formData)
   if (!payload.name) {
-    redirect('/owner/suppliers/new?error=Name+is+required')
+    redirect('/stock/suppliers/new?error=Name+is+required')
   }
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -48,27 +42,27 @@ export async function createSupplier(formData: FormData) {
     .single()
   if (error || !data) {
     redirect(
-      `/owner/suppliers/new?error=${encodeURIComponent(error?.message ?? 'Failed')}`,
+      `/stock/suppliers/new?error=${encodeURIComponent(error?.message ?? 'Failed')}`,
     )
   }
-  revalidatePath('/owner/suppliers')
-  redirect(`/owner/suppliers/${data.id}?notice=Supplier+added`)
+  revalidatePath('/stock/suppliers')
+  redirect(`/stock/suppliers/${data.id}?notice=Supplier+added`)
 }
 
 export async function updateSupplier(id: string, formData: FormData) {
-  await requireOwnerOrManager()
+  await requireStockControl()
   const payload = parseSupplier(formData)
   if (!payload.name) {
-    redirect(`/owner/suppliers/${id}?error=Name+is+required`)
+    redirect(`/stock/suppliers/${id}?error=Name+is+required`)
   }
   const admin = createAdminClient()
   const { error } = await admin.from('suppliers').update(payload).eq('id', id)
   if (error) {
-    redirect(`/owner/suppliers/${id}?error=${encodeURIComponent(error.message)}`)
+    redirect(`/stock/suppliers/${id}?error=${encodeURIComponent(error.message)}`)
   }
-  revalidatePath('/owner/suppliers')
-  revalidatePath(`/owner/suppliers/${id}`)
-  redirect(`/owner/suppliers/${id}?notice=Saved`)
+  revalidatePath('/stock/suppliers')
+  revalidatePath(`/stock/suppliers/${id}`)
+  redirect(`/stock/suppliers/${id}?notice=Saved`)
 }
 
 type DeliveryLine = {
@@ -114,7 +108,7 @@ async function ensurePayeeFromSupplier(supplierName: string): Promise<string> {
 /** Record a delivery — writes stock_movements (in) + creates an expense linked
  *  to the supplier (as payee). */
 export async function recordDelivery(formData: FormData) {
-  const session = await requireOwnerOrManager()
+  const session = await requireStockControl()
 
   const supplier_id = String(formData.get('supplier_id') ?? '').trim()
   const date = String(formData.get('date') ?? '').trim() || undefined
@@ -122,12 +116,12 @@ export async function recordDelivery(formData: FormData) {
   const notes = String(formData.get('notes') ?? '').trim() || null
 
   if (!supplier_id) {
-    redirect('/owner/deliveries/new?error=Pick+a+supplier')
+    redirect('/stock/deliveries/new?error=Pick+a+supplier')
   }
 
   const items = readDeliveryLines(formData)
   if (items.length === 0) {
-    redirect('/owner/deliveries/new?error=Add+at+least+one+line')
+    redirect('/stock/deliveries/new?error=Add+at+least+one+line')
   }
 
   const admin = createAdminClient()
@@ -137,7 +131,7 @@ export async function recordDelivery(formData: FormData) {
     .eq('id', supplier_id)
     .maybeSingle()
   if (!supplier) {
-    redirect('/owner/deliveries/new?error=Supplier+not+found')
+    redirect('/stock/deliveries/new?error=Supplier+not+found')
   }
 
   const total = items.reduce((a, l) => a + l.quantity * l.unit_cost, 0)
@@ -162,7 +156,7 @@ export async function recordDelivery(formData: FormData) {
 
   if (expenseError || !expense) {
     redirect(
-      `/owner/deliveries/new?error=${encodeURIComponent(expenseError?.message ?? 'Failed to create expense')}`,
+      `/stock/deliveries/new?error=${encodeURIComponent(expenseError?.message ?? 'Failed to create expense')}`,
     )
   }
 
@@ -184,7 +178,7 @@ export async function recordDelivery(formData: FormData) {
 
   if (deliveryError || !delivery) {
     redirect(
-      `/owner/deliveries/new?error=${encodeURIComponent(deliveryError?.message ?? 'Failed to record delivery')}`,
+      `/stock/deliveries/new?error=${encodeURIComponent(deliveryError?.message ?? 'Failed to record delivery')}`,
     )
   }
 
@@ -206,13 +200,13 @@ export async function recordDelivery(formData: FormData) {
   if (movementsError) {
     // Stock movements failed — but expense and delivery exist. Surface error.
     redirect(
-      `/owner/deliveries/new?error=${encodeURIComponent('Delivery saved but stock movements failed: ' + movementsError.message)}`,
+      `/stock/deliveries/new?error=${encodeURIComponent('Delivery saved but stock movements failed: ' + movementsError.message)}`,
     )
   }
 
-  revalidatePath('/owner/deliveries')
+  revalidatePath('/stock/deliveries')
   revalidatePath('/owner/expenses')
   redirect(
-    `/owner/deliveries?notice=Delivery+from+${encodeURIComponent(supplier.name)}+recorded+(%C2%A3${total.toFixed(2)})`,
+    `/stock/deliveries?notice=Delivery+from+${encodeURIComponent(supplier.name)}+recorded+(%C2%A3${total.toFixed(2)})`,
   )
 }

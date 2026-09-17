@@ -1,7 +1,6 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
+import { requireStockControl } from '@/lib/permissions'
 import { setParLevel } from '@/lib/stock-locations/actions'
 
 export const dynamic = 'force-dynamic'
@@ -20,8 +19,7 @@ export default async function StockAlertsPage({
 }: {
   searchParams: Promise<{ notice?: string }>
 }) {
-  const session = await getSession()
-  if (!session || session.role !== 'owner') redirect('/login')
+  const session = await requireStockControl()
   const sp = await searchParams
 
   const admin = createAdminClient()
@@ -69,8 +67,8 @@ export default async function StockAlertsPage({
 
   return (
     <main className="mx-auto max-w-3xl">
-      <Link href="/owner" className="text-sm text-brand-amber hover:underline">
-        ← Dashboard
+      <Link href={session.role === 'owner' ? '/owner' : '/manager'} className="text-sm text-brand-amber hover:underline">
+        ← {session.role === 'owner' ? 'Dashboard' : 'Manager home'}
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
         Below-par alerts

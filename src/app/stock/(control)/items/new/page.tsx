@@ -1,23 +1,23 @@
 import Link from 'next/link'
-import { createSupplier } from '@/lib/suppliers/actions'
-import { SupplierForm } from '../form'
+import { createItem } from '@/lib/stock/actions'
+import { StockForm } from '../form'
 
-export default async function NewSupplierPage({
+export default async function NewStockItemPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>
 }) {
   const params = await searchParams
   return (
-    <main className="mx-auto max-w-2xl">
+    <main className="mx-auto max-w-md">
       <Link
-        href="/owner/suppliers"
+        href="/stock/items"
         className="text-sm text-brand-amber hover:underline"
       >
-        ← Suppliers
+        ← Stock items
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
-        Add supplier
+        Add stock item
       </h1>
 
       {params.error && (
@@ -26,7 +26,7 @@ export default async function NewSupplierPage({
         </p>
       )}
 
-      <SupplierForm action={createSupplier} submitLabel="Add supplier" />
+      <StockForm action={createItem} submitLabel="Add item" />
     </main>
   )
 }

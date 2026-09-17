@@ -1,7 +1,6 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSession } from '@/lib/auth/session'
+import { requireStockControl } from '@/lib/permissions'
 import {
   createLocation,
   deactivateLocation,
@@ -15,8 +14,7 @@ export default async function ManageLocationsPage({
 }: {
   searchParams: Promise<{ notice?: string; error?: string }>
 }) {
-  const session = await getSession()
-  if (!session || session.role !== 'owner') redirect('/login')
+  const session = await requireStockControl()
   const sp = await searchParams
 
   const admin = createAdminClient()
@@ -29,8 +27,8 @@ export default async function ManageLocationsPage({
 
   return (
     <main className="mx-auto max-w-3xl">
-      <Link href="/owner" className="text-sm text-brand-amber hover:underline">
-        ← Dashboard
+      <Link href={session.role === 'owner' ? '/owner' : '/manager'} className="text-sm text-brand-amber hover:underline">
+        ← {session.role === 'owner' ? 'Dashboard' : 'Manager home'}
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
         Stock locations
