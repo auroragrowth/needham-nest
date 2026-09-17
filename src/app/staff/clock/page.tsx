@@ -7,6 +7,7 @@ import {
 } from '@/lib/time-logs/actions'
 import { BackToWorkButton } from './BackToWorkButton'
 import { BreakBanner } from '@/components/shared/BreakBanner'
+import { BreakPlan } from '@/components/shared/BreakPlan'
 import { breakStatus, formatMinutes, isYoungWorkerToday } from '@/lib/breaks/status'
 
 function formatDuration(ms: number): string {
@@ -55,6 +56,8 @@ export default async function StaffDashboard({
     break_check?: string
     /** A closing-list override reason, carried through the break question. */
     override?: string
+    /** Set by clockIn, to show when their break is due. */
+    started?: string
   }>
 }) {
   const params = await searchParams
@@ -179,6 +182,10 @@ export default async function StaffDashboard({
         <p className="mb-4 rounded border border-brand-amber/50 bg-brand-amber/10 p-3 text-center text-sm text-brand-forest">
           {params.error}
         </p>
+      )}
+
+      {params.started === '1' && openShift && !breakCheck && (
+        <BreakPlan profileId={session.profileId} clockIn={openShift.clock_in} youngWorker={isUnder18} />
       )}
 
       {!breakCheck && <BreakBanner profileId={session.profileId} />}

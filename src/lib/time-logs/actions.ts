@@ -39,7 +39,8 @@ export async function clockIn() {
   revalidatePath('/staff/clock')
   revalidatePath('/staff/checklist')
   revalidatePath('/manager/timesheets')
-  redirect('/staff/clock?notice=Clocked+in')
+  // started=1 shows the break reminder on the clock page.
+  redirect('/staff/clock?notice=Clocked+in&started=1')
 }
 
 export async function clockOut(formData?: FormData) {

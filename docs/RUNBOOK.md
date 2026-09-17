@@ -125,6 +125,7 @@ uninterrupted break, so tell staff to take it in one go.
 
 | Who | Sees what, when |
 |---|---|
+| The person clocking in | Straight after clock-in, *"You're on until 16:30 today, so you need a 20-minute break. Take it before 13:32 — the tablet will remind you from 12:32."* Uses their published rota end today; with no rota it gives the rule and the time |
 | Anyone at the tablet | PIN screen strip from an hour before a break is due: *"1 person on shift is due a break soon — enter your PIN to check"*. Red once overdue. **Counts only** — `/login` is public on the internet, so no names there |
 | The person on shift | After their PIN, a banner on the hub and clock page with a **Go on break** button. From 5h (under-18s 3h 30m), urgent past 6h (4h 30m) |
 | Clocking out past the legal point without enough break | The clock-out asks *"Did you take your break today?"* — **Yes, forgot to tap** records the minutes they give (deducted, because taken); **No, didn't get one** records nothing, keeps them paid, notes it on the timesheet with their reason, and pushes to you |

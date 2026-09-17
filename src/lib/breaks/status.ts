@@ -67,3 +67,35 @@ export function formatMinutes(minutes: number): string {
   if (h === 0) return `${m}m`
   return m === 0 ? `${h}h` : `${h}h ${String(m).padStart(2, '0')}m`
 }
+
+function londonTime(ms: number): string {
+  return new Date(ms).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })
+}
+
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+/**
+ * What to tell someone the moment they clock in about their break, from their
+ * published rota end today if there is one. Times are UK.
+ */
+export function breakPlanMessage(input: { clockIn: string | Date; rotaEnd: string | null; youngWorker: boolean }): string {
+  const rule = input.youngWorker ? YOUNG_RULE : ADULT_RULE
+  const start = new Date(input.clockIn).getTime()
+  const dueBy = londonTime(start + rule.legalAfterMinutes * 60000)
+  const remindFrom = londonTime(start + rule.remindFromMinutes * 60000)
+  const legal = formatMinutes(rule.legalAfterMinutes)
+  const needs = `a ${rule.requiredMinutes}-minute break`
+
+  const rotaEnd = input.rotaEnd?.slice(0, 5) ?? null
+  const planned = rotaEnd ? toMinutes(rotaEnd) - toMinutes(londonTime(start)) : null
+  if (rotaEnd && planned !== null && planned > 0) {
+    if (planned > rule.legalAfterMinutes) {
+      return `You're on until ${rotaEnd} today, so you need ${needs}. Take it before ${dueBy} — the tablet will remind you from ${remindFrom}.`
+    }
+    return `You're on until ${rotaEnd} today, so this shift doesn't need a break. If you stay past ${dueBy}, take ${needs}.`
+  }
+  return `If you're here more than ${legal} today, you need ${needs}. Take it before ${dueBy} — the tablet will remind you from ${remindFrom}.`
+}
