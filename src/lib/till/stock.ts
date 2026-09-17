@@ -10,7 +10,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * 2. Counts. When a linked item is counted in a stock take (an 'adjust' move),
  *    its total across every location is sent to the till with the time of the
  *    count. The till takes off what it has sold since, so a late send is still
- *    right. till_count_sent_at records the count that was last sent.
+ *    right. till_count_sent_at records the count that was last sent; clearing it
+ *    (as changing servings per unit does) sends the latest count again.
+ *    An item counted in bigger units than the till sells (a bag-in-box of
+ *    post-mix sold as servings) is sent as whole servings: total ×
+ *    till_servings_per_unit.
+ *
+ * The sync only ever changes name, category and active on a linked item, never
+ * its unit.
  *
  * Needs TILL_URL, TILL_READ_TOKEN (the till's HUB_READ_TOKEN) and
  * TILL_STOCK_TOKEN (the till's CAFE_STOCK_TOKEN, which can only send counts).
@@ -104,7 +111,7 @@ async function sendCounts(admin: ReturnType<typeof createAdminClient>): Promise<
 
   const { data: items, error } = await admin
     .from('stock_items')
-    .select('id, till_item_id, till_count_sent_at')
+    .select('id, till_item_id, till_count_sent_at, till_servings_per_unit')
     .not('till_item_id', 'is', null)
   if (error) throw new Error(error.message)
   if (!items?.length) return []
@@ -135,7 +142,9 @@ async function sendCounts(admin: ReturnType<typeof createAdminClient>): Promise<
     const countedAt = lastCounted.get(item.id)
     if (!countedAt) return []
     if (item.till_count_sent_at && new Date(item.till_count_sent_at) >= new Date(countedAt)) return []
-    return [{ stockItemId: item.id, item_id: item.till_item_id as string, counted: onHand.get(item.id) ?? 0, counted_at: countedAt }]
+    const servings = Number(item.till_servings_per_unit ?? 1) || 1
+    const counted = Math.floor((onHand.get(item.id) ?? 0) * servings + 1e-9)
+    return [{ stockItemId: item.id, item_id: item.till_item_id as string, counted, counted_at: countedAt }]
   })
   if (!due.length) return []
 

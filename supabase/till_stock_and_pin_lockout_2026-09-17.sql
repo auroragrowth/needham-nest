@@ -9,6 +9,14 @@ alter table public.stock_items add column if not exists till_item_id text;
 alter table public.stock_items add column if not exists till_count_sent_at timestamptz;
 create unique index if not exists stock_items_till_item_id_key on public.stock_items (till_item_id) where till_item_id is not null;
 
+-- Applied later the same day as migration stock_items_till_servings_per_unit:
+-- a till item counted in bigger units than the till sells (a 7L bag-in-box of
+-- post-mix sold as 16oz servings) is sent to the till as servings. Null means 1.
+alter table public.stock_items add column if not exists till_servings_per_unit numeric;
+alter table public.stock_items drop constraint if exists stock_items_till_servings_per_unit_positive;
+alter table public.stock_items add constraint stock_items_till_servings_per_unit_positive
+  check (till_servings_per_unit is null or till_servings_per_unit > 0);
+
 -- The two stock items that were already the till's Cookies and Choc Vegan Loaf.
 update public.stock_items set till_item_id = 'cookies' where id = '0b7032ed-e490-473a-8abc-2283d8b52c97' and till_item_id is null;
 update public.stock_items set till_item_id = 'vegan-loaf' where id = '3bcebd2e-ba1d-4c13-b1d4-496808546192' and till_item_id is null;
@@ -75,3 +83,11 @@ begin
 end $$;
 revoke all on function public.pin_sign_in(text, text) from public, anon, authenticated;
 grant execute on function public.pin_sign_in(text, text) to service_role;
+
+-- ------------------------------------------------------ event booking form
+-- Applied the same day as migration close_public_event_booking_form. Paul
+-- retired the website's event booking form, so nobody outside the app can add a
+-- booking any more (this closes the one anon insert kept in
+-- security_fixes_2026-09-16.sql). The 15 bookings already made are kept.
+drop policy if exists event_bookings_public_insert on public.event_bookings;
+revoke insert on public.event_bookings from anon;
