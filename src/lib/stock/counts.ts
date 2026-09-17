@@ -3,7 +3,9 @@
  *
  * Each item has a `count_<itemId>` box, prefilled with the current count. A
  * blank box means "not counted" and is skipped; 0 means none there. Only
- * counts that differ from what's recorded become changes.
+ * counts that differ from what's recorded become changes, except for items in
+ * `alwaysRecord` (till items): the till sells them without the count here
+ * going down, so any number typed is a fresh count the till needs to hear.
  */
 
 export type CountChange = { itemId: string; quantity: number; previous: number }
@@ -13,6 +15,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export function parseCounts(
   entries: Iterable<[string, unknown]>,
   current: Map<string, number>,
+  alwaysRecord: Set<string> = new Set(),
 ): { changes: CountChange[]; invalid: string[] } {
   const changes: CountChange[] = []
   const invalid: string[] = []
@@ -31,7 +34,7 @@ export function parseCounts(
     seen.add(itemId)
     const quantity = Number(n.toFixed(3))
     const previous = current.get(itemId) ?? 0
-    if (quantity !== previous) changes.push({ itemId, quantity, previous })
+    if (quantity !== previous || alwaysRecord.has(itemId)) changes.push({ itemId, quantity, previous })
   }
   return { changes, invalid }
 }

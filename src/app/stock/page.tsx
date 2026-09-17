@@ -34,7 +34,8 @@ const AREA: Record<string, string> = { cafe: 'Café', kitchen: 'Kitchen', storag
 const KIND: Record<string, string> = { chilled: 'Fridge', frozen: 'Freezer', ambient: 'Shelves' }
 const AREA_ORDER = ['cafe', 'kitchen', 'storage', 'other']
 
-type Item = { id: string; name: string; category: string | null; unit: string }
+/** till_item_id: sold on the till, which names it and receives its stock takes. */
+type Item = { id: string; name: string; category: string | null; unit: string; till_item_id: string | null }
 type Location = { id: string; name: string; zone: string; cold_type: string | null; sort_order: number }
 type Placement = { stock_item_id: string; location_id: string; quantity: number; updated_at: string }
 
@@ -71,7 +72,7 @@ export default async function StockPage({
 
   const admin = createAdminClient()
   const [{ data: itemRows }, { data: locationRows }, { data: placementRows }, manager] = await Promise.all([
-    admin.from('stock_items').select('id, name, category, unit').eq('active', true).order('category').order('name'),
+    admin.from('stock_items').select('id, name, category, unit, till_item_id').eq('active', true).order('category').order('name'),
     admin
       .from('stock_locations')
       .select('id, name, zone, cold_type, sort_order')
@@ -270,7 +271,12 @@ function Overall({
                       </ul>
                     )}
 
-                    {manager && (
+                    {manager && item.till_item_id && (
+                      <p className="mt-4 border-t border-brand-sage/30 pt-3 text-xs text-brand-slate">
+                        Sold on the till, which names it and gets its stock takes. Change the name there.
+                      </p>
+                    )}
+                    {manager && !item.till_item_id && (
                       <div className="mt-4 border-t border-brand-sage/30 pt-3">
                         <form action={updateItem.bind(null, item.id)} className="grid gap-3 sm:grid-cols-3">
                           <label className="text-sm text-brand-forest sm:col-span-3">
@@ -447,6 +453,7 @@ function LocationView({
         <p className="font-semibold text-brand-forest">Stock take</p>
         <p className="text-xs text-brand-slate">
           Put what&apos;s actually here in each box, then Save. 0 means none; leave a box blank to skip it.
+          Till items start blank — the till sells them, so count what&apos;s really there.
         </p>
 
         {rows.length === 0 && <p className="mt-3 text-sm text-brand-slate">Nothing is kept here yet — add an item below.</p>}
@@ -459,6 +466,11 @@ function LocationView({
                 <li key={item.id} className="flex items-center justify-between gap-3 py-2">
                   <label htmlFor={`count_${item.id}`} className="text-sm text-brand-forest">
                     {item.name}
+                    {item.till_item_id && (
+                      <span className="ml-2 rounded bg-brand-teal/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-teal-deep">
+                        till
+                      </span>
+                    )}
                   </label>
                   <span className="flex items-center gap-2">
                     <input
@@ -468,7 +480,8 @@ function LocationView({
                       inputMode="decimal"
                       step="any"
                       min={0}
-                      defaultValue={qty(quantity)}
+                      defaultValue={item.till_item_id ? undefined : qty(quantity)}
+                      placeholder={item.till_item_id ? `was ${qty(quantity)}` : undefined}
                       className="w-24 rounded-md border border-brand-sage/60 bg-white px-2 py-1.5 text-right text-brand-forest"
                     />
                     <span className="w-10 text-xs text-brand-slate">{item.unit}</span>

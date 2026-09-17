@@ -60,8 +60,14 @@ export async function createItem(formData: FormData) {
 export async function updateItem(id: string, formData: FormData) {
   await requireStockControl()
   const payload = parseItem(formData)
-  if ('name' in payload && !payload.name) redirect(`${STOCK}&error=Name+is+required`)
   const admin = createAdminClient()
+  const { data: item } = await admin.from('stock_items').select('till_item_id').eq('id', id).maybeSingle()
+  if (item?.till_item_id) {
+    // The till sync keeps these in step with the till every 15 minutes.
+    delete payload.name
+    delete payload.category
+  }
+  if ('name' in payload && !payload.name) redirect(`${STOCK}&error=Name+is+required`)
   const { error } = await admin.from('stock_items').update(payload).eq('id', id)
   if (error) redirect(`${STOCK}&error=${encodeURIComponent(error.message)}`)
   revalidateStock()

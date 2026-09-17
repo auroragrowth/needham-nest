@@ -129,7 +129,8 @@ export async function saveLocationCounts(formData: FormData) {
   const newItem = String(formData.get('new_item_id') ?? '').trim()
   if (newItem) entries.push([`count_${newItem}`, formData.get('new_item_count')])
 
-  const { changes, invalid } = parseCounts(entries, current)
+  const { data: tillItems } = await admin.from('stock_items').select('id').not('till_item_id', 'is', null)
+  const { changes, invalid } = parseCounts(entries, current, new Set((tillItems ?? []).map((i) => i.id)))
   if (invalid.length > 0) {
     redirect(withParam(back, 'error', 'Counts must be 0 or more — nothing was saved.'))
   }
