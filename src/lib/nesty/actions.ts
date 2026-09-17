@@ -211,10 +211,132 @@ export const ACTIONS: Record<string, Action> = {
     const hours = (clockOut.getTime() - clockIn.getTime()) / 3_600_000 - (after.break_minutes_total ?? 0) / 60
     return `${person?.name ?? 'They'} clocked out at ${time} — ${hours.toFixed(2)}h after breaks.`
   },
+
+  /**
+   * Corrects a shift's hours: clock-in, clock-out and break, in any combination.
+   * The owner fixing a timesheet, as they would by hand, so it does not run the
+   * closing-list check in clockOut (src/lib/time-logs/actions.ts). Only the parts
+   * given change. Times are UK wall-clock on the day the shift started, so a
+   * shift running past midnight has to be fixed in the app.
+   */
+  'time-log-set-hours': async (admin, _ownerId, params) => {
+    const logId = id(params, 'time_log_id')
+    const newIn = hhmm(params, 'clock_in')
+    const newOut = hhmm(params, 'clock_out')
+    const newBreak = minutes(params, 'break_minutes')
+    const reason = text(params, 'reason', { min: 3, max: 300 })!
+    if (newIn === null && newOut === null && newBreak === null) {
+      throw new ActionError('Give a new clock-in, clock-out or break to change.')
+    }
+
+    const { data: log } = await admin
+      .from('time_logs')
+      .select('id, user_id, clock_in, clock_out, break_start_at, break_minutes_total, notes')
+      .eq('id', logId)
+      .maybeSingle()
+    if (!log) throw new ActionError('That shift no longer exists.')
+
+    const wasIn = londonStamp(log.clock_in)
+    const wasOut = log.clock_out ? londonStamp(log.clock_out) : null
+    expected(params, 'expected_clock_in', wasIn)
+    expected(params, 'expected_clock_out', wasOut)
+
+    const day = londonParts(new Date(log.clock_in)).day
+    const clockIn = newIn ? londonInstant(day, newIn) : new Date(log.clock_in)
+    const clockOut = newOut ? londonInstant(day, newOut) : log.clock_out ? new Date(log.clock_out) : null
+    if (clockIn.getTime() > Date.now()) throw new ActionError(`${newIn} hasn't happened yet.`)
+    if (clockOut) {
+      if (clockOut <= clockIn) throw new ActionError('The clock-out has to be after the clock-in, on the same day.')
+      if (clockOut.getTime() > Date.now()) throw new ActionError(`${newOut} hasn't happened yet.`)
+      if (clockOut.getTime() - clockIn.getTime() > FOURTEEN_HOURS_MS) {
+        throw new ActionError('That would be a shift of over 14 hours. Change it in the app if it really is.')
+      }
+    }
+    if (log.break_start_at && (newOut || newBreak !== null)) {
+      throw new ActionError("They're on a break right now, so the break time isn't final. End the break in the app first.")
+    }
+
+    const wasBreak = log.break_minutes_total ?? 0
+    const breakMinutes = newBreak ?? wasBreak
+    if (clockOut && breakMinutes * 60_000 >= clockOut.getTime() - clockIn.getTime()) {
+      throw new ActionError('The break is as long as the shift. Check the times.')
+    }
+
+    const changes: string[] = []
+    if (newIn && newIn !== wasIn.slice(11)) changes.push(`in ${wasIn.slice(11)} → ${newIn}`)
+    if (newOut && newOut !== (wasOut?.slice(11) ?? null)) changes.push(`out ${wasOut ? wasOut.slice(11) : 'none'} → ${newOut}`)
+    if (newBreak !== null && newBreak !== wasBreak) changes.push(`break ${wasBreak} → ${newBreak} min`)
+    if (changes.length === 0) throw new ActionError('Those are already the hours on that shift.')
+
+    const note = `Hours changed via Nesty: ${changes.join('; ')}. Reason: ${reason} Approved by Paul, ${stamp()}.`
+    const notes = log.notes ? `${log.notes}\n${note}` : note
+
+    let update = admin
+      .from('time_logs')
+      .update({
+        clock_in: clockIn.toISOString(),
+        clock_out: clockOut ? clockOut.toISOString() : null,
+        break_minutes_total: breakMinutes,
+        notes,
+      })
+      .eq('id', logId)
+      .eq('clock_in', log.clock_in)
+    update = log.clock_out ? update.eq('clock_out', log.clock_out) : update.is('clock_out', null)
+    const { error } = await update
+    if (error) throw new Error(error.message)
+
+    const [{ data: after }, { data: person }] = await Promise.all([
+      admin.from('time_logs').select('clock_in, clock_out, break_minutes_total').eq('id', logId).single(),
+      admin.from('profiles').select('name').eq('id', log.user_id).maybeSingle(),
+    ])
+    if (!after || new Date(after.clock_in).getTime() !== clockIn.getTime()) throw new Error('the hours did not save')
+    if ((clockOut === null) !== (after.clock_out === null)) throw new Error('the hours did not save')
+    if (clockOut && new Date(after.clock_out!).getTime() !== clockOut.getTime()) throw new Error('the hours did not save')
+
+    const who = person?.name ?? 'They'
+    if (!clockOut) return `${who} is still clocked in, now from ${londonParts(clockIn).time}.`
+    const hours = (clockOut.getTime() - clockIn.getTime()) / 3_600_000 - (after.break_minutes_total ?? 0) / 60
+    return `${who}: ${londonParts(clockIn).time}–${londonParts(clockOut).time}, ${after.break_minutes_total ?? 0} min break — ${hours.toFixed(2)}h after breaks.`
+  },
 }
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 const TEN_HOURS_MS = 10 * 60 * 60 * 1000
+const FOURTEEN_HOURS_MS = 14 * 60 * 60 * 1000
+
+/** An optional HH:MM time, UK wall-clock. */
+function hhmm(params: Params, key: string): string | null {
+  const value = params[key]
+  if (value === undefined || value === null || value === '') return null
+  if (typeof value !== 'string' || !HHMM.test(value.trim())) throw new ActionError(`${key} must be HH:MM, UK time`)
+  return value.trim()
+}
+
+/** An optional whole number of minutes. */
+function minutes(params: Params, key: string): number | null {
+  const value = params[key]
+  if (value === undefined || value === null || value === '') return null
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isInteger(n) || n < 0 || n > 600) throw new ActionError(`${key} must be a whole number of minutes, 0 to 600`)
+  return n
+}
+
+/**
+ * Refuses when the record has moved on since the card was made: the card carries
+ * what the report showed, and it has to still be true.
+ */
+function expected(params: Params, key: string, current: string | null) {
+  const value = params[key]
+  if (value === undefined) return
+  if (value !== null && typeof value !== 'string') throw new ActionError(`${key} must be the value from the report, or null`)
+  if ((value || null) !== current) {
+    throw new ActionError(
+      current
+        ? `That shift has changed since the card was made: it now shows ${current}.`
+        : 'That shift has changed since the card was made.',
+    )
+  }
+}
 
 function londonParts(d: Date) {
   const parts = new Intl.DateTimeFormat('en-GB', {
