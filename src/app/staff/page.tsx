@@ -154,8 +154,10 @@ export default async function StaffHub({
         )}
         {hasPermission(session.role, perms, 'stock_count') && (
           <HubTile
-            href="/staff/stock-count"
-            title="Stock count"
+            // Counts are taken per location, which is what par alerts and the
+            // order pad read; the old all-items list at /staff/stock-count isn't.
+            href="/stock/locations"
+            title="Stock take"
             status={
               stockItemsCount && stockItemsCount > 0
                 ? `${stockItemsCount} item${stockItemsCount === 1 ? '' : 's'} to count`

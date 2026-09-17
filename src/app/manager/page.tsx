@@ -247,6 +247,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/stock/locations"
+          title="📝 Stock take"
+          subtitle="Count each fridge, freezer and store — updates par alerts and the order pad"
+          cta="Start →"
+        />
+        <Card
           href="/stock/items"
           title="Stock items"
           subtitle="Add and edit items, par levels, cost prices"
