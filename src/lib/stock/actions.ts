@@ -34,6 +34,8 @@ function parseItem(formData: FormData) {
   if (formData.has('reorder_at')) payload.reorder_at = num('reorder_at')
   if (formData.has('cost_price')) payload.cost_price = num('cost_price')
   if (formData.has('supplier_name')) payload.supplier_name = text('supplier_name') || null
+  // Till items: how many till servings one counted unit makes (e.g. a 7L post-mix bag-in-box).
+  if (formData.has('till_servings_per_unit')) payload.till_servings_per_unit = num('till_servings_per_unit')
   return payload
 }
 
@@ -61,13 +63,29 @@ export async function updateItem(id: string, formData: FormData) {
   await requireStockControl()
   const payload = parseItem(formData)
   const admin = createAdminClient()
-  const { data: item } = await admin.from('stock_items').select('till_item_id').eq('id', id).maybeSingle()
+  const { data: item } = await admin
+    .from('stock_items')
+    .select('till_item_id, unit, till_servings_per_unit')
+    .eq('id', id)
+    .maybeSingle()
   if (item?.till_item_id) {
     // The till sync keeps these in step with the till every 15 minutes.
     delete payload.name
     delete payload.category
+    // A new unit or servings figure changes what the till should hold, so the
+    // sync resends the last count (it resends whenever this is null).
+    const unitChanged = 'unit' in payload && payload.unit !== item.unit
+    const servingsChanged =
+      'till_servings_per_unit' in payload &&
+      (payload.till_servings_per_unit ?? null) !==
+        (item.till_servings_per_unit === null ? null : Number(item.till_servings_per_unit))
+    if (unitChanged || servingsChanged) payload.till_count_sent_at = null
   }
   if ('name' in payload && !payload.name) redirect(`${STOCK}&error=Name+is+required`)
+  const servings = payload.till_servings_per_unit
+  if (servings !== undefined && servings !== null && !(Number(servings) > 0)) {
+    redirect(`${STOCK}&error=${encodeURIComponent('Servings must be more than 0, or blank for 1 each')}`)
+  }
   const { error } = await admin.from('stock_items').update(payload).eq('id', id)
   if (error) redirect(`${STOCK}&error=${encodeURIComponent(error.message)}`)
   revalidateStock()

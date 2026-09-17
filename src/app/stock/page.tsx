@@ -35,7 +35,15 @@ const KIND: Record<string, string> = { chilled: 'Fridge', frozen: 'Freezer', amb
 const AREA_ORDER = ['cafe', 'kitchen', 'storage', 'other']
 
 /** till_item_id: sold on the till, which names it and receives its stock takes. */
-type Item = { id: string; name: string; category: string | null; unit: string; till_item_id: string | null }
+type Item = {
+  id: string
+  name: string
+  category: string | null
+  unit: string
+  till_item_id: string | null
+  /** Till servings in one counted unit, e.g. drinks per post-mix bag-in-box. Null means 1. */
+  till_servings_per_unit: number | null
+}
 type Location = { id: string; name: string; zone: string; cold_type: string | null; sort_order: number }
 type Placement = { stock_item_id: string; location_id: string; quantity: number; updated_at: string }
 
@@ -72,7 +80,7 @@ export default async function StockPage({
 
   const admin = createAdminClient()
   const [{ data: itemRows }, { data: locationRows }, { data: placementRows }, manager] = await Promise.all([
-    admin.from('stock_items').select('id, name, category, unit, till_item_id').eq('active', true).order('category').order('name'),
+    admin.from('stock_items').select('id, name, category, unit, till_item_id, till_servings_per_unit').eq('active', true).order('category').order('name'),
     admin
       .from('stock_locations')
       .select('id, name, zone, cold_type, sort_order')
@@ -250,6 +258,9 @@ function Overall({
                     <span className="font-medium text-brand-forest">{item.name}</span>
                     <span className={`text-sm ${total > 0 ? 'font-semibold text-brand-forest' : 'text-brand-slate'}`}>
                       {total > 0 ? `${qty(total)} ${item.unit}` : 'none counted'}
+                      {total > 0 && item.till_servings_per_unit
+                        ? ` · ${Math.floor(total * Number(item.till_servings_per_unit))} servings`
+                        : ''}
                     </span>
                   </summary>
                   <div className="border-t border-brand-sage/30 p-3">
@@ -272,9 +283,38 @@ function Overall({
                     )}
 
                     {manager && item.till_item_id && (
-                      <p className="mt-4 border-t border-brand-sage/30 pt-3 text-xs text-brand-slate">
-                        Sold on the till, which names it and gets its stock takes. Change the name there.
-                      </p>
+                      <div className="mt-4 border-t border-brand-sage/30 pt-3">
+                        <p className="text-xs text-brand-slate">
+                          Sold on the till, which names it and gets its stock takes. Change the name there.
+                        </p>
+                        <form action={updateItem.bind(null, item.id)} className="mt-3 grid gap-3 sm:grid-cols-3">
+                          <label className="text-sm text-brand-forest">
+                            Counted in
+                            <input name="unit" list="stock-units" defaultValue={item.unit} className={input} />
+                          </label>
+                          <label className="text-sm text-brand-forest">
+                            Till servings in each
+                            <input
+                              name="till_servings_per_unit"
+                              type="number"
+                              inputMode="decimal"
+                              step="any"
+                              min={0}
+                              defaultValue={item.till_servings_per_unit ?? ''}
+                              placeholder="1"
+                              className={input}
+                            />
+                          </label>
+                          <div className="flex items-end">
+                            <button type="submit" className={button}>
+                              Save
+                            </button>
+                          </div>
+                          <p className="text-xs text-brand-slate sm:col-span-3">
+                            E.g. counted in BIB with 92 servings each: 2 BIBs tells the till 184. Blank means 1 each.
+                          </p>
+                        </form>
+                      </div>
                     )}
                     {manager && !item.till_item_id && (
                       <div className="mt-4 border-t border-brand-sage/30 pt-3">
@@ -469,6 +509,11 @@ function LocationView({
                     {item.till_item_id && (
                       <span className="ml-2 rounded bg-brand-teal/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-teal-deep">
                         till
+                      </span>
+                    )}
+                    {item.till_servings_per_unit && (
+                      <span className="block text-xs text-brand-slate">
+                        {qty(Number(item.till_servings_per_unit))} servings per {item.unit}
                       </span>
                     )}
                   </label>
