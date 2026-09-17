@@ -14,7 +14,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
  *    (as changing servings per unit does) sends the latest count again.
  *    An item counted in bigger units than the till sells (a bag-in-box of
  *    post-mix sold as servings) is sent as whole servings: total ×
- *    till_servings_per_unit.
+ *    till_servings_per_unit. Ingredients keep their fractions (tillCount).
  *
  * The sync only ever changes name, category and active on a linked item, never
  * its unit.
@@ -105,6 +105,17 @@ export async function syncTillStock(): Promise<TillStockResult> {
   return result
 }
 
+/**
+ * What the till is sent for a counted total. Something the till sells (a can, a
+ * post-mix serving) is whole: half a bag-in-box is 46 servings, not 46.5. An
+ * ingredient can be part used, so half a lemon stays 0.5.
+ */
+export function tillCount(tillItemId: string, total: number): number {
+  return tillItemId.startsWith('ingredient:')
+    ? Math.round(total * 1000) / 1000
+    : Math.floor(total + 1e-9)
+}
+
 async function sendCounts(admin: ReturnType<typeof createAdminClient>): Promise<SentCount[]> {
   const token = process.env.TILL_STOCK_TOKEN?.trim()
   if (!token) throw new Error('TILL_STOCK_TOKEN is not set, so stock take counts cannot be sent to the till.')
@@ -143,7 +154,7 @@ async function sendCounts(admin: ReturnType<typeof createAdminClient>): Promise<
     if (!countedAt) return []
     if (item.till_count_sent_at && new Date(item.till_count_sent_at) >= new Date(countedAt)) return []
     const servings = Number(item.till_servings_per_unit ?? 1) || 1
-    const counted = Math.floor((onHand.get(item.id) ?? 0) * servings + 1e-9)
+    const counted = tillCount(item.till_item_id as string, (onHand.get(item.id) ?? 0) * servings)
     return [{ stockItemId: item.id, item_id: item.till_item_id as string, counted, counted_at: countedAt }]
   })
   if (!due.length) return []
