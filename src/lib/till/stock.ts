@@ -6,7 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
  *
  * 1. Items. Every item the till counts stock for has a stock_item here, linked by
  *    till_item_id, with the till's name and category. A new till item appears
- *    here ready to count; a renamed one is renamed here.
+ *    here ready to count; a renamed one is renamed here. An item already set up
+ *    here under the same name, not yet linked, is linked rather than duplicated,
+ *    so its count and its place in the stock take are kept.
  * 2. Counts. When a linked item is counted in a stock take (an 'adjust' move),
  *    its total across every location is sent to the till with the time of the
  *    count. The till takes off what it has sold since, so a late send is still
@@ -29,6 +31,7 @@ type SentCount = { item_id: string; ok: boolean; name?: string; previous?: numbe
 
 export type TillStockResult = {
   itemsCreated: string[]
+  itemsLinked: string[]
   itemsRenamed: string[]
   countsSent: SentCount[]
   errors: string[]
@@ -55,21 +58,40 @@ async function tillItems(): Promise<TillStockRow[]> {
 
 export async function syncTillStock(): Promise<TillStockResult> {
   const admin = createAdminClient()
-  const result: TillStockResult = { itemsCreated: [], itemsRenamed: [], countsSent: [], errors: [] }
+  const result: TillStockResult = { itemsCreated: [], itemsLinked: [], itemsRenamed: [], countsSent: [], errors: [] }
 
   // 1. Items: the till's names win.
   try {
     const till = await tillItems()
-    const { data: linked, error } = await admin
+    const { data: all, error } = await admin
       .from('stock_items')
-      .select('id, name, category, active, till_item_id')
-      .not('till_item_id', 'is', null)
+      .select('id, name, category, unit, active, till_item_id')
     if (error) throw new Error(error.message)
-    const byTillId = new Map((linked ?? []).map((row) => [row.till_item_id as string, row]))
+    const byTillId = new Map(
+      (all ?? []).filter((row) => row.till_item_id).map((row) => [row.till_item_id as string, row]),
+    )
+    // An item somebody already set up here, waiting to be linked: same name, no
+    // till item yet. Linking it keeps its count instead of making a second row.
+    const unlinkedByName = new Map(
+      (all ?? [])
+        .filter((row) => !row.till_item_id && row.active)
+        .map((row) => [row.name.trim().toLowerCase(), row]),
+    )
 
     for (const item of till) {
       const mine = byTillId.get(item.item_id)
       if (!mine) {
+        const existing = unlinkedByName.get(item.name.trim().toLowerCase())
+        if (existing) {
+          const { error: linkError } = await admin
+            .from('stock_items')
+            .update({ till_item_id: item.item_id, category: item.category, updated_at: new Date().toISOString() })
+            .eq('id', existing.id)
+            .is('till_item_id', null)
+          if (linkError) result.errors.push(`${item.name}: ${linkError.message}`)
+          else result.itemsLinked.push(`${item.name} (${existing.unit})`)
+          continue
+        }
         const { error: insertError } = await admin.from('stock_items').insert({
           name: item.name,
           category: item.category,
