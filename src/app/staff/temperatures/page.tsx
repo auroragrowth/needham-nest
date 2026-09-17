@@ -16,6 +16,34 @@ const KIND_LABEL: Record<string, string> = {
   ambient: 'Ambient',
 }
 
+// The same areas, in the same order, as the stock page (Café · Kitchen ·
+// Storage), so each fridge has one name and one place in both.
+const AREA_ORDER = ['Counter', 'Kitchen', 'Storage']
+
+type Appliance = {
+  id: string
+  name: string
+  kind: string
+  target_min: number | null
+  target_max: number | null
+  location: string | null
+}
+
+function groupByArea(appliances: Appliance[]): Array<[string, Appliance[]]> {
+  const groups = new Map<string, Appliance[]>()
+  for (const a of appliances) {
+    const area = a.location?.trim() || 'Other'
+    groups.set(area, [...(groups.get(area) ?? []), a])
+  }
+  const rank = (area: string) => {
+    const i = AREA_ORDER.indexOf(area)
+    return i === -1 ? AREA_ORDER.length : i
+  }
+  return [...groups.entries()].sort(
+    ([a], [b]) => rank(a) - rank(b) || a.localeCompare(b),
+  )
+}
+
 function formatTarget(min: number | null, max: number | null): string {
   if (min != null && max != null) return `${min}°C – ${max}°C`
   if (max != null) return `≤ ${max}°C`
@@ -50,6 +78,7 @@ export default async function TemperaturesListPage({
     .eq('active', true)
     .order('kind')
     .order('name')
+    .returns<Appliance[]>()
 
   const { data: todaysLogs } = await admin
     .from('temperature_logs')
@@ -85,6 +114,8 @@ export default async function TemperaturesListPage({
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
         Tap an appliance to log its current temperature.
+        {(appliances ?? []).length > 0 &&
+          ` ${(appliances ?? []).filter((a) => latestByAppliance.has(a.id)).length} of ${(appliances ?? []).length} logged today.`}
       </p>
 
       <Link
@@ -113,67 +144,74 @@ export default async function TemperaturesListPage({
         </p>
       )}
 
-      <ul className="mt-6 space-y-3">
-        {(appliances ?? []).length === 0 && (
-          <li className="rounded-xl border border-brand-sage/40 bg-white p-5 text-center text-sm text-brand-slate">
-            No appliances configured yet. Ask the owner to add them.
-          </li>
-        )}
-        {(appliances ?? []).map((a) => {
-          const latest = latestByAppliance.get(a.id)
-          return (
-            <li key={a.id}>
-              <Link
-                href={`/staff/temperatures/${a.id}`}
-                className={`block rounded-2xl border p-4 transition active:scale-[0.98] ${
-                  latest
-                    ? latest.in_range
-                      ? 'border-brand-teal/40 bg-brand-teal/5'
-                      : 'border-brand-amber/60 bg-brand-amber/10'
-                    : 'border-brand-sage/40 bg-white'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-semibold text-brand-forest">
-                      {a.name}
-                    </p>
-                    <p className="mt-0.5 text-xs uppercase tracking-wide text-brand-slate">
-                      {KIND_LABEL[a.kind] ?? a.kind}
-                      {a.location ? ` · ${a.location}` : ''}
-                    </p>
-                    <p className="mt-1 text-xs text-brand-slate">
-                      Target {formatTarget(a.target_min, a.target_max)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {latest ? (
-                      <>
-                        <p
-                          className={`text-xl font-semibold ${
-                            latest.in_range
-                              ? 'text-brand-teal-deep'
-                              : 'text-brand-amber'
-                          }`}
-                        >
-                          {latest.temperature}°C
+      {(appliances ?? []).length === 0 && (
+        <p className="mt-6 rounded-xl border border-brand-sage/40 bg-white p-5 text-center text-sm text-brand-slate">
+          No appliances configured yet. Ask the owner to add them.
+        </p>
+      )}
+
+      {groupByArea(appliances ?? []).map(([area, items]) => (
+        <section key={area} className="mt-6">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+            {area}
+          </h2>
+          <ul className="mt-2 space-y-3">
+            {items.map((a) => {
+              const latest = latestByAppliance.get(a.id)
+              return (
+                <li key={a.id}>
+                  <Link
+                    href={`/staff/temperatures/${a.id}`}
+                    className={`block rounded-2xl border p-4 transition active:scale-[0.98] ${
+                      latest
+                        ? latest.in_range
+                          ? 'border-brand-teal/40 bg-brand-teal/5'
+                          : 'border-brand-amber/60 bg-brand-amber/10'
+                        : 'border-brand-sage/40 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-base font-semibold text-brand-forest">
+                          {a.name}
                         </p>
-                        <p className="text-xs text-brand-slate">
-                          {formatRelative(new Date(latest.recorded_at), now)}
+                        <p className="mt-0.5 text-xs uppercase tracking-wide text-brand-slate">
+                          {KIND_LABEL[a.kind] ?? a.kind}
                         </p>
-                      </>
-                    ) : (
-                      <p className="text-xs font-medium text-brand-amber">
-                        Not logged today
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+                        <p className="mt-1 text-xs text-brand-slate">
+                          Target {formatTarget(a.target_min, a.target_max)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        {latest ? (
+                          <>
+                            <p
+                              className={`text-xl font-semibold ${
+                                latest.in_range
+                                  ? 'text-brand-teal-deep'
+                                  : 'text-brand-amber'
+                              }`}
+                            >
+                              {latest.temperature}°C
+                            </p>
+                            <p className="text-xs text-brand-slate">
+                              {formatRelative(new Date(latest.recorded_at), now)}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-xs font-medium text-brand-amber">
+                            Not logged today
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ))}
     </main>
   )
 }
