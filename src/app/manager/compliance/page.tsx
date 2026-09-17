@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { groupByArea } from '@/lib/temperatures/areas'
 
 const KIND_LABEL: Record<string, string> = {
   fridge: 'Fridge',
@@ -182,61 +183,67 @@ export default async function CompliancePage() {
             .
           </p>
         )}
-        {(appliances ?? []).map((a) => {
-          const todays = todayTempsByAppliance.get(a.id) ?? []
-          const latest = todays[0]
-          const allInRange = todays.every((l) => l.in_range)
-          return (
-            <div
-              key={a.id}
-              className="rounded-xl border border-brand-sage/40 bg-white p-4"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-semibold text-brand-forest">
-                    {a.name}
-                  </h3>
-                  <p className="text-xs uppercase tracking-wide text-brand-slate">
-                    {KIND_LABEL[a.kind] ?? a.kind}
-                    {a.location ? ` · ${a.location}` : ''} · Target{' '}
-                    {formatTarget(a.target_min, a.target_max)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  {latest ? (
-                    <>
-                      <p
-                        className={`text-xl font-semibold ${
-                          latest.in_range
-                            ? 'text-brand-teal-deep'
-                            : 'text-brand-amber'
-                        }`}
-                      >
-                        {latest.temperature}°C
+        {groupByArea(appliances ?? []).map(([area, items]) => (
+          <div key={area} className="space-y-2 pt-2">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-slate">
+              {area}
+            </h3>
+            {items.map((a) => {
+              const todays = todayTempsByAppliance.get(a.id) ?? []
+              const latest = todays[0]
+              const allInRange = todays.every((l) => l.in_range)
+              return (
+                <div
+                  key={a.id}
+                  className="rounded-xl border border-brand-sage/40 bg-white p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-base font-semibold text-brand-forest">
+                        {a.name}
+                      </h3>
+                      <p className="text-xs uppercase tracking-wide text-brand-slate">
+                        {KIND_LABEL[a.kind] ?? a.kind} · Target{' '}
+                        {formatTarget(a.target_min, a.target_max)}
                       </p>
-                      <p className="text-xs text-brand-slate">
-                        {new Date(latest.recorded_at).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </>
-                  ) : (
-                    <span className="rounded bg-brand-amber/20 px-2 py-1 text-xs font-medium text-brand-forest">
-                      Not logged today
-                    </span>
+                    </div>
+                    <div className="text-right">
+                      {latest ? (
+                        <>
+                          <p
+                            className={`text-xl font-semibold ${
+                              latest.in_range
+                                ? 'text-brand-teal-deep'
+                                : 'text-brand-amber'
+                            }`}
+                          >
+                            {latest.temperature}°C
+                          </p>
+                          <p className="text-xs text-brand-slate">
+                            {new Date(latest.recorded_at).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </>
+                      ) : (
+                        <span className="rounded bg-brand-amber/20 px-2 py-1 text-xs font-medium text-brand-forest">
+                          Not logged today
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {todays.length > 0 && (
+                    <p className="mt-2 text-xs text-brand-slate">
+                      {todays.length} log{todays.length === 1 ? '' : 's'} today
+                      {allInRange ? ' · all in range' : ''}
+                    </p>
                   )}
                 </div>
-              </div>
-              {todays.length > 0 && (
-                <p className="mt-2 text-xs text-brand-slate">
-                  {todays.length} log{todays.length === 1 ? '' : 's'} today
-                  {allInRange ? ' · all in range' : ''}
-                </p>
-              )}
-            </div>
-          )
-        })}
+              )
+            })}
+          </div>
+        ))}
       </section>
 
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">

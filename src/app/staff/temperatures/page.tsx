@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
+import { groupByArea } from '@/lib/temperatures/areas'
 
 function startOfTodayIso(): string {
   const d = new Date()
@@ -16,10 +17,6 @@ const KIND_LABEL: Record<string, string> = {
   ambient: 'Ambient',
 }
 
-// The same areas, in the same order, as the stock page (Café · Kitchen ·
-// Storage), so each fridge has one name and one place in both.
-const AREA_ORDER = ['Counter', 'Kitchen', 'Storage']
-
 type Appliance = {
   id: string
   name: string
@@ -27,21 +24,6 @@ type Appliance = {
   target_min: number | null
   target_max: number | null
   location: string | null
-}
-
-function groupByArea(appliances: Appliance[]): Array<[string, Appliance[]]> {
-  const groups = new Map<string, Appliance[]>()
-  for (const a of appliances) {
-    const area = a.location?.trim() || 'Other'
-    groups.set(area, [...(groups.get(area) ?? []), a])
-  }
-  const rank = (area: string) => {
-    const i = AREA_ORDER.indexOf(area)
-    return i === -1 ? AREA_ORDER.length : i
-  }
-  return [...groups.entries()].sort(
-    ([a], [b]) => rank(a) - rank(b) || a.localeCompare(b),
-  )
 }
 
 function formatTarget(min: number | null, max: number | null): string {
