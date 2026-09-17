@@ -1,10 +1,23 @@
 'use server'
 
+import { createHash } from 'node:crypto'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { clearSession, createSession } from './session'
+
+/**
+ * Which device a PIN attempt came from, for the lockout: the address Vercel saw
+ * the request come from, hashed so the address itself is never stored.
+ */
+async function deviceKey(): Promise<string> {
+  const h = await headers()
+  const address =
+    h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip')?.trim() || 'unknown'
+  return createHash('sha256').update(`pin-device:${address}`).digest('hex')
+}
 
 /**
  * Sign in via 4-digit PIN. The everyday login for everyone.
@@ -30,14 +43,26 @@ export async function signInWithPin(formData: FormData) {
   const nextQs = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ''
 
   const admin = createAdminClient()
-  const { data, error } = await admin.rpc('verify_pin', { p_pin: pin })
+  // Three wrong PINs from one device locks it for a minute (pin_sign_in).
+  const { data, error } = await admin.rpc('pin_sign_in', {
+    p_pin: pin,
+    p_device_key: await deviceKey(),
+  })
 
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}${nextQs}`)
   }
 
   const match = Array.isArray(data) ? data[0] : null
-  if (!match) {
+  if (match?.outcome === 'locked') {
+    const wait = Math.max(1, Number(match.wait_seconds) || 60)
+    redirect(
+      `/login?error=${encodeURIComponent(
+        `Too many wrong PINs. Try again in ${wait} second${wait === 1 ? '' : 's'}.`,
+      )}${nextQs}`,
+    )
+  }
+  if (match?.outcome !== 'ok') {
     redirect(`/login?error=PIN+not+recognised${nextQs}`)
   }
 

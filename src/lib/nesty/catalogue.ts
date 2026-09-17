@@ -38,10 +38,7 @@ export const REPORTS: Record<string, Report> = {
 
   // Stock
   'stock-levels': { kind: 'sql', fn: 'nesty_stock_levels', params: 'search', about: 'Stock on hand and where it is' },
-  'stock-alerts': { kind: 'sql', fn: 'nesty_stock_alerts', params: 'none', about: 'Items at or below par level' },
-  'order-pad': { kind: 'sql', fn: 'nesty_order_pad', params: 'none', about: 'What to order, by supplier, as the order pad page works it out' },
   wastage: { kind: 'sql', fn: 'nesty_wastage', params: 'range', about: 'Wastage logged, by reason and cost' },
-  deliveries: { kind: 'sql', fn: 'nesty_deliveries', params: 'range', about: 'Deliveries received' },
   'shopping-list': { kind: 'sql', fn: 'nesty_shopping_list', params: 'include-done', about: 'The shopping list' },
 
   // Money

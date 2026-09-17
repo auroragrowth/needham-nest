@@ -426,7 +426,9 @@ returns jsonb language sql stable as $$
   ) s
 $$;
 
--- What to order, by supplier, worked out the way /stock/order-pad does.
+-- What to order, by supplier, worked out the way the order pad page did. The page
+-- was removed on 17 Sep 2026 and Nesty no longer offers this report; kept for
+-- when stock talks to the till.
 create or replace function public.nesty_order_pad()
 returns jsonb language sql stable set search_path = public, pg_temp as $$
   with current_stock as (
