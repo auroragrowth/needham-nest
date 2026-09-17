@@ -1,14 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-
-const REASON_LABEL: Record<string, string> = {
-  out_of_date: 'Out of date',
-  damaged: 'Damaged',
-  dropped: 'Dropped',
-  customer_return: 'Customer return',
-  spillage: 'Spillage',
-  mistake: 'Mistake',
-  other: 'Other',
-}
+import { formatWastedAt, REASON_LABEL } from '@/lib/stock/wastage'
 
 export default async function ManagerWastagePage() {
   const admin = createAdminClient()
@@ -19,11 +10,10 @@ export default async function ManagerWastagePage() {
   const [{ data: rows }, { data: items }, { data: staff }] = await Promise.all([
     admin
       .from('stock_movements')
-      .select('id, date, stock_item_id, user_id, quantity, unit_cost, wastage_reason, notes')
+      .select('id, date, wasted_at, created_at, stock_item_id, user_id, quantity, unit_cost, wastage_reason, notes')
       .not('wastage_reason', 'is', null)
       .gte('date', sinceDate)
-      .order('date', { ascending: false })
-      .order('created_at', { ascending: false }),
+      .order('wasted_at', { ascending: false }),
     admin.from('stock_items').select('id, name, unit'),
     admin.from('profiles').select('id, name'),
   ])
@@ -94,11 +84,11 @@ export default async function ManagerWastagePage() {
         <table className="w-full text-sm">
           <thead className="bg-brand-sage/10 text-left text-xs font-semibold uppercase tracking-wide text-brand-slate">
             <tr>
-              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Wasted</th>
               <th className="px-4 py-3">Item</th>
               <th className="px-4 py-3 text-right">Quantity</th>
               <th className="px-4 py-3 text-right">Cost</th>
-              <th className="px-4 py-3">Reason</th>
+              <th className="px-4 py-3">Reason and why</th>
               <th className="px-4 py-3">By</th>
             </tr>
           </thead>
@@ -110,16 +100,10 @@ export default async function ManagerWastagePage() {
               return (
                 <tr key={r.id} className="border-t border-brand-sage/30">
                   <td className="px-4 py-3 text-brand-forest">
-                    {new Date(r.date).toLocaleDateString([], {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
+                    {formatWastedAt(r.wasted_at ?? r.created_at)}
                   </td>
                   <td className="px-4 py-3 text-brand-forest">
                     {it?.name ?? 'Unknown'}
-                    {r.notes && (
-                      <p className="text-xs text-brand-slate">{r.notes}</p>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-right font-mono">
                     {r.quantity} {it?.unit ?? ''}
@@ -128,8 +112,13 @@ export default async function ManagerWastagePage() {
                     £{cost.toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {REASON_LABEL[r.wastage_reason as string] ??
-                      r.wastage_reason}
+                    <span className="font-medium text-brand-forest">
+                      {REASON_LABEL[r.wastage_reason as string] ??
+                        r.wastage_reason}
+                    </span>
+                    {r.notes && (
+                      <p className="text-brand-slate">{r.notes}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-brand-slate">
                     {nameById.get(r.user_id) ?? 'Unknown'}

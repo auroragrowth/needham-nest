@@ -166,6 +166,26 @@ location × count). Nothing else stores stock, and every change is logged in
 | "Where's the oat milk?" | Totals and locations from `stock_placements` |
 | "Add Pulled pork (bag) as a frozen item" | Creates the item |
 
+### Waste
+
+Staff log waste at `/staff/wastage` (tablet Waste tile, or the closing list's waste job).
+**Every entry needs** the quantity, the **date and time it was wasted** (UK time,
+prefilled with now, not in the future, at most 7 days back), a **reason** (Out of date,
+Damaged, Dropped, Customer return, Spillage, Mistake, Other) and, in words, **why**. It's
+stored in `stock_movements` (`wasted_at` = when wasted, `created_at` = when logged, `notes`
+= why). Managers see it at `/manager/wastage`, and the compliance pack prints it.
+
+**Closing waste check (mandatory, no override):** whoever is last on shift can't clock out
+until today's waste is confirmed at the top of the waste page: "Confirm today's waste is
+all logged", or "Nothing was wasted today" when there's none. That writes `waste_checks`
+(one row per UK day: who, when, how many entries) and ticks the closing list's waste job,
+which can't be ticked any other way.
+
+| Say this | What happens |
+|---|---|
+| "What was wasted this week and why?" | `stock_movements` with a reason, by `wasted_at`, with the why |
+| "Who confirmed the waste last night?" | That day's `waste_checks` row |
+
 ## Rota
 
 | Say this | What happens |
@@ -198,15 +218,16 @@ A task can carry two optional extras beyond its name and area:
   list. Links must stay inside the app (a single leading `/`); the database rejects
   anything else.
 
-Linked tasks are ticked separately from following the link — on a night with nothing to
-waste, staff still tick to confirm they checked.
+Linked tasks are ticked separately from following the link. The exception is the waste
+job: it ticks itself when today's waste is confirmed on the waste page (see Stock → Waste).
 
 **The closing rule** (`src/lib/checklist/closing.ts`): the opening list starts with
 **Clock in** and the closing list ends with **Sign out**, both derived from the real time
 log so neither can be faked. Whoever is last on shift can't sign out until the closing
 list is done — anyone finishing mid-day with colleagues still in clocks out freely. They
 can override with a typed reason, which lands on their timesheet along with exactly which
-jobs were left.
+jobs were left. **Waste is the one thing with no override:** the closer must confirm
+today's waste (or that there was none) before clocking out.
 
 To change what's enforced (e.g. to include the daily fridge temps), say so — it's a small
 change in that file.

@@ -3,16 +3,16 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
 import { recordWastage } from '@/lib/stock/actions'
+import { londonParts, MAX_DAYS_BACK, WASTAGE_REASONS } from '@/lib/stock/wastage'
 
-const REASONS = [
-  { value: 'out_of_date', label: 'Out of date' },
-  { value: 'damaged', label: 'Damaged' },
-  { value: 'dropped', label: 'Dropped' },
-  { value: 'customer_return', label: 'Customer return' },
-  { value: 'spillage', label: 'Spillage' },
-  { value: 'mistake', label: 'Mistake' },
-  { value: 'other', label: 'Other' },
-]
+/** Now and the earliest allowed day, in UK time, to prefill and bound the form. */
+function wasteWindow() {
+  const now = new Date()
+  return {
+    now: londonParts(now),
+    earliestDay: londonParts(new Date(now.getTime() - MAX_DAYS_BACK * 24 * 60 * 60 * 1000)).day,
+  }
+}
 
 export default async function WastagePage({
   params,
@@ -33,6 +33,7 @@ export default async function WastagePage({
   if (!it || !it.active) notFound()
 
   const action = recordWastage.bind(null, id)
+  const { now, earliestDay } = wasteWindow()
 
   return (
     <main className="mx-auto max-w-md">
@@ -98,7 +99,7 @@ export default async function WastagePage({
             <option value="" disabled>
               Pick a reason
             </option>
-            {REASONS.map((r) => (
+            {WASTAGE_REASONS.map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
               </option>
@@ -106,18 +107,61 @@ export default async function WastagePage({
           </select>
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label
+              htmlFor="wasted_day"
+              className="block text-sm font-medium text-brand-forest"
+            >
+              Date wasted <span className="ml-1 text-brand-amber">*</span>
+            </label>
+            <input
+              id="wasted_day"
+              name="wasted_day"
+              type="date"
+              required
+              defaultValue={now.day}
+              min={earliestDay}
+              max={now.day}
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="wasted_time"
+              className="block text-sm font-medium text-brand-forest"
+            >
+              Time wasted <span className="ml-1 text-brand-amber">*</span>
+            </label>
+            <input
+              id="wasted_time"
+              name="wasted_time"
+              type="time"
+              required
+              defaultValue={now.time}
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            />
+          </div>
+          <p className="col-span-2 -mt-1 text-xs text-brand-slate">
+            When it was thrown away, UK time. Change it if you&apos;re logging it later.
+          </p>
+        </div>
+
         <div>
           <label
-            htmlFor="notes"
+            htmlFor="why"
             className="block text-sm font-medium text-brand-forest"
           >
-            Notes (optional)
+            Why was it wasted? <span className="ml-1 text-brand-amber">*</span>
           </label>
-          <input
-            id="notes"
-            name="notes"
-            type="text"
-            placeholder="e.g. dropped during prep"
+          <textarea
+            id="why"
+            name="why"
+            required
+            minLength={3}
+            maxLength={500}
+            rows={3}
+            placeholder="e.g. past its best-before date at close"
             className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
           />
         </div>

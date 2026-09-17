@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
 import { completeTask } from '@/lib/checklist/actions'
 import { clockIn, clockOut } from '@/lib/time-logs/actions'
-import { getClosingStatus, isBlocked } from '@/lib/checklist/closing'
+import { getClosingStatus, isBlocked, wasteBlocked } from '@/lib/checklist/closing'
 
 const FREQ_LABEL: Record<string, string> = {
   open: 'Opening',
@@ -82,6 +82,7 @@ export default async function StaffChecklistPage({
   ])
   const onShift = Boolean(openShift)
   const signOutBlocked = isBlocked(closing)
+  const wasteNeeded = wasteBlocked(closing)
 
   const nameById = new Map((people ?? []).map((p) => [p.id, p.name]))
   const completedByTask = new Map<string, Log>()
@@ -159,6 +160,7 @@ export default async function StaffChecklistPage({
                   <li>
                     <SignOutItem
                       onShift={onShift}
+                      wasteNeeded={wasteNeeded}
                       blocked={signOutBlocked}
                       outstanding={closing.outstanding.length}
                     />
@@ -312,10 +314,13 @@ function ClockInItem({
  */
 function SignOutItem({
   onShift,
+  wasteNeeded,
   blocked,
   outstanding,
 }: {
   onShift: boolean
+  /** Closing up and today's waste isn't confirmed: no sign-out until it is. */
+  wasteNeeded: boolean
   blocked: boolean
   outstanding: number
 }) {
@@ -326,6 +331,24 @@ function SignOutItem({
         <p className="mt-1 text-xs text-brand-slate">
           You are not clocked in.
         </p>
+      </div>
+    )
+  }
+
+  if (wasteNeeded) {
+    return (
+      <div className="rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-4">
+        <p className="font-medium text-brand-forest">Sign out</p>
+        <p className="mt-1 text-sm text-brand-forest">
+          🔒 You are the last one on shift. Log today&apos;s waste, or confirm
+          nothing was wasted, before you sign out.
+        </p>
+        <Link
+          href="/staff/wastage?closing=1"
+          className="mt-3 block rounded-xl border-2 border-brand-teal bg-brand-teal/10 px-4 py-3 text-center text-sm font-semibold text-brand-teal-deep transition active:scale-[0.98] hover:bg-brand-teal/20"
+        >
+          Check today&apos;s waste →
+        </Link>
       </div>
     )
   }

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { PrintButton } from './PrintButton'
 import './print.css'
+import { formatWastedAt } from '@/lib/stock/wastage'
 
 const KIND_LABEL: Record<string, string> = {
   fridge: 'Fridge',
@@ -102,7 +103,7 @@ export default async function CompliancePackPage({
       .order('completed_at', { ascending: false }),
     admin
       .from('stock_movements')
-      .select('id, stock_item_id, user_id, date, quantity, unit_cost, wastage_reason, notes')
+      .select('id, stock_item_id, user_id, date, wasted_at, created_at, quantity, unit_cost, wastage_reason, notes')
       .not('wastage_reason', 'is', null)
       .gte('date', from)
       .lte('date', to)
@@ -408,13 +409,13 @@ export default async function CompliancePackPage({
         <table className="mt-2 w-full border-collapse text-xs">
           <thead className="bg-black/5 text-left">
             <tr>
-              <th className="border border-black/20 px-2 py-1">Date</th>
+              <th className="border border-black/20 px-2 py-1">Wasted</th>
               <th className="border border-black/20 px-2 py-1">Item</th>
               <th className="border border-black/20 px-2 py-1">Qty</th>
               <th className="border border-black/20 px-2 py-1">Cost</th>
               <th className="border border-black/20 px-2 py-1">Reason</th>
               <th className="border border-black/20 px-2 py-1">Operator</th>
-              <th className="border border-black/20 px-2 py-1">Notes</th>
+              <th className="border border-black/20 px-2 py-1">Why</th>
             </tr>
           </thead>
           <tbody>
@@ -424,7 +425,7 @@ export default async function CompliancePackPage({
                 (Number(r.unit_cost ?? 0) || 0) * Number(r.quantity ?? 0)
               return (
                 <tr key={r.id}>
-                  <td className="border border-black/20 px-2 py-1">{r.date}</td>
+                  <td className="border border-black/20 px-2 py-1">{formatWastedAt(r.wasted_at ?? r.created_at)}</td>
                   <td className="border border-black/20 px-2 py-1">
                     {it?.name ?? '—'}
                   </td>

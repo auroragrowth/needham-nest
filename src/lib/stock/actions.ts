@@ -4,17 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature, requireStockControl } from '@/lib/permissions'
-
-const WASTAGE_REASONS = [
-  'out_of_date',
-  'damaged',
-  'dropped',
-  'customer_return',
-  'spillage',
-  'mistake',
-  'other',
-] as const
-type WastageReason = (typeof WASTAGE_REASONS)[number]
+import { londonParts, parseWastage } from '@/lib/stock/wastage'
 
 
 /**
@@ -107,23 +97,27 @@ export async function reactivateItem(id: string) {
   await setItemActive(id, true)
 }
 
-/** Staff logs wastage for a specific item. */
+/**
+ * Staff logs wastage for a specific item: how much, when it was wasted (UK date
+ * and time), the reason category and, in words, why.
+ */
 export async function recordWastage(itemId: string, formData: FormData) {
   const session = await requireStaffFeature('wastage')
 
-  const quantity = Number(formData.get('quantity'))
-  const reasonRaw = String(formData.get('reason') ?? '').trim()
-  const reason = (WASTAGE_REASONS as readonly string[]).includes(reasonRaw)
-    ? (reasonRaw as WastageReason)
-    : null
-  const notes = String(formData.get('notes') ?? '').trim() || null
-
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    redirect(`/staff/wastage/${itemId}?error=Quantity+must+be+greater+than+0`)
+  const parsed = parseWastage(
+    {
+      quantity: formData.get('quantity'),
+      day: formData.get('wasted_day'),
+      time: formData.get('wasted_time'),
+      reason: formData.get('reason'),
+      why: formData.get('why'),
+    },
+    new Date(),
+  )
+  if ('error' in parsed) {
+    redirect(`/staff/wastage/${itemId}?error=${encodeURIComponent(parsed.error)}`)
   }
-  if (!reason) {
-    redirect(`/staff/wastage/${itemId}?error=Pick+a+reason`)
-  }
+  const { entry } = parsed
 
   const admin = createAdminClient()
   // Snapshot cost price for cost reporting
@@ -137,10 +131,12 @@ export async function recordWastage(itemId: string, formData: FormData) {
     stock_item_id: itemId,
     user_id: session.profileId,
     direction: 'out',
-    quantity,
+    quantity: entry.quantity,
     unit_cost: item?.cost_price ?? null,
-    wastage_reason: reason,
-    notes,
+    wastage_reason: entry.reason,
+    notes: entry.why,
+    date: entry.day,
+    wasted_at: entry.wastedAt.toISOString(),
   })
 
   if (error) {
@@ -150,5 +146,57 @@ export async function recordWastage(itemId: string, formData: FormData) {
   revalidatePath('/staff/wastage')
   revalidatePath('/staff')
   revalidatePath('/manager')
+  revalidatePath('/manager/wastage')
   redirect('/staff/wastage?notice=Wastage+recorded')
+}
+
+/**
+ * Confirms today's waste is all logged, or that nothing was wasted. Whoever
+ * closes up can't clock out without this (see wasteBlocked), and it ticks the
+ * closing list's waste job.
+ */
+export async function confirmTodaysWaste(formData: FormData) {
+  const session = await requireStaffFeature('wastage')
+  const admin = createAdminClient()
+  const day = londonParts(new Date()).day
+
+  const { count } = await admin
+    .from('stock_movements')
+    .select('*', { count: 'exact', head: true })
+    .not('wastage_reason', 'is', null)
+    .eq('date', day)
+  const entries = count ?? 0
+  if (entries === 0 && formData.get('nothing_wasted') !== 'yes') {
+    redirect('/staff/wastage?closing=1&error=Log+today%E2%80%99s+waste%2C+or+confirm+nothing+was+wasted')
+  }
+
+  const { error } = await admin.from('waste_checks').upsert({
+    day,
+    confirmed_by: session.profileId,
+    confirmed_at: new Date().toISOString(),
+    entries,
+    nothing_wasted: entries === 0,
+  })
+  if (error) redirect(`/staff/wastage?closing=1&error=${encodeURIComponent(error.message)}`)
+
+  const { data: wasteTasks } = await admin
+    .from('cleaning_tasks')
+    .select('id')
+    .eq('active', true)
+    .eq('frequency', 'close')
+    .like('link_href', '/staff/wastage%')
+  for (const t of wasteTasks ?? []) {
+    // A second tick today hits the one-per-day index; that's fine.
+    await admin.from('cleaning_log').insert({ task_id: t.id, user_id: session.profileId })
+  }
+
+  revalidatePath('/staff/wastage')
+  revalidatePath('/staff/checklist')
+  revalidatePath('/staff')
+  revalidatePath('/manager/compliance')
+  redirect(
+    formData.get('closing') === '1'
+      ? '/staff/checklist?notice=Waste+confirmed+%E2%80%94+you+can+finish+closing'
+      : '/staff/wastage?notice=Today%E2%80%99s+waste+confirmed',
+  )
 }

@@ -166,6 +166,20 @@ export async function completeTask(taskId: string) {
   const session = await requireStaffFeature('checklist')
 
   const admin = createAdminClient()
+  // The waste task ticks itself when today's waste is confirmed on the waste
+  // page, so it can't be ticked here without the waste actually being checked.
+  const { data: task } = await admin
+    .from('cleaning_tasks')
+    .select('link_href')
+    .eq('id', taskId)
+    .maybeSingle()
+  if (task?.link_href?.startsWith('/staff/wastage')) {
+    redirect(
+      `/staff/wastage?closing=1&error=${encodeURIComponent(
+        'Log any waste from today, then confirm it at the top of this page. That ticks this job off.',
+      )}`,
+    )
+  }
   const { error } = await admin.from('cleaning_log').insert({
     task_id: taskId,
     user_id: session.profileId,
