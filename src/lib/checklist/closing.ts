@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { londonParts } from '@/lib/stock/wastage'
 
 /**
  * Closing-up rules.
@@ -14,8 +13,6 @@ export type ClosingStatus = {
   isLastOnShift: boolean
   /** Active closing tasks with no tick against them today. */
   outstanding: { id: string; name: string }[]
-  /** Someone has confirmed today's waste is all logged (or that there was none). */
-  wasteConfirmed: boolean
 }
 
 function startOfTodayIso(): string {
@@ -29,7 +26,7 @@ export async function getClosingStatus(
 ): Promise<ClosingStatus> {
   const admin = createAdminClient()
 
-  const [{ count: othersOnShift }, { data: closeTasks }, { data: logs }, { data: wasteCheck }] =
+  const [{ count: othersOnShift }, { data: closeTasks }, { data: logs }] =
     await Promise.all([
       admin
         .from('time_logs')
@@ -47,11 +44,6 @@ export async function getClosingStatus(
         .from('cleaning_log')
         .select('task_id')
         .gte('completed_at', startOfTodayIso()),
-      admin
-        .from('waste_checks')
-        .select('day')
-        .eq('day', londonParts(new Date()).day)
-        .maybeSingle(),
     ])
 
   const done = new Set((logs ?? []).map((l) => l.task_id))
@@ -59,20 +51,10 @@ export async function getClosingStatus(
   return {
     isLastOnShift: (othersOnShift ?? 0) === 0,
     outstanding: (closeTasks ?? []).filter((t) => !done.has(t.id)),
-    wasteConfirmed: Boolean(wasteCheck),
   }
 }
 
 /** True when this person must finish the closing list before signing out. */
 export function isBlocked(status: ClosingStatus): boolean {
   return status.isLastOnShift && status.outstanding.length > 0
-}
-
-/**
- * True when this person is closing up and today's waste isn't confirmed.
- * Unlike the rest of the closing list this has no "sign out anyway": logging
- * the waste, or confirming there was none, takes a moment.
- */
-export function wasteBlocked(status: ClosingStatus): boolean {
-  return status.isLastOnShift && !status.wasteConfirmed
 }

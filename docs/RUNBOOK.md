@@ -175,16 +175,17 @@ Damaged, Dropped, Customer return, Spillage, Mistake, Other) and, in words, **wh
 stored in `stock_movements` (`wasted_at` = when wasted, `created_at` = when logged, `notes`
 = why). Managers see it at `/manager/wastage`, and the compliance pack prints it.
 
-**Closing waste check (mandatory, no override):** whoever is last on shift can't clock out
-until today's waste is confirmed at the top of the waste page: "Confirm today's waste is
-all logged", or "Nothing was wasted today" when there's none. That writes `waste_checks`
-(one row per UK day: who, when, how many entries) and ticks the closing list's waste job,
-which can't be ticked any other way.
+**Waste check before clocking out (everyone, mandatory, no override):** nobody can clock
+out until they've confirmed the waste from their own shift, at the top of the waste page:
+"Confirm my waste is all logged", or "I wasted nothing this shift". It's stored per shift in
+`waste_confirmations`. When the person confirming is the last one on shift, it also ticks the
+closing list's waste job, which can't be ticked any other way. The waste page has a search
+box, since there are about 150 items.
 
 | Say this | What happens |
 |---|---|
 | "What was wasted this week and why?" | `stock_movements` with a reason, by `wasted_at`, with the why |
-| "Who confirmed the waste last night?" | That day's `waste_checks` row |
+| "Who confirmed their waste today?" | `waste_confirmations` joined to `time_logs` |
 
 ## Rota
 
@@ -226,8 +227,8 @@ job: it ticks itself when today's waste is confirmed on the waste page (see Stoc
 log so neither can be faked. Whoever is last on shift can't sign out until the closing
 list is done — anyone finishing mid-day with colleagues still in clocks out freely. They
 can override with a typed reason, which lands on their timesheet along with exactly which
-jobs were left. **Waste is the one thing with no override:** the closer must confirm
-today's waste (or that there was none) before clocking out.
+jobs were left. **Waste is the one thing with no override, and it applies to everyone:**
+each person confirms their own shift's waste (or that there was none) before clocking out.
 
 To change what's enforced (e.g. to include the daily fridge temps), say so — it's a small
 change in that file.

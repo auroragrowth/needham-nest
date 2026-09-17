@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
-import { getClosingStatus, isBlocked, wasteBlocked } from '@/lib/checklist/closing'
+import { getClosingStatus, isBlocked } from '@/lib/checklist/closing'
+import { getShiftWaste, wasteBlocked } from '@/lib/stock/waste-confirm'
 import { breakStatus, formatMinutes, isYoungWorkerToday } from '@/lib/breaks/status'
 import { alertMissedBreak } from '@/lib/alerts/breaks'
 
@@ -51,11 +52,12 @@ export async function clockOut(formData?: FormData) {
   // Closing up means finishing the closing list first. Enforced here rather
   // than in the page so a scanned QR can't slip past it either.
   const closing = await getClosingStatus(session.profileId)
-  // Waste first, and no override: whoever closes up confirms today's waste.
-  if (wasteBlocked(closing)) {
+  // Waste first, for everyone and with no override: each person confirms the
+  // waste from their own shift before they can clock out.
+  if (wasteBlocked(await getShiftWaste(session.profileId))) {
     redirect(
-      `/staff/wastage?closing=1&error=${encodeURIComponent(
-        'Before you clock out: log any waste from today, then confirm it at the top of this page.',
+      `/staff/wastage?clockout=1&error=${encodeURIComponent(
+        'Before you clock out: log any waste from your shift, then confirm it at the top of this page.',
       )}`,
     )
   }

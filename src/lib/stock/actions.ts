@@ -4,7 +4,9 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature, requireStockControl } from '@/lib/permissions'
-import { londonParts, parseWastage } from '@/lib/stock/wastage'
+import { parseWastage } from '@/lib/stock/wastage'
+import { getShiftWaste } from '@/lib/stock/waste-confirm'
+import { getClosingStatus } from '@/lib/checklist/closing'
 
 
 /**
@@ -151,52 +153,55 @@ export async function recordWastage(itemId: string, formData: FormData) {
 }
 
 /**
- * Confirms today's waste is all logged, or that nothing was wasted. Whoever
- * closes up can't clock out without this (see wasteBlocked), and it ticks the
- * closing list's waste job.
+ * Each person confirms the waste from their own shift before clocking out:
+ * "all logged" or "nothing wasted". Recorded per shift in waste_confirmations,
+ * and the closer's confirmation also ticks the closing list's waste job.
  */
-export async function confirmTodaysWaste(formData: FormData) {
+export async function confirmMyWaste(formData: FormData) {
   const session = await requireStaffFeature('wastage')
   const admin = createAdminClient()
-  const day = londonParts(new Date()).day
 
-  const { count } = await admin
-    .from('stock_movements')
-    .select('*', { count: 'exact', head: true })
-    .not('wastage_reason', 'is', null)
-    .eq('date', day)
-  const entries = count ?? 0
+  const state = await getShiftWaste(session.profileId)
+  if (!state.shift) {
+    redirect('/staff/wastage?error=You+are+not+clocked+in%2C+so+there+is+nothing+to+confirm')
+  }
+  const entries = state.mine.length
   if (entries === 0 && formData.get('nothing_wasted') !== 'yes') {
-    redirect('/staff/wastage?closing=1&error=Log+today%E2%80%99s+waste%2C+or+confirm+nothing+was+wasted')
+    redirect('/staff/wastage?error=Log+your+waste%2C+or+confirm+you+wasted+nothing')
   }
 
-  const { error } = await admin.from('waste_checks').upsert({
-    day,
-    confirmed_by: session.profileId,
+  const { error } = await admin.from('waste_confirmations').upsert({
+    time_log_id: state.shift.id,
+    user_id: session.profileId,
     confirmed_at: new Date().toISOString(),
     entries,
     nothing_wasted: entries === 0,
   })
-  if (error) redirect(`/staff/wastage?closing=1&error=${encodeURIComponent(error.message)}`)
+  if (error) redirect(`/staff/wastage?error=${encodeURIComponent(error.message)}`)
 
-  const { data: wasteTasks } = await admin
-    .from('cleaning_tasks')
-    .select('id')
-    .eq('active', true)
-    .eq('frequency', 'close')
-    .like('link_href', '/staff/wastage%')
-  for (const t of wasteTasks ?? []) {
-    // A second tick today hits the one-per-day index; that's fine.
-    await admin.from('cleaning_log').insert({ task_id: t.id, user_id: session.profileId })
+  // Closing up: the waste job on the closing list is this same check.
+  const closing = await getClosingStatus(session.profileId)
+  if (closing.isLastOnShift) {
+    const { data: wasteTasks } = await admin
+      .from('cleaning_tasks')
+      .select('id')
+      .eq('active', true)
+      .eq('frequency', 'close')
+      .like('link_href', '/staff/wastage%')
+    for (const t of wasteTasks ?? []) {
+      // A second tick today hits the one-per-day index; that's fine.
+      await admin.from('cleaning_log').insert({ task_id: t.id, user_id: session.profileId })
+    }
   }
 
   revalidatePath('/staff/wastage')
   revalidatePath('/staff/checklist')
   revalidatePath('/staff')
+  revalidatePath('/staff/clock')
   revalidatePath('/manager/compliance')
   redirect(
-    formData.get('closing') === '1'
-      ? '/staff/checklist?notice=Waste+confirmed+%E2%80%94+you+can+finish+closing'
-      : '/staff/wastage?notice=Today%E2%80%99s+waste+confirmed',
+    formData.get('clockout') === '1'
+      ? '/staff/clock?action=clock-out&notice=Waste+confirmed'
+      : '/staff/wastage?notice=Waste+confirmed+for+your+shift',
   )
 }

@@ -3,7 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
 import { completeTask } from '@/lib/checklist/actions'
 import { clockIn, clockOut } from '@/lib/time-logs/actions'
-import { getClosingStatus, isBlocked, wasteBlocked } from '@/lib/checklist/closing'
+import { getClosingStatus, isBlocked } from '@/lib/checklist/closing'
+import { getShiftWaste, wasteBlocked } from '@/lib/stock/waste-confirm'
 
 const FREQ_LABEL: Record<string, string> = {
   open: 'Opening',
@@ -82,7 +83,7 @@ export default async function StaffChecklistPage({
   ])
   const onShift = Boolean(openShift)
   const signOutBlocked = isBlocked(closing)
-  const wasteNeeded = wasteBlocked(closing)
+  const wasteNeeded = wasteBlocked(await getShiftWaste(session.profileId))
 
   const nameById = new Map((people ?? []).map((p) => [p.id, p.name]))
   const completedByTask = new Map<string, Log>()
@@ -340,14 +341,14 @@ function SignOutItem({
       <div className="rounded-2xl border-2 border-brand-amber bg-brand-amber/10 p-4">
         <p className="font-medium text-brand-forest">Sign out</p>
         <p className="mt-1 text-sm text-brand-forest">
-          🔒 You are the last one on shift. Log today&apos;s waste, or confirm
-          nothing was wasted, before you sign out.
+          🔒 Log the waste from your shift, or confirm you wasted nothing,
+          before you sign out. Everyone does this, every shift.
         </p>
         <Link
-          href="/staff/wastage?closing=1"
+          href="/staff/wastage?clockout=1"
           className="mt-3 block rounded-xl border-2 border-brand-teal bg-brand-teal/10 px-4 py-3 text-center text-sm font-semibold text-brand-teal-deep transition active:scale-[0.98] hover:bg-brand-teal/20"
         >
-          Check today&apos;s waste →
+          Check your waste →
         </Link>
       </div>
     )

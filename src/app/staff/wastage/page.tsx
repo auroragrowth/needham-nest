@@ -1,40 +1,35 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaffFeature } from '@/lib/permissions'
-import { confirmTodaysWaste } from '@/lib/stock/actions'
-import { formatWastedAt, londonParts, REASON_LABEL } from '@/lib/stock/wastage'
-
-function ukToday(): string {
-  return londonParts(new Date()).day
-}
+import { confirmMyWaste } from '@/lib/stock/actions'
+import { formatWastedAt, REASON_LABEL } from '@/lib/stock/wastage'
+import { getShiftWaste } from '@/lib/stock/waste-confirm'
 
 export default async function WastageListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; error?: string; closing?: string }>
+  searchParams: Promise<{ notice?: string; error?: string; clockout?: string; q?: string }>
 }) {
-  await requireStaffFeature('wastage')
+  const session = await requireStaffFeature('wastage')
   const params = await searchParams
   const admin = createAdminClient()
-  const today = ukToday()
-  const [{ data: items }, { data: todays }, { data: check }, { data: people }] = await Promise.all([
+  const search = (params.q ?? '').trim()
+
+  const [{ data: allItems }, shiftWaste] = await Promise.all([
     admin
       .from('stock_items')
       .select('id, name, category, unit')
       .eq('active', true)
       .order('category')
       .order('name'),
-    admin
-      .from('stock_movements')
-      .select('id, quantity, wastage_reason, notes, wasted_at, created_at, stock_items(name, unit)')
-      .not('wastage_reason', 'is', null)
-      .eq('date', today)
-      .order('wasted_at'),
-    admin.from('waste_checks').select('confirmed_by, confirmed_at, entries').eq('day', today).maybeSingle(),
-    admin.from('profiles').select('id, name'),
+    getShiftWaste(session.profileId),
   ])
-  const nameById = new Map((people ?? []).map((p) => [p.id, p.name]))
-  const logged = todays ?? []
+  const needle = search.toLowerCase()
+  const items = (allItems ?? []).filter(
+    (i) => !needle || i.name.toLowerCase().includes(needle) || (i.category ?? '').toLowerCase().includes(needle),
+  )
+  const { shift, confirmed, mine } = shiftWaste
+  const clockout = params.clockout === '1'
 
   return (
     <main className="mx-auto max-w-md">
@@ -60,63 +55,76 @@ export default async function WastageListPage({
         </p>
       )}
 
-      <section
-        className={`mt-6 rounded-2xl border-2 p-4 ${
-          check ? 'border-brand-teal/40 bg-brand-teal/5' : 'border-brand-amber bg-brand-amber/10'
-        }`}
-      >
-        <h2 className="font-semibold text-brand-forest">Today&apos;s waste</h2>
-        {logged.length === 0 ? (
-          <p className="mt-1 text-sm text-brand-slate">Nothing logged yet today.</p>
-        ) : (
-          <ul className="mt-2 space-y-1 text-sm text-brand-forest">
-            {logged.map((w) => {
-              const item = Array.isArray(w.stock_items) ? w.stock_items[0] : w.stock_items
-              return (
+      {shift && (
+        <section
+          className={`mt-6 rounded-2xl border-2 p-4 ${
+            confirmed ? 'border-brand-teal/40 bg-brand-teal/5' : 'border-brand-amber bg-brand-amber/10'
+          }`}
+        >
+          <h2 className="font-semibold text-brand-forest">Waste from your shift</h2>
+          {mine.length === 0 ? (
+            <p className="mt-1 text-sm text-brand-slate">You haven&apos;t logged any waste this shift.</p>
+          ) : (
+            <ul className="mt-2 space-y-1 text-sm text-brand-forest">
+              {mine.map((w) => (
                 <li key={w.id}>
-                  {formatWastedAt(w.wasted_at ?? w.created_at).split(' ').slice(-1)[0]} · {w.quantity}{' '}
-                  {item?.unit} {item?.name} · {REASON_LABEL[w.wastage_reason as string] ?? w.wastage_reason}
+                  {formatWastedAt(w.wasted_at ?? w.created_at).split(' ').slice(-1)[0]} · {w.quantity} {w.unit}{' '}
+                  {w.item} · {REASON_LABEL[w.wastage_reason ?? ''] ?? w.wastage_reason}
                   {w.notes && <span className="text-brand-slate"> — {w.notes}</span>}
                 </li>
-              )
-            })}
-          </ul>
-        )}
-        {check ? (
-          <p className="mt-3 text-sm text-brand-teal-deep">
-            ✓ Confirmed by {nameById.get(check.confirmed_by) ?? 'someone'} at{' '}
-            {formatWastedAt(check.confirmed_at).split(' ').slice(-1)[0]}. Log anything else below if more is
-            thrown away.
-          </p>
-        ) : (
-          <form action={confirmTodaysWaste} className="mt-3">
-            <input type="hidden" name="closing" value={params.closing === '1' ? '1' : ''} />
-            {logged.length === 0 && <input type="hidden" name="nothing_wasted" value="yes" />}
-            <p className="text-sm text-brand-forest">
-              Whoever closes up must do this before clocking out. Log each wasted item below first.
+              ))}
+            </ul>
+          )}
+          {confirmed ? (
+            <p className="mt-3 text-sm text-brand-teal-deep">
+              ✓ Confirmed. Log anything else here if more gets thrown away before you go.
             </p>
-            <button
-              type="submit"
-              className="mt-2 w-full rounded-xl bg-brand-forest px-4 py-3 text-sm font-semibold text-brand-cream transition active:scale-[0.98] hover:bg-brand-olive"
-            >
-              {logged.length === 0
-                ? 'Nothing was wasted today'
-                : `Confirm today's waste is all logged (${logged.length})`}
-            </button>
-          </form>
-        )}
-      </section>
+          ) : (
+            <form action={confirmMyWaste} className="mt-3">
+              <input type="hidden" name="clockout" value={clockout ? '1' : ''} />
+              {mine.length === 0 && <input type="hidden" name="nothing_wasted" value="yes" />}
+              <p className="text-sm text-brand-forest">
+                Everyone does this before clocking out. Log each wasted item below first.
+              </p>
+              <button
+                type="submit"
+                className="mt-2 w-full rounded-xl bg-brand-forest px-4 py-3 text-sm font-semibold text-brand-cream transition active:scale-[0.98] hover:bg-brand-olive"
+              >
+                {mine.length === 0
+                  ? 'I wasted nothing this shift'
+                  : `Confirm my waste is all logged (${mine.length})`}
+              </button>
+            </form>
+          )}
+        </section>
+      )}
+
+      <form className="mt-6 flex gap-2">
+        <input
+          type="search"
+          name="q"
+          defaultValue={search}
+          placeholder="Search items"
+          className="w-full rounded-xl border border-brand-sage/60 bg-white px-3 py-3 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+        />
+        <button
+          type="submit"
+          className="rounded-xl border border-brand-sage/60 px-4 py-3 text-sm font-medium text-brand-forest hover:bg-brand-sage/10"
+        >
+          Search
+        </button>
+      </form>
 
       <h2 className="mt-6 text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
-        Log waste
+        Log waste{search && ` — ${items.length} match${items.length === 1 ? '' : 'es'}`}
       </h2>
       <ul className="mt-2 space-y-2">
-        {(items ?? []).length === 0 && (
+        {items.length === 0 && (
           <li className="rounded-xl border border-brand-sage/40 bg-white p-5 text-center text-sm text-brand-slate">
-            No stock items configured yet.
+            {search ? 'No items match that search.' : 'No stock items configured yet.'}
           </li>
         )}
-        {(items ?? []).map((it) => (
+        {items.map((it) => (
           <li key={it.id}>
             <Link
               href={`/staff/wastage/${it.id}`}
