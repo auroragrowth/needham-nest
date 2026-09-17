@@ -53,7 +53,7 @@ $$;
 create or replace function public.nesty_timesheets(p_from date, p_to date)
 returns jsonb language sql stable as $$
   with shifts as (
-    select p.name,
+    select t.id as time_log_id, p.name,
            (t.clock_in at time zone 'Europe/London')::date as day,
            t.clock_in, t.clock_out,
            coalesce(t.break_minutes_total, 0)
@@ -69,6 +69,7 @@ returns jsonb language sql stable as $$
   )
   select jsonb_build_object(
     'shifts', coalesce((select jsonb_agg(jsonb_build_object(
+        'time_log_id', time_log_id,
         'name', name, 'day', day,
         'clock_in', nesty_local(clock_in),
         'clock_out', case when clock_out is null then null else nesty_local(clock_out) end,
