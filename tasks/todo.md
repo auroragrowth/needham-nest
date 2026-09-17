@@ -1,3 +1,16 @@
+# One simple stock page (17 Sep 2026)
+
+Plan: `~/.claude/plans/prancy-singing-quasar.md`
+
+- [x] `/stock` page: Overall (totals, where it is, search, managers add/edit items) · Café · Kitchen · Storage (locations → stock take, move, add stock; managers manage locations)
+- [x] `saveLocationCounts` + pure `parseCounts` (10 tests pass); back-address check on move/add/adjust; location can't be removed while it holds stock
+- [x] `parseItem` only updates fields sent, so edits never blank par levels / cost prices
+- [x] Removed: par alerts, order pad, deliveries, suppliers, item pages, overview, location setup, old stock count (+ actions, below-par helper); old addresses redirect
+- [x] One Stock entry on the tablet hub, manager home and owner dashboard
+- [x] Paul's first stock take entered for Storage fridge / freezer / dry room (25 items); the rest waiting on his answers
+- [ ] build, commit, push, deployment READY, redirects on live
+- [ ] Paul or May tries the page
+
 # Stock control for May (17 Sep 2026)
 
 Plan: `~/.claude/plans/prancy-singing-quasar.md`

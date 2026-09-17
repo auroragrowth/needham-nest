@@ -17,90 +17,64 @@ const WASTAGE_REASONS = [
 type WastageReason = (typeof WASTAGE_REASONS)[number]
 
 
+/**
+ * Item fields from a form. Only fields the form actually sends are included,
+ * so an edit from the stock page (name, category, unit) never blanks par
+ * levels, cost prices or suppliers kept for later.
+ */
 function parseItem(formData: FormData) {
-  const sku = String(formData.get('sku') ?? '').trim() || null
-  const name = String(formData.get('name') ?? '').trim()
-  const category = String(formData.get('category') ?? '').trim() || null
-  const unit = String(formData.get('unit') ?? '').trim() || 'ea'
-  const par = String(formData.get('par_level') ?? '').trim()
-  const reorder = String(formData.get('reorder_at') ?? '').trim()
-  const cost = String(formData.get('cost_price') ?? '').trim()
-  const supplier_name =
-    String(formData.get('supplier_name') ?? '').trim() || null
+  const text = (key: string) => String(formData.get(key) ?? '').trim()
+  const num = (key: string) => (text(key) === '' ? null : Number(text(key)))
+  const payload: Record<string, string | number | null> = {}
+  if (formData.has('name')) payload.name = text('name')
+  if (formData.has('sku')) payload.sku = text('sku') || null
+  if (formData.has('category')) payload.category = text('category') || null
+  if (formData.has('unit')) payload.unit = text('unit') || 'ea'
+  if (formData.has('par_level')) payload.par_level = num('par_level')
+  if (formData.has('reorder_at')) payload.reorder_at = num('reorder_at')
+  if (formData.has('cost_price')) payload.cost_price = num('cost_price')
+  if (formData.has('supplier_name')) payload.supplier_name = text('supplier_name') || null
+  return payload
+}
 
-  return {
-    sku,
-    name,
-    category,
-    unit,
-    par_level: par === '' ? null : Number(par),
-    reorder_at: reorder === '' ? null : Number(reorder),
-    cost_price: cost === '' ? null : Number(cost),
-    supplier_name,
-  }
+const STOCK = '/stock?tab=overall'
+
+function revalidateStock() {
+  revalidatePath('/stock')
+  revalidatePath('/staff/wastage')
 }
 
 export async function createItem(formData: FormData) {
   await requireStockControl()
   const payload = parseItem(formData)
-  if (!payload.name) {
-    redirect('/stock/items/new?error=Name+is+required')
-  }
+  if (!payload.name) redirect(`${STOCK}&error=Name+is+required`)
   const admin = createAdminClient()
-  const { data, error } = await admin
+  const { error } = await admin
     .from('stock_items')
-    .insert({ ...payload, active: true })
-    .select('id')
-    .single()
-  if (error || !data) {
-    redirect(
-      `/stock/items/new?error=${encodeURIComponent(error?.message ?? 'Failed')}`,
-    )
-  }
-  revalidatePath('/stock/items')
-  revalidatePath('/staff/wastage')
-  revalidatePath('/staff/stock-count')
-  redirect(`/stock/items/${data.id}?notice=Item+added`)
+    .insert({ unit: 'ea', ...payload, active: true })
+  if (error) redirect(`${STOCK}&error=${encodeURIComponent(error.message)}`)
+  revalidateStock()
+  redirect(`${STOCK}&q=${encodeURIComponent(String(payload.name))}&notice=${encodeURIComponent(`Added ${payload.name}`)}`)
 }
 
 export async function updateItem(id: string, formData: FormData) {
   await requireStockControl()
   const payload = parseItem(formData)
-  if (!payload.name) {
-    redirect(`/stock/items/${id}?error=Name+is+required`)
-  }
+  if ('name' in payload && !payload.name) redirect(`${STOCK}&error=Name+is+required`)
   const admin = createAdminClient()
-  const { error } = await admin
-    .from('stock_items')
-    .update(payload)
-    .eq('id', id)
-  if (error) {
-    redirect(`/stock/items/${id}?error=${encodeURIComponent(error.message)}`)
-  }
-  revalidatePath('/stock/items')
-  revalidatePath(`/stock/items/${id}`)
-  revalidatePath('/staff/wastage')
-  revalidatePath('/staff/stock-count')
-  redirect(`/stock/items/${id}?notice=Saved`)
+  const { error } = await admin.from('stock_items').update(payload).eq('id', id)
+  if (error) redirect(`${STOCK}&error=${encodeURIComponent(error.message)}`)
+  revalidateStock()
+  redirect(`${STOCK}&notice=Saved`)
 }
 
 async function setItemActive(id: string, active: boolean) {
   await requireStockControl()
   const admin = createAdminClient()
-  const { error } = await admin
-    .from('stock_items')
-    .update({ active })
-    .eq('id', id)
-  if (error) {
-    redirect(`/stock/items/${id}?error=${encodeURIComponent(error.message)}`)
-  }
-  revalidatePath('/stock/items')
-  revalidatePath(`/stock/items/${id}`)
-  revalidatePath('/staff/wastage')
-  revalidatePath('/staff/stock-count')
-  redirect(
-    `/stock/items/${id}?notice=${active ? 'Reactivated' : 'Deactivated'}`,
-  )
+  const { error } = await admin.from('stock_items').update({ active }).eq('id', id)
+  if (error) redirect(`${STOCK}&error=${encodeURIComponent(error.message)}`)
+  revalidateStock()
+  redirect(`${STOCK}&notice=${active ? 'Item+restored' : 'Item+removed+(its+history+is+kept)'}`)
 }
 export async function deactivateItem(id: string) {
   await setItemActive(id, false)
@@ -153,51 +127,4 @@ export async function recordWastage(itemId: string, formData: FormData) {
   revalidatePath('/staff')
   revalidatePath('/manager')
   redirect('/staff/wastage?notice=Wastage+recorded')
-}
-
-/**
- * Staff submits a batch stock count. FormData carries `count_{itemId}` keys.
- * We insert one stock_counts row per item that has a value entered.
- */
-export async function recordStockCount(formData: FormData) {
-  const session = await requireStaffFeature('stock_count')
-
-  const notes = String(formData.get('notes') ?? '').trim() || null
-
-  const rows: Array<{
-    stock_item_id: string
-    user_id: string
-    on_hand: number
-    notes: string | null
-  }> = []
-
-  for (const [k, v] of formData.entries()) {
-    if (!k.startsWith('count_')) continue
-    const itemId = k.slice('count_'.length)
-    const str = String(v ?? '').trim()
-    if (str === '') continue
-    const n = Number(str)
-    if (!Number.isFinite(n) || n < 0) continue
-    rows.push({
-      stock_item_id: itemId,
-      user_id: session.profileId,
-      on_hand: n,
-      notes,
-    })
-  }
-
-  if (rows.length === 0) {
-    redirect('/staff/stock-count?error=Enter+at+least+one+count')
-  }
-
-  const admin = createAdminClient()
-  const { error } = await admin.from('stock_counts').insert(rows)
-
-  if (error) {
-    redirect(`/staff/stock-count?error=${encodeURIComponent(error.message)}`)
-  }
-
-  revalidatePath('/staff/stock-count')
-  revalidatePath('/staff')
-  redirect(`/staff/stock-count?notice=Saved+${rows.length}+count${rows.length === 1 ? '' : 's'}`)
 }

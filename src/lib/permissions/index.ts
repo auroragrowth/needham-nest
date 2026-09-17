@@ -26,23 +26,26 @@ export function hasPermission(
 }
 
 /**
- * Server-side guard for stock control: stock items and par levels, locations
- * setup, suppliers, deliveries and the order pad. The owner, managers, and
+ * Stock control: editing stock items and locations. The owner, managers, and
  * staff with manager_access (the same people the manager area lets in).
+ * Everyone signed in can still see, count, move and add stock.
  */
+export async function canControlStock(session: SessionPayload): Promise<boolean> {
+  if (session.role === 'owner' || session.role === 'manager') return true
+  if (session.role !== 'staff') return false
+  const { data } = await createAdminClient()
+    .from('profiles')
+    .select('manager_access')
+    .eq('id', session.profileId)
+    .maybeSingle()
+  return Boolean(data?.manager_access)
+}
+
 export async function requireStockControl(): Promise<SessionPayload> {
   const session = await getSession()
   if (!session) redirect('/login')
-  if (session.role === 'owner' || session.role === 'manager') return session
-  if (session.role === 'staff') {
-    const { data } = await createAdminClient()
-      .from('profiles')
-      .select('manager_access')
-      .eq('id', session.profileId)
-      .maybeSingle()
-    if (data?.manager_access) return session
-  }
-  redirect(`/staff?error=${encodeURIComponent('You do not have access to that section')}`)
+  if (await canControlStock(session)) return session
+  redirect(`/stock?error=${encodeURIComponent('Only managers can change items and locations')}`)
 }
 
 /**

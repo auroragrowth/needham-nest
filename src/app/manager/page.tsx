@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
-import { belowParItems } from '@/lib/stock/below-par'
 
 function startOfTodayIso(): string {
   const d = new Date()
@@ -35,7 +34,6 @@ export default async function ManagerDashboard() {
     { data: cleanLogsToday },
     { data: wastageWeek },
     { data: myOpenShift },
-    belowPar,
   ] = await Promise.all([
     admin
       .from('time_logs')
@@ -68,7 +66,6 @@ export default async function ManagerDashboard() {
           .is('clock_out', null)
           .maybeSingle()
       : Promise.resolve({ data: null } as { data: null }),
-    belowParItems(),
   ])
 
   const isOnShift = Boolean(myOpenShift)
@@ -102,27 +99,6 @@ export default async function ManagerDashboard() {
       <p className="mt-1 text-sm text-brand-slate">
         Day-to-day operations. More sections appear as later phases come online.
       </p>
-
-      {belowPar.length > 0 && (
-        <Link
-          href="/stock/alerts"
-          className="mt-4 flex items-center justify-between rounded-xl border-2 border-brand-amber bg-brand-amber/10 p-4 text-brand-forest transition hover:bg-brand-amber/20"
-        >
-          <div>
-            <p className="text-sm font-semibold">
-              ⚠️ {belowPar.length} item{belowPar.length === 1 ? '' : 's'} below par
-            </p>
-            <p className="mt-1 text-xs text-brand-slate">
-              {belowPar
-                .slice(0, 3)
-                .map((i) => i.name)
-                .join(' · ')}
-              {belowPar.length > 3 ? ` · +${belowPar.length - 3} more` : ''}
-            </p>
-          </div>
-          <span className="text-lg text-brand-amber">→</span>
-        </Link>
-      )}
 
       <Link
         href="/staff/clock"
@@ -247,51 +223,9 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
-          href="/stock/locations"
-          title="📝 Stock take"
-          subtitle="Count each fridge, freezer and store — updates par alerts and the order pad"
-          cta="Start →"
-        />
-        <Card
-          href="/stock/items"
-          title="Stock items"
-          subtitle="Add and edit items, par levels, cost prices"
-          cta="Manage →"
-        />
-        <Card
-          href="/stock/overview"
-          title="📦 Stock by location"
-          subtitle="Every item × every fridge / freezer / store"
-          cta="Open →"
-        />
-        <Card
-          href="/stock/alerts"
-          title="⚠️ Par alerts"
-          subtitle={belowPar.length > 0 ? `${belowPar.length} below par right now` : 'All above par'}
-          cta="Open →"
-        />
-        <Card
-          href="/stock/location-setup"
-          title="Stock locations"
-          subtitle="Add / edit fridges, freezers, storage areas"
-          cta="Manage →"
-        />
-        <Card
-          href="/stock/suppliers"
-          title="Suppliers"
-          subtitle="Vendors, delivery days, terms"
-          cta="Manage →"
-        />
-        <Card
-          href="/stock/deliveries"
-          title="Deliveries"
-          subtitle="Record incoming stock + auto-create expense"
-          cta="Open →"
-        />
-        <Card
-          href="/stock/order-pad"
-          title="Order pad"
-          subtitle="Below-par items grouped by supplier"
+          href="/stock"
+          title="📦 Stock"
+          subtitle="What we've got and where: count, move, add stock and items"
           cta="Open →"
         />
         <Card

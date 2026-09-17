@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { belowParItems } from '@/lib/stock/below-par'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
@@ -24,10 +23,8 @@ export default async function OwnerDashboard({
     { count: staffCount },
     { count: applianceCount },
     { count: taskCount },
-    { count: stockCount },
     { data: expenses90 },
     { data: takings90 },
-    belowPar,
   ] = await Promise.all([
     session.authUserId
       ? admin
@@ -49,13 +46,8 @@ export default async function OwnerDashboard({
       .from('cleaning_tasks')
       .select('*', { count: 'exact', head: true })
       .eq('active', true),
-    admin
-      .from('stock_items')
-      .select('*', { count: 'exact', head: true })
-      .eq('active', true),
     admin.from('expenses').select('amount').gte('date', since90),
     admin.from('takings').select('amount').gte('date', since90),
-    belowParItems(),
   ])
 
   const expenseTotal90 = (expenses90 ?? []).reduce(
@@ -88,27 +80,6 @@ export default async function OwnerDashboard({
         <p className="mt-4 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
           {params.notice}
         </p>
-      )}
-
-      {belowPar.length > 0 && (
-        <Link
-          href="/stock/alerts"
-          className="mt-4 flex items-center justify-between rounded-xl border-2 border-brand-amber bg-brand-amber/10 p-4 text-brand-forest transition hover:bg-brand-amber/20"
-        >
-          <div>
-            <p className="text-sm font-semibold">
-              ⚠️ {belowPar.length} item{belowPar.length === 1 ? '' : 's'} below par
-            </p>
-            <p className="mt-1 text-xs text-brand-slate">
-              {belowPar
-                .slice(0, 3)
-                .map((i) => i.name)
-                .join(' · ')}
-              {belowPar.length > 3 ? ` · +${belowPar.length - 3} more` : ''}
-            </p>
-          </div>
-          <span className="text-lg text-brand-amber">→</span>
-        </Link>
       )}
 
       {!hasPin && (
@@ -164,7 +135,7 @@ export default async function OwnerDashboard({
       </Link>
 
       <Link
-        href="/stock/locations"
+        href="/stock"
         className="mt-4 flex items-center justify-between rounded-2xl border-2 p-5 transition"
         style={{
           backgroundColor: '#efd9f1',
@@ -175,9 +146,9 @@ export default async function OwnerDashboard({
         <span className="flex items-center gap-3">
           <span className="text-3xl" aria-hidden>📦</span>
           <span>
-            <span className="block text-lg font-semibold">Move stock between locations</span>
+            <span className="block text-lg font-semibold">Stock</span>
             <span className="block text-sm" style={{ color: '#6a4670' }}>
-              Same view as the staff — pick a fridge, move / receive / adjust
+              What we&apos;ve got and where — count, move, add stock and items
             </span>
           </span>
         </span>
@@ -204,56 +175,10 @@ export default async function OwnerDashboard({
           cta="Manage →"
         />
         <Card
-          href="/stock/items"
-          title="Stock items"
-          subtitle={`${stockCount ?? 0} active items`}
-          cta="Manage →"
-        />
-        <Card
-          href="/stock/overview"
-          title="📦 Stock by location"
-          subtitle="Every item × every fridge / freezer / store"
-          cta="Open →"
-        />
-        <Card
-          href="/stock/alerts"
-          title="⚠️ Par alerts"
-          subtitle={
-            belowPar.length > 0
-              ? `${belowPar.length} below par right now`
-              : 'All above par'
-          }
-          cta="Open →"
-        />
-        <Card
-          href="/stock/location-setup"
-          title="Stock locations"
-          subtitle="Add / edit fridges, freezers, storage areas"
-          cta="Manage →"
-        />
-        <Card
           href="/owner/menu"
           title="Menu"
           subtitle="Items, recipes, allergens, GP%"
           cta="Manage →"
-        />
-        <Card
-          href="/stock/suppliers"
-          title="Suppliers"
-          subtitle="Vendors, delivery days, terms"
-          cta="Manage →"
-        />
-        <Card
-          href="/stock/deliveries"
-          title="Deliveries"
-          subtitle="Record incoming stock + auto-create expense"
-          cta="Open →"
-        />
-        <Card
-          href="/stock/order-pad"
-          title="Order pad"
-          subtitle="Below-par items grouped by supplier"
-          cta="Open →"
         />
         <Card
           href="/owner/allergen-sheet"

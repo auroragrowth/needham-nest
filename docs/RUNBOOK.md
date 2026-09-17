@@ -41,7 +41,7 @@ when touching live data, so you don't have to repeat them every time.
 | Staff tablet | `/staff/*` — PIN login, clock, temps, checklist, stock, wastage |
 | Manager | `/manager/*` — rota, timesheets, compliance, cash, staffing cost |
 | Owner (you) | `/owner/*` — people, payslips, expenses, P&L, menu |
-| Stock control | `/stock/*` — items and par levels, stock by location, par alerts, locations setup, suppliers, deliveries, order pad. **You and managers (May)**; old `/owner/stock…`, `/owner/suppliers`, `/owner/deliveries`, `/owner/order-pad` addresses redirect. `/stock/locations` (moving stock) is open to all staff |
+| Stock | `/stock` — one page for what we've got and where: Overall · Café · Kitchen · Storage. Everyone signed in counts, moves and adds stock; you and managers (May) edit items and locations. Old stock addresses redirect here |
 | Checklist admin | `/admin/checklist` |
 
 **How Claude reaches the data:** the Supabase connector, as you. The service-role key is
@@ -140,6 +140,31 @@ require staff to take breaks and set when; for under-18s you must make sure they
 |---|---|
 | "Who's due a break?" | Runs `breaks-due` |
 | "Who missed breaks last week?" | Timesheets with no or short breaks past the legal point, plus the reasons given at clock-out |
+
+## Stock
+
+**One page, one record:** `/stock`. Every quantity lives in `stock_placements` (item ×
+location × count). Nothing else stores stock, and every change is logged in
+`stock_location_moves`.
+
+| Tab | Shows |
+|---|---|
+| **Overall** | Every item's total across all locations, by category. Tap an item to see where it is (tap a place to go straight there). Search at the top |
+| **Café · Kitchen · Storage** | The area's fridges, freezers and shelves. Tap one for its **stock take** (a box per item, prefilled — change what's different, Save), **Move stock from here**, and **Add new stock here** (a delivery or shopping) |
+
+- **Everyone signed in** can count, move and add stock (tablet: the purple 📦 Stock tile).
+- **You and managers** also add/edit/remove items (name, category, what it's counted in) and
+  add/remove locations. A location can't be removed while it still has stock in it.
+- Removed on 17 Sep 2026 at Paul's request, to keep it simple: **par alerts, order pad,
+  deliveries, suppliers, cost prices on screen**, and the old all-items stock count. The
+  data columns (`par_level`, `cost_price`) and tables stay, for when stock links up with the
+  till.
+
+| Say this | What happens |
+|---|---|
+| "Here's the stock take for the storage freezer: 6 veg chilli, 4 choc cookies…" | Matched to items and entered as counts at that location, logged as your stock take; anything that doesn't match an item is asked about, not guessed |
+| "Where's the oat milk?" | Totals and locations from `stock_placements` |
+| "Add Pulled pork (bag) as a frozen item" | Creates the item |
 
 ## Rota
 

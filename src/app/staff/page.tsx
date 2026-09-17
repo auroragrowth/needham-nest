@@ -29,7 +29,6 @@ export default async function StaffHub({
     { data: todaysTemps },
     { data: tasks },
     { data: todaysLogs },
-    { count: stockItemsCount },
     { data: profile },
   ] = await Promise.all([
     admin
@@ -48,10 +47,6 @@ export default async function StaffHub({
       .from('cleaning_log')
       .select('task_id')
       .gte('completed_at', startOfTodayIso()),
-    admin
-      .from('stock_items')
-      .select('*', { count: 'exact', head: true })
-      .eq('active', true),
     admin
       .from('profiles')
       .select('permissions')
@@ -152,22 +147,8 @@ export default async function StaffHub({
             }
           />
         )}
-        {hasPermission(session.role, perms, 'stock_count') && (
-          <HubTile
-            // Counts are taken per location, which is what par alerts and the
-            // order pad read; the old all-items list at /staff/stock-count isn't.
-            href="/stock/locations"
-            title="Stock take"
-            status={
-              stockItemsCount && stockItemsCount > 0
-                ? `${stockItemsCount} item${stockItemsCount === 1 ? '' : 's'} to count`
-                : 'No items configured'
-            }
-            accent="off"
-          />
-        )}
         <Link
-          href="/stock/locations"
+          href="/stock"
           className="block rounded-2xl border-2 p-5 transition active:scale-[0.98]"
           style={{
             backgroundColor: '#efd9f1',
@@ -176,10 +157,10 @@ export default async function StaffHub({
           }}
         >
           <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
-            📦 Stock by location
+            📦 Stock
           </h2>
           <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
-            Move stock between fridges + storage
+            What we&apos;ve got and where — count, move and add stock
           </p>
         </Link>
         {hasPermission(session.role, perms, 'wastage') && (
