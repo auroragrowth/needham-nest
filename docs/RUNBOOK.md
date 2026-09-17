@@ -209,6 +209,27 @@ No identity is captured, deliberately. Nothing Claude does should add one.
 Staffing cost = actual timesheets, not the planned rota. Salaried people are spread at
 `annual_salary / 365` per day whether they clock or not; your own draw is excluded.
 
+### Uploading receipts and invoices
+
+Owner → Invoices → Upload (staff: Receipts) takes PDFs or photos, reads each with Claude,
+and makes **one expense per supplier invoice number**:
+
+- **A multi-page invoice photographed page by page** becomes one expense: the page with the
+  total makes the row and the other pages are attached to it, in whatever order they arrive.
+- **The same invoice uploaded twice** is skipped (same invoice number and total).
+- **A receipt whose total couldn't be read** is still saved, with *"⚠ Total not read — check
+  the receipt and enter the amount"* in its notes — never silently as £0.00.
+- **Two receipts with the same invoice number but different totals** both stay, flagged
+  *"⚠ … check both"*. Nothing guesses which is right.
+- The upload notice counts all of it: *"Uploaded 21 receipts, 2 pages added to existing
+  receipts, 1 duplicate skipped, 1 needs checking."*
+
+Receipts with no invoice number (till slips) fall back to the old check: same vendor and
+total within 3 days of an already-reconciled receipt. One limit: a page with no total
+uploaded again in a later batch gets attached a second time — harmless to the money.
+
+Makro trades under Booker: the "Booker-Invoice-…" PDFs are Makro Ipswich till invoices.
+
 ## Changing the app itself
 
 | Say this | What happens |

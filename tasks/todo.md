@@ -1,3 +1,16 @@
+# Makro invoice upload fix (17 Sep 2026)
+
+Plan: `~/.claude/plans/prancy-singing-quasar.md` (the parked 16 Sep plan)
+
+- [x] `src/lib/invoices/dedupe.ts`: one expense per supplier invoice number (duplicate / attach page / fill in / insert, flagged)
+- [x] `uploadAndExtractInvoices`: parallel store + read, then sequential decisions so pages in one batch see each other; notice counts
+- [x] Extraction prompt: totals are on the last page; a page with no total returns null
+- [x] 13 decision tests pass, including a replay of the real #0128281 photo uploads
+- [x] Live cleanup: 14 Makro rows → 5 (£1,363.58), page photos attached, #0546067 corrected, bank match kept
+- [ ] tsc / lint / build, commit, push, deployment READY
+- [ ] Paul uploads the 21 PDFs from ~/Downloads/Makro invoices to upload/
+- [ ] Check every new row against the parsed PDF figures; correct misreads with audit notes
+
 # Break reminders (17 Sep 2026)
 
 Plan: `~/.claude/plans/prancy-singing-quasar.md`

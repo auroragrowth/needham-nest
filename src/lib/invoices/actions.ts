@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { extractInvoice, type ExtractedInvoice } from './extract'
+import { decideUpload, findSameInvoice, normalize, type InvoiceRow } from './dedupe'
 
 async function requireOwner() {
   const session = await getSession()
@@ -20,11 +21,18 @@ async function requireAnyAuth() {
 }
 
 /**
- * Bulk-process supplier invoice files. For each uploaded file:
- *  1. Save to the supplier-invoices storage bucket.
- *  2. Send to Claude for structured extraction.
- *  3. Insert a draft expenses row referencing the file.
- *  4. Try to match a bank_transaction by exact amount + supplier text.
+ * Bulk-process supplier invoice files: one expense row per supplier invoice.
+ *
+ * Phase 1, in parallel because the Claude read is the slow part: save each
+ * file to the supplier-invoices bucket and extract it.
+ *
+ * Phase 2, one file at a time so pages of the same invoice in one batch see
+ * each other: a file whose invoice number already has a row is a duplicate
+ * (dropped) or another page (attached, filling in the total if that row had
+ * none); anything else becomes a new row, flagged when the total couldn't be
+ * read or clashes with another receipt. See src/lib/invoices/dedupe.ts.
+ *
+ * Then, for an owner, try to match bank lines.
  */
 export async function uploadAndExtractInvoices(formData: FormData) {
   // Anyone signed in can snap a receipt — Paul wanted the whole team
@@ -40,21 +48,22 @@ export async function uploadAndExtractInvoices(formData: FormData) {
 
   const admin = createAdminClient()
   const errors: string[] = []
-  let duplicatesSkipped = 0
 
-  // Pre-fetch already-reconciled receipts so we can dedupe against them
-  // BEFORE inserting a new row — saves Paul having to clean up later.
-  const { data: reconciledRowsRaw } = await admin
-    .from('expenses')
-    .select('id, vendor, amount, date, paid_in_cash, director_loan_id')
-  const { data: matchedRowsRaw } = await admin
-    .from('bank_transactions')
-    .select('matched_expense_id')
-    .not('matched_expense_id', 'is', null)
+  const [{ data: expenseRows }, { data: matchedRowsRaw }] = await Promise.all([
+    admin
+      .from('expenses')
+      .select('id, vendor, amount, date, reference, additional_receipt_paths, paid_in_cash, director_loan_id'),
+    admin
+      .from('bank_transactions')
+      .select('matched_expense_id')
+      .not('matched_expense_id', 'is', null),
+  ])
   const matchedSet = new Set(
     (matchedRowsRaw ?? []).map((r) => r.matched_expense_id),
   )
-  const reconciledSignatures = (reconciledRowsRaw ?? [])
+  // Receipts with no invoice number fall back to the old check: the same
+  // vendor and total within 3 days of an already-reconciled receipt.
+  const reconciledSignatures = (expenseRows ?? [])
     .filter((r) =>
       isReconciledRow({
         paid_in_cash: r.paid_in_cash,
@@ -63,12 +72,18 @@ export async function uploadAndExtractInvoices(formData: FormData) {
       }),
     )
     .map((r) => signatureOf(r))
+  // Every row carrying an invoice number, kept current through the batch.
+  const invoices: InvoiceRow[] = (expenseRows ?? [])
+    .filter((r) => r.reference)
+    .map((r) => ({
+      id: r.id,
+      vendor: r.vendor,
+      amount: r.amount,
+      reference: r.reference,
+      additional_receipt_paths: r.additional_receipt_paths,
+    }))
 
-  // Process files in parallel so a batch of 15 doesn't take 15× a single
-  // file's time. Each task does: read bytes → upload to storage → call
-  // Claude → insert expense row. Failures land in the errors list and
-  // still create a draft row so nothing is silently lost.
-  const results = await Promise.all(
+  const stored = await Promise.all(
     files.map(async (file) => {
       try {
         const bytes = await file.arrayBuffer()
@@ -96,43 +111,7 @@ export async function uploadAndExtractInvoices(formData: FormData) {
             confidence: 'low',
           }
         }
-
-        // Skip if this looks like a duplicate of an already-reconciled
-        // receipt. Drop the file from storage so we don't accumulate
-        // garbage in the bucket.
-        const sig = signatureOf({
-          vendor: extracted.supplier,
-          amount: extracted.amount,
-          date: extracted.date ?? new Date().toISOString().slice(0, 10),
-        })
-        if (reconciledSignatures.some((rs) => isSameReceipt(rs, sig))) {
-          await admin.storage
-            .from('supplier-invoices')
-            .remove([storagePath])
-          return { ok: false as const, skipped: true as const }
-        }
-
-        const payeeId = extracted.supplier
-          ? await findOrCreatePayee(extracted.supplier)
-          : null
-
-        const { error: insertErr } = await admin.from('expenses').insert({
-          user_id: session.profileId,
-          date: extracted.date ?? new Date().toISOString().slice(0, 10),
-          category: 'other',
-          payee_id: payeeId,
-          vendor: extracted.supplier ?? 'Unknown supplier',
-          amount: extracted.amount ?? 0,
-          reference: extracted.reference,
-          receipt_path: storagePath,
-          vat_rate: extracted.vat_rate,
-          notes: extracted.notes,
-          ai_extracted: true,
-          ai_extracted_at: new Date().toISOString(),
-          ai_raw: extracted as unknown as Record<string, unknown>,
-        })
-        if (insertErr) throw new Error(`Insert failed: ${insertErr.message}`)
-        return { ok: true as const }
+        return { ok: true as const, name: file.name, storagePath, extracted }
       } catch (e) {
         errors.push(`${file.name}: ${(e as Error).message}`)
         return { ok: false as const }
@@ -140,11 +119,105 @@ export async function uploadAndExtractInvoices(formData: FormData) {
     }),
   )
 
-  const processed = results.filter((r) => r.ok).length
-  duplicatesSkipped = results.filter(
-    (r) => 'skipped' in r && r.skipped === true,
-  ).length
-  const failures = results.length - processed - duplicatesSkipped
+  let processed = 0
+  let duplicatesSkipped = 0
+  let pagesAttached = 0
+  let needsChecking = 0
+  let failures = stored.filter((r) => !r.ok).length
+
+  for (const item of stored) {
+    if (!item.ok) continue
+    const { name, storagePath, extracted } = item
+    try {
+      const match = findSameInvoice(extracted, invoices)
+      const decision = decideUpload(extracted, match)
+
+      if (decision.kind === 'duplicate') {
+        await admin.storage.from('supplier-invoices').remove([storagePath])
+        duplicatesSkipped += 1
+        continue
+      }
+
+      if (match && (decision.kind === 'attach_page' || decision.kind === 'fill_in')) {
+        const paths = [...(match.additional_receipt_paths ?? []), storagePath]
+        const update: Record<string, unknown> = { additional_receipt_paths: paths }
+        if (decision.kind === 'fill_in') {
+          update.amount = extracted.amount
+          update.vat_rate = extracted.vat_rate
+          update.notes = extracted.notes
+          update.ai_raw = extracted as unknown as Record<string, unknown>
+          update.ai_extracted_at = new Date().toISOString()
+          if (extracted.date) update.date = extracted.date
+          if (extracted.supplier) update.payee_id = await findOrCreatePayee(extracted.supplier)
+        }
+        const { error } = await admin.from('expenses').update(update).eq('id', match.id)
+        if (error) throw new Error(`Update failed: ${error.message}`)
+        match.additional_receipt_paths = paths
+        if (decision.kind === 'fill_in') match.amount = extracted.amount
+        pagesAttached += 1
+        continue
+      }
+
+      if (decision.kind !== 'insert') continue
+
+      // Skip if this looks like a duplicate of an already-reconciled
+      // receipt. Drop the file from storage so we don't accumulate
+      // garbage in the bucket.
+      if (!match) {
+        const sig = signatureOf({
+          vendor: extracted.supplier,
+          amount: extracted.amount,
+          date: extracted.date ?? new Date().toISOString().slice(0, 10),
+        })
+        if (reconciledSignatures.some((rs) => isSameReceipt(rs, sig))) {
+          await admin.storage.from('supplier-invoices').remove([storagePath])
+          duplicatesSkipped += 1
+          continue
+        }
+      }
+
+      const payeeId = extracted.supplier
+        ? await findOrCreatePayee(extracted.supplier)
+        : null
+      const vendor = extracted.supplier ?? 'Unknown supplier'
+      const { data: row, error: insertErr } = await admin
+        .from('expenses')
+        .insert({
+          user_id: session.profileId,
+          date: extracted.date ?? new Date().toISOString().slice(0, 10),
+          category: 'other',
+          payee_id: payeeId,
+          vendor,
+          amount: extracted.amount ?? 0,
+          reference: extracted.reference,
+          receipt_path: storagePath,
+          vat_rate: extracted.vat_rate,
+          notes: decision.warning
+            ? [decision.warning, extracted.notes].filter(Boolean).join(' ')
+            : extracted.notes,
+          ai_extracted: true,
+          ai_extracted_at: new Date().toISOString(),
+          ai_raw: extracted as unknown as Record<string, unknown>,
+        })
+        .select('id')
+        .single()
+      if (insertErr || !row) throw new Error(`Insert failed: ${insertErr?.message ?? 'no row'}`)
+      if (extracted.reference) {
+        invoices.push({
+          id: row.id,
+          vendor,
+          amount: extracted.amount ?? 0,
+          reference: extracted.reference,
+          additional_receipt_paths: [],
+        })
+      }
+      processed += 1
+      if (decision.warning) needsChecking += 1
+    } catch (e) {
+      errors.push(`${name}: ${(e as Error).message}`)
+      failures += 1
+    }
+  }
 
   // Auto-match every unmatched expense after the batch lands — but only
   // when an owner is uploading. For staff snaps we skip it; Paul can
@@ -156,14 +229,17 @@ export async function uploadAndExtractInvoices(formData: FormData) {
   revalidatePath('/owner/invoices-upload')
   revalidatePath('/owner/invoices-reconcile')
   revalidatePath('/staff/receipts')
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
   const params = new URLSearchParams()
   params.set(
     'notice',
-    `Uploaded ${processed} receipt${processed === 1 ? '' : 's'}${
-      duplicatesSkipped > 0
-        ? `, ${duplicatesSkipped} duplicate${duplicatesSkipped === 1 ? '' : 's'} skipped`
-        : ''
-    }${failures > 0 ? `, ${failures} failed` : ''}.`,
+    `Uploaded ${plural(processed, 'receipt', 'receipts')}${
+      pagesAttached > 0 ? `, ${plural(pagesAttached, 'page', 'pages')} added to existing receipts` : ''
+    }${
+      duplicatesSkipped > 0 ? `, ${plural(duplicatesSkipped, 'duplicate', 'duplicates')} skipped` : ''
+    }${needsChecking > 0 ? `, ${plural(needsChecking, 'needs', 'need')} checking` : ''}${
+      failures > 0 ? `, ${failures} failed` : ''
+    }.`,
   )
   if (errors.length > 0) {
     params.set('errors', errors.slice(0, 5).join(' | '))
@@ -193,12 +269,6 @@ async function findOrCreatePayee(name: string): Promise<string | null> {
   return created?.id ?? null
 }
 
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-}
 
 type DupeSignature = {
   vendor_norm: string

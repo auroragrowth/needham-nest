@@ -24,6 +24,8 @@ const SYSTEM_PROMPT = `You are an accounts assistant for a UK cafe. The user upl
 
 Always return values in GBP. Amounts are the gross amount the cafe owes (or paid). If you can see a VAT breakdown, capture net + VAT separately.
 
+Wholesaler invoices (Makro, Booker) run to several pages: every page repeats the header and invoice number, section sub-totals appear part way through, and the invoice total and VAT summary are on the last page. Read every page before answering, and take the amount from the invoice total, not a sub-total. Photos are often one page at a time, so if the image shows no invoice total, return amount null (and net/VAT null) while still giving the supplier, date and invoice number — the pages get joined up by invoice number.
+
 Return null for any field you can't read confidently. Don't guess.`
 
 const SCHEMA_INSTRUCTION = `Reply with ONLY a JSON object matching this TypeScript type:
