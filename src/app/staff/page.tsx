@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { hasPermission } from '@/lib/permissions'
 import { FeedbackBanner } from '@/components/shared/FeedbackBanner'
+import { BreakBanner } from '@/components/shared/BreakBanner'
 
 function startOfTodayIso(): string {
   const d = new Date()
@@ -89,6 +90,8 @@ export default async function StaffHub({
           {params.error}
         </p>
       )}
+
+      <BreakBanner profileId={session.profileId} />
 
       <FeedbackBanner />
 

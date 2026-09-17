@@ -21,6 +21,7 @@ export const REPORTS: Record<string, Report> = {
   timesheets: { kind: 'sql', fn: 'nesty_timesheets', params: 'range', about: 'Shifts and net hours per person' },
   'missing-clock-outs': { kind: 'sql', fn: 'nesty_missing_clock_outs', params: 'none', about: 'Forgotten clock-outs and shifts over 10 hours' },
   'long-shifts': { kind: 'sql', fn: 'nesty_long_shifts', params: 'none', about: 'Shifts over 10 hours in the last 2 days, open or closed, with the rota end and a suggested clock-out' },
+  'breaks-due': { kind: 'sql', fn: 'nesty_breaks_due', params: 'none', about: 'People on shift due or overdue a break, and shifts in the last 2 days that ended without the required break' },
   rota: { kind: 'sql', fn: 'nesty_rota', params: 'range', about: 'Rota shifts, published and draft' },
   'rota-drafts': { kind: 'sql', fn: 'nesty_rota_drafts', params: 'range', about: 'Unpublished rota shifts in the range' },
   'rota-plan': { kind: 'sql', fn: 'nesty_rota_plan', params: 'range', about: 'Planned rota hours and cost per day, and how many people are on each hour' },

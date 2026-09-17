@@ -3,8 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { getSessionFromRequest } from '@/lib/auth/session'
 
 // These have no login cookie: /api/nesty checks NESTY_READ_TOKEN and
-// /api/cron checks CRON_SECRET instead.
-const PUBLIC_PREFIXES = ['/login', '/auth', '/api/nesty', '/api/cron/']
+// /api/cron checks CRON_SECRET instead. /api/breaks/due-count is the PIN
+// screen's break reminder and returns counts only.
+const PUBLIC_PREFIXES = ['/login', '/auth', '/api/nesty', '/api/cron/', '/api/breaks/due-count']
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request })

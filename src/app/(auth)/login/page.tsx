@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { signInWithPin } from '@/lib/auth/actions'
 import { PinPad } from '@/components/shared/PinPad'
+import { BreakDueStrip } from '@/components/shared/BreakDueStrip'
 
 export default async function LoginPage({
   searchParams,
@@ -35,6 +36,8 @@ export default async function LoginPage({
           {params.error}
         </p>
       )}
+
+      <BreakDueStrip />
 
       <div className="mt-6">
         <PinPad action={signInWithPin} next={params.next} />

@@ -1,3 +1,16 @@
+# Break reminders (17 Sep 2026)
+
+Plan: `~/.claude/plans/prancy-singing-quasar.md`
+
+- [x] `src/lib/breaks/status.ts` (one rule) + `on-shift.ts`; clock page uses the shared under-18 check
+- [x] PIN screen strip (counts only, `/api/breaks/due-count`, public) and logged-in `BreakBanner` on hub + clock
+- [x] `clockOut` asks when past the legal point without enough break; taken → recorded, missed → no deduction, note, push
+- [x] Migration `break_alerts` (`time_logs.break_alerted_at`, `nesty_breaks_due()`), cron `/api/cron/breaks`, Nesty `breaks-due`
+- [x] 18 rule tests pass (thresholds, under-18, part breaks, mid-break clock-out, 18th birthday)
+- [ ] tsc / lint / build, commit, push, deployment READY, public count endpoint checked
+- [ ] Paul or May: try it on the tablet (I can't enter a PIN)
+- [ ] Nesty side to the Desktop avatar session
+
 # Long-shift alerts (17 Sep 2026)
 
 Plan: `~/.claude/plans/prancy-singing-quasar.md`

@@ -115,6 +115,30 @@ deducted — a genuine long day alerts too, once).
   made, and adds the usual audit note. No rota that day → Nesty asks you for the time.
 - **Or just ask:** "Anyone over 10 hours?" runs the same report.
 
+### Breaks
+
+The rules (Working Time Regulations, also used for rota checks in `src/lib/rota/compliance.ts`):
+**adults 20 minutes for a shift over 6 hours; under-18s 30 minutes over 4½ hours** (age from
+date of birth). Shift length is clock time since clocking in. The app stores total break
+minutes, so two short breaks count towards the one — strictly the law means one
+uninterrupted break, so tell staff to take it in one go.
+
+| Who | Sees what, when |
+|---|---|
+| Anyone at the tablet | PIN screen strip from an hour before a break is due: *"1 person on shift is due a break soon — enter your PIN to check"*. Red once overdue. **Counts only** — `/login` is public on the internet, so no names there |
+| The person on shift | After their PIN, a banner on the hub and clock page with a **Go on break** button. From 5h (under-18s 3h 30m), urgent past 6h (4h 30m) |
+| Clocking out past the legal point without enough break | The clock-out asks *"Did you take your break today?"* — **Yes, forgot to tap** records the minutes they give (deducted, because taken); **No, didn't get one** records nothing, keeps them paid, notes it on the timesheet with their reason, and pushes to you |
+| You | Pushover when an open shift passes the legal point without enough break (`/api/cron/breaks`, every 15 min, once per shift), and when someone clocks out saying they missed it. Nesty reads the `breaks-due` report |
+
+**Never auto-deduct a break that wasn't taken.** That's working time unpaid — likely an
+unlawful deduction and a minimum wage risk — and it doesn't fix the missed break. You *can*
+require staff to take breaks and set when; for under-18s you must make sure they do.
+
+| Say this | What happens |
+|---|---|
+| "Who's due a break?" | Runs `breaks-due` |
+| "Who missed breaks last week?" | Timesheets with no or short breaks past the legal point, plus the reasons given at clock-out |
+
 ## Rota
 
 | Say this | What happens |

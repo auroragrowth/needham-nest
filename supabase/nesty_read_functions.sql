@@ -134,6 +134,60 @@ returns jsonb language sql stable as $$
      and coalesce(t.clock_out, now()) - t.clock_in > interval '10 hours'
 $$;
 
+-- Breaks due or missed, by the Working Time Regulations rules the rota uses
+-- (src/lib/rota/compliance.ts, src/lib/breaks/status.ts):
+--   adults 20 min for a shift over 6h; under-18s 30 min for a shift over 4h30.
+-- Open shifts from an hour before the legal point ('soon') and past it ('due'),
+-- not while on a break; plus shifts from the last 2 days that ended past the
+-- legal point with not enough break ('missed'). Never returns a date of birth.
+create or replace function public.nesty_breaks_due()
+returns jsonb language sql stable as $$
+  with base as (
+    select t.id, p.name, t.clock_in, t.clock_out, t.break_start_at, t.notes,
+           (p.date_of_birth is not null
+              and (p.date_of_birth + interval '18 years')::date > nesty_london_today()) as young,
+           extract(epoch from coalesce(t.clock_out, now()) - t.clock_in) / 60 as shift_minutes,
+           coalesce(t.break_minutes_total, 0)
+             + case when t.clock_out is null and t.break_start_at is not null
+                    then extract(epoch from now() - t.break_start_at) / 60 else 0 end as break_minutes
+      from time_logs t join profiles p on p.id = t.user_id
+     where t.clock_out is null
+        or t.clock_in >= now() - interval '2 days'
+  ), ruled as (
+    select *,
+           case when young then 30 else 20 end as required_minutes,
+           case when young then 270 else 360 end as legal_after_minutes,
+           case when young then 210 else 300 end as remind_from_minutes
+      from base
+  ), judged as (
+    select *,
+           case
+             when clock_out is null and break_start_at is not null then null
+             when break_minutes >= required_minutes then null
+             when clock_out is not null and shift_minutes > legal_after_minutes then 'missed'
+             when clock_out is not null then null
+             when shift_minutes > legal_after_minutes then 'due'
+             when shift_minutes >= remind_from_minutes then 'soon'
+           end as status
+      from ruled
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'time_log_id', id,
+           'name', name,
+           'clock_in', nesty_local(clock_in),
+           'clock_out', case when clock_out is null then null else nesty_local(clock_out) end,
+           'still_clocked_in', clock_out is null,
+           'shift_hours', round((shift_minutes / 60)::numeric, 2),
+           'break_minutes', floor(break_minutes)::int,
+           'required_minutes', required_minutes,
+           'required_after_hours', round((legal_after_minutes / 60.0)::numeric, 1),
+           'status', status,
+           'notes', case when clock_out is not null then notes end
+         ) order by clock_in), '[]'::jsonb)
+    from judged
+   where status is not null
+$$;
+
 create or replace function public.nesty_rota(p_from date, p_to date)
 returns jsonb language sql stable as $$
   select coalesce(jsonb_agg(jsonb_build_object(

@@ -6,6 +6,8 @@ import {
   startBreak,
 } from '@/lib/time-logs/actions'
 import { BackToWorkButton } from './BackToWorkButton'
+import { BreakBanner } from '@/components/shared/BreakBanner'
+import { breakStatus, formatMinutes, isYoungWorkerToday } from '@/lib/breaks/status'
 
 function formatDuration(ms: number): string {
   if (ms <= 0) return '0m'
@@ -45,7 +47,15 @@ function shiftMs(
 export default async function StaffDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; error?: string; action?: string }>
+  searchParams: Promise<{
+    notice?: string
+    error?: string
+    action?: string
+    /** Set by clockOut when the shift passed the legal break point without enough break. */
+    break_check?: string
+    /** A closing-list override reason, carried through the break question. */
+    override?: string
+  }>
 }) {
   const params = await searchParams
   // A scanned clock QR lands here as e.g. ?action=clock-in. Preserve that
@@ -99,19 +109,22 @@ export default async function StaffDashboard({
     .select('date_of_birth')
     .eq('id', session.profileId)
     .maybeSingle()
-  const isUnder18 = (() => {
-    if (!meProfile?.date_of_birth) return false
-    const dob = new Date(meProfile.date_of_birth + 'T00:00:00Z')
-    const eighteenth = new Date(
-      Date.UTC(
-        dob.getUTCFullYear() + 18,
-        dob.getUTCMonth(),
-        dob.getUTCDate(),
-      ),
-    )
-    return now < eighteenth
-  })()
+  const isUnder18 = isYoungWorkerToday(meProfile?.date_of_birth, now)
   const requiredBreakMinutes = isUnder18 ? 30 : 20
+
+  // clockOut sends people back here when the shift passed the legal break
+  // point without enough break recorded. Judge the shift as if it ended now.
+  const judged =
+    params.break_check === '1' && openShift
+      ? breakStatus({
+          clockIn: openShift.clock_in,
+          clockOut: now,
+          breakMinutesTotal: openShift.break_minutes_total,
+          breakStartAt: openShift.break_start_at,
+          youngWorker: isUnder18,
+        })
+      : null
+  const breakCheck = judged?.status === 'due' ? judged : null
 
   // Deep-linked action from a scanned QR (?action=clock-in|clock-out|
   // break-start|break-end). We only ever show a one-tap CONFIRM here — the
@@ -168,7 +181,76 @@ export default async function StaffDashboard({
         </p>
       )}
 
-      {params.action && (
+      {!breakCheck && <BreakBanner profileId={session.profileId} />}
+
+      {breakCheck && (
+        <section className="mb-4 rounded-xl border-2 border-brand-forest bg-white p-6">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.15em] text-brand-slate">
+            {session.name}
+          </p>
+          <p className="mt-1 text-center text-lg font-semibold text-brand-forest">
+            Did you take your break today?
+          </p>
+          <p className="mt-1 text-center text-sm text-brand-slate">
+            You&apos;ve been on shift {formatMinutes(breakCheck.shiftMinutes)}. Anyone on shift over{' '}
+            {formatMinutes(breakCheck.legalAfterMinutes)} needs a {breakCheck.requiredMinutes}-minute break
+            {breakCheck.breakMinutes > 0 ? `, and ${breakCheck.breakMinutes} minutes are recorded so far` : ', and none is recorded'}.
+          </p>
+
+          <form action={clockOut} className="mt-5 rounded-xl border border-brand-sage/60 p-4">
+            <input type="hidden" name="break_answer" value="taken" />
+            {params.override && <input type="hidden" name="override_reason" value={params.override} />}
+            <p className="font-medium text-brand-forest">Yes — I took it but forgot to tap</p>
+            <label htmlFor="break_minutes" className="mt-2 block text-sm text-brand-slate">
+              How many more minutes of break did you take?
+            </label>
+            <input
+              id="break_minutes"
+              name="break_minutes"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={breakCheck.shiftMinutes}
+              required
+              defaultValue={Math.max(1, breakCheck.requiredMinutes - breakCheck.breakMinutes)}
+              className="mt-1 w-28 rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-lg text-brand-forest"
+            />
+            <button
+              type="submit"
+              className="mt-3 w-full rounded-2xl bg-brand-forest px-6 py-4 text-lg font-semibold text-brand-cream transition active:scale-[0.98] hover:bg-brand-olive"
+            >
+              Record break and clock out
+            </button>
+          </form>
+
+          <form action={clockOut} className="mt-3 rounded-xl border border-brand-sage/60 p-4">
+            <input type="hidden" name="break_answer" value="missed" />
+            {params.override && <input type="hidden" name="override_reason" value={params.override} />}
+            <p className="font-medium text-brand-forest">No — I didn&apos;t get a break</p>
+            <p className="mt-1 text-sm text-brand-slate">
+              You&apos;ll be paid for all your time. Paul will be told so it doesn&apos;t happen again.
+            </p>
+            <label htmlFor="break_reason" className="mt-2 block text-sm text-brand-slate">
+              What happened? (optional)
+            </label>
+            <textarea
+              id="break_reason"
+              name="break_reason"
+              rows={2}
+              maxLength={300}
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-sm text-brand-forest"
+            />
+            <button
+              type="submit"
+              className="mt-3 w-full rounded-2xl bg-brand-amber px-6 py-4 text-lg font-semibold text-brand-forest transition active:scale-[0.98] hover:bg-brand-amber/90"
+            >
+              Clock out without a break
+            </button>
+          </form>
+        </section>
+      )}
+
+      {params.action && !breakCheck && (
         <section className="mb-4 rounded-xl border-2 border-brand-forest bg-white p-6 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-slate">
             {session.name}
