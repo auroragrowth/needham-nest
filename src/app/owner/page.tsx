@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { capturePendingCount } from '@/lib/invoice-capture/client'
 
 export default async function OwnerDashboard({
   searchParams,
@@ -25,6 +26,7 @@ export default async function OwnerDashboard({
     { count: taskCount },
     { data: expenses90 },
     { data: takings90 },
+    invoicesPending,
   ] = await Promise.all([
     session.authUserId
       ? admin
@@ -48,6 +50,9 @@ export default async function OwnerDashboard({
       .eq('active', true),
     admin.from('expenses').select('amount').gte('date', since90),
     admin.from('takings').select('amount').gte('date', since90),
+    // The till's count of captured invoices nobody has checked yet. Null when
+    // the till cannot be reached — the rest of the dashboard carries on.
+    capturePendingCount(),
   ])
 
   const expenseTotal90 = (expenses90 ?? []).reduce(
@@ -363,9 +368,15 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
-          href="/owner/invoices-upload"
-          title="Bulk invoices"
-          subtitle="Drop many PDFs / photos at once"
+          href="/invoices"
+          title="Upload invoices"
+          subtitle={
+            invoicesPending === null
+              ? 'Till unavailable'
+              : invoicesPending === 0
+                ? 'Nothing waiting to be checked'
+                : `${invoicesPending} ${invoicesPending === 1 ? 'invoice' : 'invoices'} waiting to be checked`
+          }
           cta="Upload →"
         />
         <Card

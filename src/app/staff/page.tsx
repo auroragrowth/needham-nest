@@ -190,6 +190,22 @@ export default async function StaffHub({
               A delivery has arrived — book it in
             </p>
           </Link>
+          <Link
+            href="/invoices"
+            className="block rounded-2xl border-2 p-5 transition active:scale-[0.98]"
+            style={{
+              backgroundColor: '#efd9f1',
+              borderColor: '#a066a3',
+              color: '#3a1f42',
+            }}
+          >
+            <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
+              📄 Upload invoices
+            </h2>
+            <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
+              Photograph the supplier&apos;s invoice
+            </p>
+          </Link>
         <HubTile
           href="/staff/receipts"
           title="🧾 Snap a receipt"

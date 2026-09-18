@@ -85,10 +85,10 @@ export default async function ReceiptsPage({
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
-          href="/owner/invoices-upload"
+          href="/invoices"
           className="rounded-lg border border-brand-sage/60 px-3 py-1.5 text-xs text-brand-forest hover:bg-brand-sage/10"
         >
-          Bulk upload (multiple files) →
+          Upload supplier invoices →
         </Link>
         <Link
           href="/owner/invoices-reconcile"

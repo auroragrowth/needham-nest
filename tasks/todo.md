@@ -1,3 +1,49 @@
+# Invoice capture at the back door (18 Sep 2026)
+
+Brief: `~/Desktop/invoice-capture-brief.md`. Capture only — no extraction, no review, no costing.
+
+## Code
+- [x] `src/lib/invoice-capture/client.ts`: bootstrap + upload against the till's `invoice-capture` edge function, key in an `x-capture-key` header; `capturePendingCount()` returns null rather than throwing so a dead till can't take the dashboard down
+- [x] `src/app/api/invoices/upload/route.ts`: the browser's only way in. `captured_by` comes from the session, not the request body
+- [x] `src/app/invoices/`: supplier picker, drag-drop, camera, three uploads at a time, failures left in the list for the next press of Upload
+- [x] Waiting count on the page footer and on the owner dashboard's Finance grid
+- [x] Tile on the staff hub, or the page is unreachable from inside the app
+- [x] It is *the* upload button: big "Upload invoices" button beside Goods In on the tablet; the owner's "Bulk invoices" card and the receipts page's bulk link now go to `/invoices`. `/owner/invoices-upload` still exists, reached only from Invoice reconciliation's "+ Upload more"
+
+## Config
+- [x] `TILL_CAPTURE_KEY` in `.env.local.example` — its own variable, not `TILL_READ_TOKEN`, so it can be rotated without stopping the stock sync
+- [ ] Set `TILL_CAPTURE_KEY` in Vercel (and rotate `app_settings.invoice_capture_key` first — see Review)
+
+## Docs
+- [x] `docs/RUNBOOK.md` — row in the map
+
+## Verify
+- [x] `npx tsc --noEmit`, eslint on the new files, `npm run build` — clean; the one `owner/page.tsx` lint error is pre-existing (`Date.now` at line 18)
+- [x] Whole chain against a local stub of the edge function: key absent from the served HTML, `captured_by` arrives as the session name, supplier optional, empty file 400, bad key surfaces the till's message at both the page and the route
+- [x] Confirm the live function accepts the header form (18 Sep: 7 suppliers, 0 pending)
+- [ ] Owner dashboard card — can't render locally (no service-role key in `.env.local`, by design), so it is covered by types and build only
+
+## Review
+
+Three things worth recording:
+
+- **The key in the standalone page is spent.** `614487663ffc` sits in plain text in
+  `invoice-capture.html`, so it is in the history of every browser that ever opened that page.
+  Rotate `app_settings.invoice_capture_key` and set the new value as `TILL_CAPTURE_KEY`.
+- **A staff session lasts 30 minutes, a batch at the back door can outlive it.** The proxy then
+  redirects to `/login`, which `fetch` follows and which answers 200 with a page — which would
+  have been counted as a saved invoice. The client checks `response.redirected` and says so.
+- **Brand as usual meant the app's tokens**, not the brief's hexes and Playfair/Lora. The gold is
+  identical; forest and cream differ by a hair. A page that reads as part of the staff app beat a
+  page that matches a standalone one.
+
+Deliberately left alone: `/owner/invoices-upload` still takes supplier invoices into the café's
+own Supabase with Claude extraction and bank reconciliation. Two pipelines for the same paperwork
+now exist; which one wins is a decision for the finance agent, not this page. Vercel caps a
+function request body at 4.5 MB and iPhone photos run 3–6 MB, so the occasional full-res shot will
+bounce. Fixed: photos over 2.5 MB are shrunk in the browser to 2400px JPEG before sending.
+Failure reasons now show on the row, not only as a hover title a tablet can't reach.
+
 # One simple stock page (17 Sep 2026)
 
 Plan: `~/.claude/plans/prancy-singing-quasar.md`
