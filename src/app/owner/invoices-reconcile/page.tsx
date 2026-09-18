@@ -11,6 +11,7 @@ import {
 } from '@/lib/invoices/actions'
 import { capturePendingCount } from '@/lib/invoice-capture/client'
 import { readWaitingNow } from '@/lib/invoice-capture/actions'
+import { PendingButton } from '@/components/shared/PendingButton'
 import { DeleteReceiptButton } from './DeleteReceiptButton'
 
 export const dynamic = 'force-dynamic'
@@ -153,13 +154,12 @@ export default async function ReconcilePage({
           </Link>
           {waitingInTill ? (
             <form action={readWaitingNow}>
-              <button
-                type="submit"
+              <PendingButton
                 className="rounded-lg border border-brand-amber px-4 py-2 text-sm font-medium text-brand-forest hover:bg-brand-amber/10"
                 title="Photos saved at the back door that haven't been read into expenses yet"
               >
                 Read {waitingInTill} waiting
-              </button>
+              </PendingButton>
             </form>
           ) : null}
           <form
@@ -168,12 +168,11 @@ export default async function ReconcilePage({
               await runAutoMatch()
             }}
           >
-            <button
-              type="submit"
+            <PendingButton
               className="rounded-lg border border-brand-sage/60 px-4 py-2 text-sm text-brand-forest hover:bg-brand-sage/10"
             >
               Re-run auto-match
-            </button>
+            </PendingButton>
           </form>
           <form
             action={async () => {
@@ -181,13 +180,12 @@ export default async function ReconcilePage({
               await cleanupDuplicates()
             }}
           >
-            <button
-              type="submit"
+            <PendingButton
               className="rounded-lg border border-brand-sage/60 px-4 py-2 text-sm text-brand-forest hover:bg-brand-sage/10"
               title="Delete unreconciled receipts that duplicate one already settled"
             >
               🧹 Clean duplicates
-            </button>
+            </PendingButton>
           </form>
         </div>
       </header>
@@ -278,21 +276,19 @@ export default async function ReconcilePage({
                       </span>
                     )}
                     <form action={markExpenseAsPaidInCash.bind(null, e.id)}>
-                      <button
-                        type="submit"
+                      <PendingButton
                         className="rounded-lg bg-brand-teal px-3 py-1.5 text-sm font-semibold text-brand-cream hover:bg-brand-teal-deep"
                         title="Deduct this amount from the till's cash on hand"
                       >
                         💵 Paid from till
-                      </button>
+                      </PendingButton>
                     </form>
                     <form action={markExpenseAsDirectorPaid.bind(null, e.id)}>
-                      <button
-                        type="submit"
+                      <PendingButton
                         className="rounded-lg bg-brand-amber px-3 py-1.5 text-sm font-semibold text-brand-forest hover:bg-brand-amber/90"
                       >
                         🏛 Director&apos;s loan →
-                      </button>
+                      </PendingButton>
                     </form>
                     <DeleteReceiptButton
                       expenseId={e.id}
@@ -344,12 +340,11 @@ export default async function ReconcilePage({
                         </option>
                       ))}
                   </select>
-                  <button
-                    type="submit"
+                  <PendingButton
                     className="rounded-md border border-brand-sage/60 px-2 py-1 text-xs text-brand-forest hover:bg-brand-sage/10"
                   >
                     Match
-                  </button>
+                  </PendingButton>
                 </form>
                 <form
                   action={async (fd: FormData) => {
@@ -378,12 +373,11 @@ export default async function ReconcilePage({
                         </option>
                       ))}
                   </select>
-                  <button
-                    type="submit"
+                  <PendingButton
                     className="rounded-md border border-brand-sage/60 px-2 py-1 text-xs text-brand-forest hover:bg-brand-sage/10"
                   >
                     Merge →
-                  </button>
+                  </PendingButton>
                 </form>
               </li>
             ))}
@@ -476,13 +470,12 @@ export default async function ReconcilePage({
                     </a>
                   ))}
                   <form action={undoPaidInCash.bind(null, e.id)}>
-                    <button
-                      type="submit"
+                    <PendingButton
                       className="text-xs text-brand-teal-deep hover:underline"
                       title="Give the till its cash back and match this against the bank instead"
                     >
                       Not cash — paid by bank
-                    </button>
+                    </PendingButton>
                   </form>
                   <DeleteReceiptButton
                     expenseId={e.id}

@@ -43,7 +43,25 @@ export async function autoMatchExpenses(): Promise<{ matched: number; unmatched:
 
   let matched = 0
   const settle = async (expenseId: string, txnId: string, note?: string) => {
-    await admin.from('bank_transactions').update({ matched_expense_id: expenseId }).eq('id', txnId)
+    // Runs can overlap (an upload's read and a button press). Claim the bank
+    // line only while it's still free and skip the expense if another run got
+    // there first, so a line is never given twice and a note never doubled.
+    const { data: claimed } = await admin
+      .from('bank_transactions')
+      .update({ matched_expense_id: expenseId })
+      .eq('id', txnId)
+      .is('matched_expense_id', null)
+      .select('id')
+    if ((claimed ?? []).length === 0) return
+    const { data: twice } = await admin
+      .from('bank_transactions')
+      .select('id')
+      .eq('matched_expense_id', expenseId)
+    if ((twice ?? []).length > 1) {
+      // Another run matched this expense to a different line meanwhile: give ours back.
+      await admin.from('bank_transactions').update({ matched_expense_id: null }).eq('id', txnId)
+      return
+    }
     const update: Record<string, unknown> = { reconciled_at: new Date().toISOString() }
     if (note) {
       const { data } = await admin.from('expenses').select('notes').eq('id', expenseId).single()
