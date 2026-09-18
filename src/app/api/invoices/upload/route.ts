@@ -17,7 +17,8 @@ export const maxDuration = 120
  * supplier it is from. Who photographed it comes from the session, not the
  * request, so it cannot be spoofed.
  *
- * POST multipart: `file`, optional `supplier_id`, optional `supplier_name`.
+ * POST multipart: `file`, optional `supplier_id`, optional `supplier_name`,
+ * optional `paid_cash=1` (paid from the till: settled now, not against the bank).
  * Returns { invoice_id, read } — `read` says what the books now hold, or
  * `read_error` when it couldn't be read (it stays waiting and is retried).
  */
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
     profileId: session.profileId,
     readerName: session.name,
     supplierHint: supplierName,
+    paidCash: form.get('paid_cash') === '1',
   })
   if (!outcome.ok) {
     return NextResponse.json({ invoice_id: invoiceId, read: null, read_error: outcome.error })
@@ -79,6 +81,12 @@ export async function POST(request: Request) {
   const r = outcome.result
   return NextResponse.json({
     invoice_id: invoiceId,
-    read: { kind: r.kind, vendor: r.vendor, amount: r.amount, warning: r.warning },
+    read: {
+      kind: r.kind,
+      vendor: r.vendor,
+      amount: r.amount,
+      warning: r.warning,
+      paid_cash: outcome.paidCash,
+    },
   })
 }

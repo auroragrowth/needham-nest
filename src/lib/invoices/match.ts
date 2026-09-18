@@ -1,11 +1,20 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { normalize } from './dedupe'
+import { normalize, normalizeReference } from './dedupe'
 
 /**
- * Check expenses off against the bank: for every expense with no bank line
- * yet (and not paid in cash or by the director), find an unmatched bank debit
- * of exactly that amount whose description resembles the supplier. Date is
- * ignored per Paul's rule.
+ * Check expenses off against the bank. For every expense with no bank line
+ * yet (and not paid in cash or by the director), look for an unmatched bank
+ * debit that:
+ *
+ * 1. is exactly the amount, and whose description resembles the supplier; or
+ * 2. carries the invoice number in its reference, resembles the supplier, and
+ *    is within 10% of the amount. Suppliers paid by transfer (the Butchers)
+ *    get their invoice number as the reference, and the amount paid is not
+ *    always the invoice total (6815: invoiced £210.89, paid £210.00). The
+ *    difference goes in the expense's notes for Paul to look at.
+ *
+ * Date is ignored per Paul's rule. Exact matches are taken first, so a
+ * near-miss never takes a bank line an exact match needed.
  *
  * Runs by itself whenever an invoice is read into the books
  * (src/lib/invoice-capture/read.ts) and whenever a bank statement is imported
@@ -23,7 +32,7 @@ export async function autoMatchExpenses(): Promise<{ matched: number; unmatched:
     admin.from('bank_transactions').select('matched_expense_id').not('matched_expense_id', 'is', null),
     admin
       .from('expenses')
-      .select('id, vendor, amount, director_loan_id, paid_in_cash')
+      .select('id, vendor, amount, reference, director_loan_id, paid_in_cash')
       .is('director_loan_id', null)
       .eq('paid_in_cash', false),
   ])
@@ -33,18 +42,57 @@ export async function autoMatchExpenses(): Promise<{ matched: number; unmatched:
   const free = [...(txns ?? [])]
 
   let matched = 0
+  const settle = async (expenseId: string, txnId: string, note?: string) => {
+    await admin.from('bank_transactions').update({ matched_expense_id: expenseId }).eq('id', txnId)
+    const update: Record<string, unknown> = { reconciled_at: new Date().toISOString() }
+    if (note) {
+      const { data } = await admin.from('expenses').select('notes').eq('id', expenseId).single()
+      update.notes = [note, data?.notes].filter(Boolean).join(' ')
+    }
+    await admin.from('expenses').update(update).eq('id', expenseId)
+    matched += 1
+  }
+
+  // 1. Exact amount and the supplier's name.
+  const left: typeof candidates = []
   for (const e of candidates) {
     if (!e.amount) continue
     const expectedDebit = -Math.abs(Number(e.amount))
     const i = free.findIndex(
       (t) => Number(t.amount) === expectedDebit && describeMatch(e.vendor, t.description),
     )
+    if (i === -1) {
+      left.push(e)
+      continue
+    }
+    const [txn] = free.splice(i, 1)
+    await settle(e.id, txn.id)
+  }
+
+  // 2. The invoice number on the bank line, the supplier's name, and close on amount.
+  for (const e of left) {
+    const ref = normalizeReference(e.reference)
+    if (!ref) continue
+    const invoiced = Math.abs(Number(e.amount))
+    const i = free.findIndex((t) => {
+      const paid = -Number(t.amount)
+      return (
+        paid > 0 &&
+        Math.abs(paid - invoiced) <= invoiced * 0.1 &&
+        referenceTokens(t.description).has(ref) &&
+        describeMatch(e.vendor, t.description)
+      )
+    })
     if (i === -1) continue
     const [txn] = free.splice(i, 1)
-    await admin.from('bank_transactions').update({ matched_expense_id: e.id }).eq('id', txn.id)
-    await admin.from('expenses').update({ reconciled_at: new Date().toISOString() }).eq('id', e.id)
-    matched += 1
+    const paid = -Number(txn.amount)
+    await settle(
+      e.id,
+      txn.id,
+      `⚠ Bank paid £${paid.toFixed(2)} against invoice total £${invoiced.toFixed(2)} (matched on invoice number) — check the difference.`,
+    )
   }
+
   return { matched, unmatched: candidates.length - matched }
 }
 
@@ -58,4 +106,14 @@ function describeMatch(vendor: string | null, description: string): boolean {
   // suppliers often appear truncated on bank statements.
   const head = v.split(' ')[0]
   return head.length >= 3 && d.includes(head)
+}
+
+/** Every word in a bank description, read as an invoice number would be. */
+function referenceTokens(description: string): Set<string> {
+  return new Set(
+    description
+      .split(/[^A-Za-z0-9]+/)
+      .map((w) => normalizeReference(w))
+      .filter((w): w is string => w !== null),
+  )
 }

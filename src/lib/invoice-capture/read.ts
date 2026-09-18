@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ingestInvoice, type IngestResult } from '@/lib/invoices/ingest'
 import { autoMatchExpenses } from '@/lib/invoices/match'
+import { markPaidInCash } from '@/lib/invoices/cash'
 import {
   captureClaim,
   captureResult,
@@ -35,7 +36,9 @@ export async function readIntoBooks(input: {
   profileId: string
   readerName: string
   supplierHint: string | null
-}): Promise<{ ok: true; result: IngestResult } | { ok: false; error: string }> {
+  /** Ticked "Paid cash from the till" at upload: settle it now, not against the bank. */
+  paidCash?: boolean
+}): Promise<{ ok: true; result: IngestResult; paidCash: boolean } | { ok: false; error: string }> {
   let result: IngestResult
   try {
     result = await ingestInvoice(input)
@@ -71,11 +74,19 @@ export async function readIntoBooks(input: {
     )
   }
 
-  // Check it off against the bank straight away if the statement is already in.
-  if (result.kind !== 'duplicate') {
+  // Paid from the till: settled now. Otherwise check it off against the bank
+  // straight away if the statement is already in. A repeat photo changes neither.
+  let paidCash = false
+  if (result.kind !== 'duplicate' && result.expenseId) {
+    if (input.paidCash) {
+      paidCash = await markPaidInCash(result.expenseId, input.profileId).catch((e) => {
+        console.error('invoice-capture: could not mark paid in cash', e)
+        return false
+      })
+    }
     await autoMatchExpenses().catch((e) => console.error('invoice-capture: auto-match failed', e))
   }
-  return { ok: true, result }
+  return { ok: true, result, paidCash }
 }
 
 function bare(readerName: string) {

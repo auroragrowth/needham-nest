@@ -12,6 +12,8 @@ type QueueItem = {
   file: File
   supplierId: string | null
   supplierName: string
+  /** Ticked "Paid cash from the till" when this file was added. */
+  paidCash: boolean
   state: QueueState
   detail?: string
 }
@@ -31,6 +33,7 @@ type ReadResult = {
   vendor: string | null
   amount: number | null
   warning: string | null
+  paid_cash?: boolean
 }
 
 /** What the books now hold for a saved file, in a few words. */
@@ -39,8 +42,12 @@ function describeRead(read: ReadResult | null | undefined): string {
   const who = read.vendor ?? 'Unknown supplier'
   const money = read.amount ? ` £${read.amount.toFixed(2)}` : ''
   if (read.kind === 'duplicate') return `Already in the books — ${who}${money}`
-  if (read.kind === 'page') return `Added as a page of ${who}${money}`
-  return `${who}${money}${read.warning ? ' — total needs checking' : ''}`
+  if (read.kind === 'page') {
+    return `Added as a page of ${who}${money}${read.paid_cash ? ' · paid cash' : ''}`
+  }
+  return `${who}${money}${read.paid_cash ? ' · paid cash' : ''}${
+    read.warning ? ' — total needs checking' : ''
+  }`
 }
 
 let nextKey = 1
@@ -91,6 +98,7 @@ export function Capture({
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ text: string; bad: boolean } | null>(null)
   const [over, setOver] = useState(false)
+  const [paidCash, setPaidCash] = useState(false)
 
   const fileInput = useRef<HTMLInputElement>(null)
   const cameraInput = useRef<HTMLInputElement>(null)
@@ -103,12 +111,13 @@ export function Capture({
         file,
         supplierId: supplier?.id ?? null,
         supplierName: supplier?.name ?? 'Someone else',
+        paidCash,
         state: 'waiting',
       }))
       setQueue((q) => [...q, ...added])
       setNote(null)
     },
-    [chosen, supplier],
+    [chosen, supplier, paidCash],
   )
 
   const left = queue.filter((q) => q.state === 'waiting' || q.state === 'failed').length
@@ -140,6 +149,7 @@ export function Capture({
           body.append('supplier_id', item.supplierId)
           body.append('supplier_name', item.supplierName)
         }
+        if (item.paidCash) body.append('paid_cash', '1')
 
         try {
           const response = await fetch('/api/invoices/upload', { method: 'POST', body })
@@ -162,7 +172,13 @@ export function Capture({
             mark(item.key, 'failed', data?.error)
           } else {
             saved++
-            mark(item.key, 'done', describeRead(data.read))
+            mark(
+              item.key,
+              'done',
+              describeRead(data.read) +
+                // The till doesn't keep the tick, so a later read can't know.
+                (item.paidCash && !data.read ? ' — tell Paul it was paid cash' : ''),
+            )
           }
         } catch {
           failed++
@@ -220,6 +236,25 @@ export function Capture({
         <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
           Add the invoice or receipt
         </h2>
+
+        <label
+          className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-brand-sage/40 bg-white px-4 py-3 text-sm text-brand-forest"
+          style={{ minHeight: '44px' }}
+        >
+          <input
+            type="checkbox"
+            checked={paidCash}
+            onChange={(e) => setPaidCash(e.target.checked)}
+            className="h-5 w-5 accent-brand-forest"
+          />
+          <span>
+            <span className="font-medium">Paid cash from the till</span>
+            <span className="block text-xs text-brand-slate">
+              Only tick this if you handed over cash. Leave it for anything paid by card or
+              bank transfer.
+            </span>
+          </span>
+        </label>
 
         <label
           onDragEnter={(e) => {
@@ -325,6 +360,7 @@ export function Capture({
                 </span>
                 <span className="shrink-0 text-xs text-brand-slate">
                   {item.supplierName}
+                  {item.paidCash && ' · cash'}
                 </span>
                 <span
                   className={`shrink-0 text-xs ${
