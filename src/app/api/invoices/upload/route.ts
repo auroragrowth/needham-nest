@@ -18,7 +18,8 @@ export const maxDuration = 120
  * request, so it cannot be spoofed.
  *
  * POST multipart: `file`, optional `supplier_id`, optional `supplier_name`,
- * optional `paid_cash=1` (paid from the till: settled now, not against the bank).
+ * optional `paid_cash=1` (paid from the till: settled now, not against the bank),
+ * optional `bank_line_id` (owner only, from Receipts to find: match to that payment).
  * Returns { invoice_id, read } — `read` says what the books now hold, or
  * `read_error` when it couldn't be read (it stays waiting and is retried).
  */
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
     readerName: session.name,
     supplierHint: supplierName,
     paidCash: form.get('paid_cash') === '1',
+    bankLineId: session.role === 'owner' ? bankLineId(form) : null,
   })
   if (!outcome.ok) {
     return NextResponse.json({ invoice_id: invoiceId, read: null, read_error: outcome.error })
@@ -87,6 +89,12 @@ export async function POST(request: Request) {
       amount: r.amount,
       warning: r.warning,
       paid_cash: outcome.paidCash,
+      linked: outcome.linked,
     },
   })
+}
+
+function bankLineId(form: FormData): string | null {
+  const v = form.get('bank_line_id')
+  return typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v) ? v : null
 }

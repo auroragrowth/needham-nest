@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { captureBootstrap } from '@/lib/invoice-capture/client'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Capture } from './Capture'
+import Link from 'next/link'
+import { Capture, type ForPayment } from './Capture'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,9 +25,33 @@ function fmtDate(d: string): string {
     month: 'short',
   })
 }
-export default async function InvoiceCapturePage() {
+export default async function InvoiceCapturePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ for?: string }>
+}) {
   const session = await getSession()
   if (!session) redirect('/login?next=%2Finvoices')
+
+  // Opened from Receipts to find: this upload is for one bank payment.
+  const { for: forId } = await searchParams
+  let forPayment: ForPayment | null = null
+  if (session.role === 'owner' && forId && /^[0-9a-f-]{36}$/i.test(forId)) {
+    const { data: line } = await createAdminClient()
+      .from('bank_transactions')
+      .select('id, date, amount, description, raw_row, matched_expense_id')
+      .eq('id', forId)
+      .maybeSingle()
+    if (line && !line.matched_expense_id) {
+      const raw = line.raw_row as Record<string, string> | null
+      forPayment = {
+        id: line.id,
+        payee: raw?.name?.trim() || line.description.split(' · ')[0],
+        amount: -Number(line.amount),
+        date: line.date,
+      }
+    }
+  }
 
   let suppliers: { id: string; name: string }[] = []
   let pending: number | null = null
@@ -64,7 +89,19 @@ export default async function InvoiceCapturePage() {
           {error} Nothing can be uploaded until the till answers again.
         </p>
       ) : (
-        <Capture suppliers={suppliers} pending={pending ?? 0} />
+        <>
+          {forPayment && (
+            <p className="mt-6 rounded-xl border border-brand-amber bg-brand-amber/10 p-4 text-sm text-brand-forest">
+              Receipt for <strong>{forPayment.payee}</strong>, £{forPayment.amount.toFixed(2)} on{' '}
+              {fmtDate(forPayment.date)}. Whatever name is on it, it will be matched to this
+              payment.{' '}
+              <Link href="/owner/receipts-to-find" className="text-brand-amber hover:underline">
+                ← Receipts to find
+              </Link>
+            </p>
+          )}
+          <Capture suppliers={suppliers} pending={pending ?? 0} forPayment={forPayment} />
+        </>
       )}
 
       {(recent?.length ?? 0) > 0 && (

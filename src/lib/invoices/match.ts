@@ -135,3 +135,49 @@ function referenceTokens(description: string): Set<string> {
       .filter((w): w is string => w !== null),
   )
 }
+
+/**
+ * Pair an expense with the bank payment it was uploaded for (Receipts to find
+ * → "Upload receipt"). The owner chose the payment, so the supplier's name
+ * doesn't have to match — an Amazon receipt names the marketplace seller, the
+ * bank says "Amazon". A difference in amount is noted on the expense.
+ *
+ * Leaves things alone if the expense already has a bank line (a repeat photo
+ * of something matched before) or the payment has been taken meanwhile.
+ */
+export async function linkBankLine(
+  bankTransactionId: string,
+  expenseId: string,
+): Promise<'linked' | 'already' | 'taken'> {
+  const admin = createAdminClient()
+  const { data: existing } = await admin
+    .from('bank_transactions')
+    .select('id')
+    .eq('matched_expense_id', expenseId)
+    .limit(1)
+  if ((existing ?? []).length > 0) return 'already'
+
+  const { data: claimed } = await admin
+    .from('bank_transactions')
+    .update({ matched_expense_id: expenseId, manual_match: true })
+    .eq('id', bankTransactionId)
+    .is('matched_expense_id', null)
+    .select('amount')
+  const line = (claimed ?? [])[0]
+  if (!line) return 'taken'
+
+  const { data: e } = await admin.from('expenses').select('amount, notes').eq('id', expenseId).single()
+  const paid = -Number(line.amount)
+  const invoiced = Math.abs(Number(e?.amount ?? 0))
+  const update: Record<string, unknown> = { reconciled_at: new Date().toISOString() }
+  if (Math.abs(paid - invoiced) >= 0.005) {
+    update.notes = [
+      `⚠ Uploaded for a bank payment of £${paid.toFixed(2)}; the receipt reads £${invoiced.toFixed(2)} — check the difference.`,
+      e?.notes,
+    ]
+      .filter(Boolean)
+      .join(' ')
+  }
+  await admin.from('expenses').update(update).eq('id', expenseId)
+  return 'linked'
+}

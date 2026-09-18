@@ -34,6 +34,7 @@ type ReadResult = {
   amount: number | null
   warning: string | null
   paid_cash?: boolean
+  linked?: 'linked' | 'already' | 'taken' | null
 }
 
 /** What the books now hold for a saved file, in a few words. */
@@ -42,6 +43,8 @@ function describeRead(read: ReadResult | null | undefined): string {
   const who = read.vendor ?? 'Unknown supplier'
   const money = read.amount ? ` £${read.amount.toFixed(2)}` : ''
   if (read.kind === 'duplicate') return `Already in the books — ${who}${money}`
+  if (read.linked === 'linked') return `${who}${money} — matched to the bank payment`
+  if (read.linked === 'taken') return `${who}${money} — that payment was already matched to something else`
   if (read.kind === 'page') {
     return `Added as a page of ${who}${money}${read.paid_cash ? ' · paid cash' : ''}`
   }
@@ -51,6 +54,9 @@ function describeRead(read: ReadResult | null | undefined): string {
 }
 
 let nextKey = 1
+
+/** A bank payment this upload is for (Receipts to find → Upload receipt). */
+export type ForPayment = { id: string; payee: string; amount: number; date: string }
 
 /**
  * Vercel refuses a function request body over 4.5 MB, and a full-resolution
@@ -85,15 +91,18 @@ async function shrink(file: File): Promise<File> {
 export function Capture({
   suppliers,
   pending,
+  forPayment = null,
 }: {
   suppliers: Supplier[]
   pending: number
+  forPayment?: ForPayment | null
 }) {
   const router = useRouter()
 
   // null with `chosen` true is "Someone else" — an invoice with no supplier yet.
   const [supplier, setSupplier] = useState<Supplier | null>(null)
-  const [chosen, setChosen] = useState(false)
+  // For a bank payment the supplier list is optional: start on "Someone else".
+  const [chosen, setChosen] = useState(forPayment !== null)
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ text: string; bad: boolean } | null>(null)
@@ -150,6 +159,7 @@ export function Capture({
           body.append('supplier_name', item.supplierName)
         }
         if (item.paidCash) body.append('paid_cash', '1')
+        if (forPayment) body.append('bank_line_id', forPayment.id)
 
         try {
           const response = await fetch('/api/invoices/upload', { method: 'POST', body })
@@ -237,24 +247,27 @@ export function Capture({
           Add the invoice or receipt
         </h2>
 
-        <label
-          className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-brand-sage/40 bg-white px-4 py-3 text-sm text-brand-forest"
-          style={{ minHeight: '44px' }}
-        >
-          <input
-            type="checkbox"
-            checked={paidCash}
-            onChange={(e) => setPaidCash(e.target.checked)}
-            className="h-5 w-5 accent-brand-forest"
-          />
-          <span>
-            <span className="font-medium">Paid cash from the till</span>
-            <span className="block text-xs text-brand-slate">
-              Only tick this if you handed over cash. Leave it for anything paid by card or
-              bank transfer.
+        {/* A bank payment wasn't cash, so no tick when uploading for one. */}
+        {!forPayment && (
+          <label
+            className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-brand-sage/40 bg-white px-4 py-3 text-sm text-brand-forest"
+            style={{ minHeight: '44px' }}
+          >
+            <input
+              type="checkbox"
+              checked={paidCash}
+              onChange={(e) => setPaidCash(e.target.checked)}
+              className="h-5 w-5 accent-brand-forest"
+            />
+            <span>
+              <span className="font-medium">Paid cash from the till</span>
+              <span className="block text-xs text-brand-slate">
+                Only tick this if you handed over cash. Leave it for anything paid by card or
+                bank transfer.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        )}
 
         <label
           onDragEnter={(e) => {

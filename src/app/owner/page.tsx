@@ -380,6 +380,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/receipts-to-find"
+          title="Receipts to find"
+          subtitle="Bank payments with no receipt, by supplier and place"
+          cta="Open →"
+        />
+        <Card
           href="/owner/invoices-reconcile"
           title="Invoice reconciliation"
           subtitle="Flag unmatched, post to director's loan"

@@ -177,6 +177,12 @@ export default async function ReconcilePage({
           >
             + Upload more
           </Link>
+          <Link
+            href="/owner/receipts-to-find"
+            className="rounded-lg border border-brand-forest px-4 py-2 text-sm font-medium text-brand-forest hover:bg-brand-forest/10"
+          >
+            Receipts to find
+          </Link>
           {waitingInTill ? (
             <form action={readWaitingNow}>
               <PendingButton

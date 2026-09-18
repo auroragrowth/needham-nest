@@ -1,3 +1,20 @@
+# Receipts to find (18 Sep 2026)
+
+Paul: a by-supplier, by-location list of bank payments with no invoice, "like Amazon", to upload
+against. Owner only. (First said May Richardson's transfers are wages; corrected: some are expense
+claims. Wages are recognised by reference instead — see tasks/lessons.md.)
+
+- [x] Migration: `bank_transactions.no_receipt_reason/by/at`; `bank_payee_rules` (payee → reason).
+      The May Richardson seed row was deleted after Paul's correction
+- [x] `/owner/receipts-to-find`: unmatched debits grouped by payee then location, biggest first,
+      month filter. Left out: pay references (W15, Week 20, Wages, Pay advance, date ranges), payee
+      rules, Monzo Transfers/Wages, ATM
+- [x] Per payment: "Upload receipt" → `/invoices?for=<bank line>`, the upload is matched to that
+      line whatever name the receipt carries (Amazon marketplace sellers); "No receipt needed"
+- [x] Per payee: "Never needs a receipt"
+- [x] Links from the owner dashboard and Invoice reconciliation
+- [x] Verify: tsc, lint, clean build; SQL of the same rules: 262 of 364 unmatched payments, £17,749
+
 # One upload for invoices and receipts (18 Sep 2026)
 
 Paul: "why do we have invoices and receipts? Surely we need one source." One button, `/invoices`,

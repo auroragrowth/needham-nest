@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ingestInvoice, type IngestResult } from '@/lib/invoices/ingest'
-import { autoMatchExpenses } from '@/lib/invoices/match'
+import { autoMatchExpenses, linkBankLine } from '@/lib/invoices/match'
 import { markPaidInCash } from '@/lib/invoices/cash'
 import {
   captureClaim,
@@ -38,7 +38,12 @@ export async function readIntoBooks(input: {
   supplierHint: string | null
   /** Ticked "Paid cash from the till" at upload: settle it now, not against the bank. */
   paidCash?: boolean
-}): Promise<{ ok: true; result: IngestResult; paidCash: boolean } | { ok: false; error: string }> {
+  /** Uploaded from Receipts to find for this bank payment: match it to that one. */
+  bankLineId?: string | null
+}): Promise<
+  | { ok: true; result: IngestResult; paidCash: boolean; linked: 'linked' | 'already' | 'taken' | null }
+  | { ok: false; error: string }
+> {
   let result: IngestResult
   try {
     result = await ingestInvoice(input)
@@ -76,9 +81,18 @@ export async function readIntoBooks(input: {
 
   // Paid from the till: settled now. Otherwise check it off against the bank
   // straight away if the statement is already in. A repeat photo changes neither.
+  // Uploaded for a particular bank payment: that pairing wins over any guess.
+  let linked: 'linked' | 'already' | 'taken' | null = null
+  if (input.bankLineId && result.expenseId) {
+    linked = await linkBankLine(input.bankLineId, result.expenseId).catch((e) => {
+      console.error('invoice-capture: could not link the bank payment', e)
+      return null
+    })
+  }
+
   let paidCash = false
   if (result.kind !== 'duplicate' && result.expenseId) {
-    if (input.paidCash) {
+    if (input.paidCash && !input.bankLineId) {
       paidCash = await markPaidInCash(result.expenseId, input.profileId).catch((e) => {
         console.error('invoice-capture: could not mark paid in cash', e)
         return false
@@ -86,7 +100,7 @@ export async function readIntoBooks(input: {
     }
     await autoMatchExpenses().catch((e) => console.error('invoice-capture: auto-match failed', e))
   }
-  return { ok: true, result, paidCash }
+  return { ok: true, result, paidCash, linked }
 }
 
 function bare(readerName: string) {
