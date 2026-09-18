@@ -115,7 +115,12 @@ export default async function StockPage({
         ← Home
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">Stock</h1>
-      <p className="mt-1 text-sm text-brand-slate">What we&apos;ve got, and where it is.</p>
+      <p className="mt-1 text-sm text-brand-slate">
+        What we&apos;ve got, and where it is.{' '}
+        <Link href="/stock/goods-in" className="font-medium text-brand-amber hover:underline">
+          📥 Goods In — book in a delivery →
+        </Link>
+      </p>
 
       {params.notice && (
         <p className="mt-4 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">

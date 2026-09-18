@@ -248,8 +248,20 @@ export async function receiveStock(formData: FormData) {
     moved_by: session.profileId,
   })
 
+  const [{ data: item }, { data: place }] = await Promise.all([
+    admin.from('stock_items').select('name, unit').eq('id', itemId).maybeSingle(),
+    admin.from('stock_locations').select('name').eq('id', locationId).maybeSingle(),
+  ])
+
   revalidatePath('/stock')
-  redirect(withParam(back, 'notice', `Added ${qty}`))
+  revalidatePath('/stock/goods-in')
+  redirect(
+    withParam(
+      back,
+      'notice',
+      item && place ? `Added ${qty} ${item.unit} ${item.name} to ${place.name}` : `Added ${qty}`,
+    ),
+  )
 }
 
 const ZONES = ['kitchen', 'cafe', 'storage', 'other'] as const

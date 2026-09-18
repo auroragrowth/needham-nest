@@ -163,6 +163,22 @@ export default async function StaffHub({
             What we&apos;ve got and where — count, move and add stock
           </p>
         </Link>
+        <Link
+          href="/stock/goods-in"
+          className="block rounded-2xl border-2 p-5 transition active:scale-[0.98]"
+          style={{
+            backgroundColor: '#efd9f1',
+            borderColor: '#a066a3',
+            color: '#3a1f42',
+          }}
+        >
+          <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
+            📥 Goods In
+          </h2>
+          <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
+            A delivery has arrived — book it in
+          </p>
+        </Link>
         {hasPermission(session.role, perms, 'wastage') && (
           <HubTile
             href="/staff/wastage"
@@ -193,6 +209,12 @@ export default async function StaffHub({
           href="/me/profile"
           title="My profile"
           status="Update bank, uniform, address"
+          accent="off"
+        />
+        <HubTile
+          href="/invoices"
+          title="Invoice capture"
+          status="Photograph supplier invoices at the back door"
           accent="off"
         />
         <HubTile

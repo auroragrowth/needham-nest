@@ -42,6 +42,7 @@ when touching live data, so you don't have to repeat them every time.
 | Manager | `/manager/*` — rota, timesheets, compliance, cash, staffing cost |
 | Owner (you) | `/owner/*` — people, payslips, expenses, P&L, menu |
 | Stock | `/stock` — one page for what we've got and where: Overall · Café · Kitchen · Storage. Everyone signed in counts, moves and adds stock; you and managers (May) edit items and locations. Old stock addresses redirect here |
+| Invoice capture | `/invoices` — anyone signed in photographs supplier invoices at the back door. Files go to the till's `invoice-capture` function (project `sirmwnwllnarqdaqpzhy`) through `/api/invoices/upload`, which holds the shared key (`TILL_CAPTURE_KEY`). Capture only — reading and costing come later |
 | Checklist admin | `/admin/checklist` |
 
 **How Claude reaches the data:** the Supabase connector, as you. The service-role key is
@@ -165,6 +166,15 @@ location × count). Nothing else stores stock, and every change is logged in
 | "Here's the stock take for the storage freezer: 6 veg chilli, 4 choc cookies…" | Matched to items and entered as counts at that location, logged as your stock take; anything that doesn't match an item is asked about, not guessed |
 | "Where's the oat milk?" | Totals and locations from `stock_placements` |
 | "Add Pulled pork (bag) as a frozen item" | Creates the item |
+
+### Goods In
+
+`/stock/goods-in` (📥 Goods In tile on the tablet, manager home and dashboard, and a link
+at the top of `/stock`). Staff search for what arrived, type how many, pick where it's going
+(it defaults to where most of that item already is), and tap Add. Each line is a `receive`
+move in `stock_location_moves` with the note "Goods in", and the page lists everything booked
+in today with who and when. An item that isn't in the list needs a manager to add it on
+`/stock` first.
 
 ### Waste
 

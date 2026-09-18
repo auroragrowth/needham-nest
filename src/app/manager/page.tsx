@@ -229,6 +229,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/stock/goods-in"
+          title="📥 Goods In"
+          subtitle="Book in a delivery: search, how many, where it's going"
+          cta="Open →"
+        />
+        <Card
           href="/staff"
           title="Tablet tasks"
           subtitle="Clock in/out, temperatures, checklist, stock — same as staff"

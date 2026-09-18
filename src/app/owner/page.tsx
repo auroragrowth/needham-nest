@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { capturePendingCount } from '@/lib/invoice-capture/client'
 
 export default async function OwnerDashboard({
   searchParams,
@@ -25,6 +26,7 @@ export default async function OwnerDashboard({
     { count: taskCount },
     { data: expenses90 },
     { data: takings90 },
+    invoicesPending,
   ] = await Promise.all([
     session.authUserId
       ? admin
@@ -48,6 +50,9 @@ export default async function OwnerDashboard({
       .eq('active', true),
     admin.from('expenses').select('amount').gte('date', since90),
     admin.from('takings').select('amount').gte('date', since90),
+    // The till's count of captured invoices nobody has checked yet. Null when
+    // the till cannot be reached — the rest of the dashboard carries on.
+    capturePendingCount(),
   ])
 
   const expenseTotal90 = (expenses90 ?? []).reduce(
@@ -151,6 +156,22 @@ export default async function OwnerDashboard({
               What we&apos;ve got and where — count, move, add stock and items
             </span>
           </span>
+        </span>
+        <span className="text-2xl" style={{ color: '#a066a3' }}>→</span>
+      </Link>
+
+      <Link
+        href="/stock/goods-in"
+        className="mt-3 flex items-center justify-between rounded-2xl border-2 p-4 transition"
+        style={{
+          backgroundColor: '#efd9f1',
+          borderColor: '#a066a3',
+          color: '#3a1f42',
+        }}
+      >
+        <span className="flex items-center gap-3">
+          <span className="text-2xl" aria-hidden>📥</span>
+          <span className="block text-base font-semibold">Goods In — book in a delivery</span>
         </span>
         <span className="text-2xl" style={{ color: '#a066a3' }}>→</span>
       </Link>
@@ -346,6 +367,18 @@ export default async function OwnerDashboard({
           href="/owner/receipts"
           title="📸 Snap a receipt"
           subtitle="One photo, auto-scanned, auto-reconciled"
+          cta="Open →"
+        />
+        <Card
+          href="/invoices"
+          title="Invoice capture"
+          subtitle={
+            invoicesPending === null
+              ? 'Till unavailable'
+              : invoicesPending === 0
+                ? 'Nothing waiting to be checked'
+                : `${invoicesPending} ${invoicesPending === 1 ? 'invoice' : 'invoices'} waiting to be checked`
+          }
           cta="Open →"
         />
         <Card
