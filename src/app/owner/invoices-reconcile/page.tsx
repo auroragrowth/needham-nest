@@ -6,6 +6,7 @@ import {
   markExpenseAsDirectorPaid,
   markExpenseAsPaidInCash,
   undoPaidInCash,
+  unmatchBankLine,
   mergeIntoExpense,
   runAutoMatch,
 } from '@/lib/invoices/actions'
@@ -116,6 +117,30 @@ export default async function ReconcilePage({
     if (signedList.length > 0) previewUrls.set(e.id, signedList)
   }
 
+  // Expenses matched to more than one bank line: each should have one. Shown
+  // first with a "Not this one" per line, so the wrong one can be taken off.
+  const linesByExpense = new Map<string, Txn[]>()
+  for (const t of txns) {
+    if (!t.matched_expense_id) continue
+    linesByExpense.set(t.matched_expense_id, [...(linesByExpense.get(t.matched_expense_id) ?? []), t])
+  }
+  const doubledIds = [...linesByExpense].filter(([, lines]) => lines.length > 1).map(([id]) => id)
+  const expenseById = new Map(expenses.map((e) => [e.id, e]))
+  const missing = doubledIds.filter((id) => !expenseById.has(id))
+  if (missing.length > 0) {
+    // Older than the 200 loaded above.
+    const { data: older } = await admin
+      .from('expenses')
+      .select(
+        'id, date, vendor, amount, reference, receipt_path, additional_receipt_paths, ai_extracted, director_loan_id, paid_in_cash, reconciled_at',
+      )
+      .in('id', missing)
+    for (const e of (older ?? []) as Expense[]) expenseById.set(e.id, e)
+  }
+  const doubled = doubledIds
+    .map((id) => ({ expense: expenseById.get(id), lines: linesByExpense.get(id) ?? [] }))
+    .filter((d): d is { expense: Expense; lines: Txn[] } => Boolean(d.expense))
+
   // Build a quick lookup of candidate bank txns (debits with no match yet)
   // for the manual-match dropdown on the unmatched panel.
   const unmatchedTxns = txns.filter(
@@ -224,6 +249,52 @@ export default async function ReconcilePage({
           tone="info"
         />
       </section>
+
+      {/* MATCHED TWICE — an expense should have exactly one bank line */}
+      {doubled.length > 0 && (
+        <section className="mt-6 rounded-xl border border-brand-amber/60 bg-brand-amber/10 p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-brand-amber">
+            ⚠ Matched to more than one bank payment ({doubled.length})
+          </h2>
+          <p className="mt-1 text-xs text-brand-slate">
+            Each receipt was paid once. Press <strong>Not this one</strong> on the payment that
+            belongs to a different purchase — it goes back to the bank list and is matched again
+            if another receipt fits it.
+          </p>
+          <ul className="mt-3 space-y-3">
+            {doubled.map(({ expense: e, lines }) => (
+              <li key={e.id} className="rounded-lg border border-brand-sage/40 bg-white p-3 text-sm">
+                <p className="font-semibold text-brand-forest">
+                  {e.vendor ?? 'Unknown'}
+                  <span className="ml-2 font-mono text-sm">{fmtMoney(Number(e.amount))}</span>
+                  <span className="ml-2 text-xs font-normal text-brand-slate">
+                    receipt {fmtDate(e.date)}
+                    {e.reference && ` · ${e.reference}`}
+                  </span>
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {lines.map((t) => (
+                    <li key={t.id} className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 truncate text-xs text-brand-forest">
+                        {fmtDate(t.date)} · {t.description}
+                        <span className="ml-2 font-mono">{fmtMoney(Number(t.amount))}</span>
+                      </span>
+                      <form action={unmatchBankLine.bind(null, t.id)}>
+                        <PendingButton
+                          className="shrink-0 rounded-lg border border-brand-amber px-3 py-1 text-xs font-medium text-brand-forest hover:bg-brand-amber/10"
+                          title="Take this bank payment off this receipt"
+                        >
+                          Not this one
+                        </PendingButton>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* UNMATCHED — top of page so it's hard to miss */}
       <section className="mt-6">

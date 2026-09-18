@@ -266,6 +266,41 @@ export async function mergeIntoExpense(
   revalidatePath('/owner/expenses')
 }
 
+/**
+ * Take one bank line off an expense: "Not this one" on an expense matched to
+ * more than one bank payment (an old matching bug gave two Premier receipts
+ * two lines each). The expense keeps any other line; with none left it is
+ * unreconciled again. Matching then runs, so the freed line can find the
+ * purchase it really paid for.
+ */
+export async function unmatchBankLine(bankTransactionId: string): Promise<void> {
+  await requireOwner()
+  const admin = createAdminClient()
+  const { data: txn } = await admin
+    .from('bank_transactions')
+    .select('id, matched_expense_id')
+    .eq('id', bankTransactionId)
+    .maybeSingle()
+  const expenseId = txn?.matched_expense_id
+  if (expenseId) {
+    await admin
+      .from('bank_transactions')
+      .update({ matched_expense_id: null, manual_match: false })
+      .eq('id', bankTransactionId)
+    const { data: rest } = await admin
+      .from('bank_transactions')
+      .select('id')
+      .eq('matched_expense_id', expenseId)
+      .limit(1)
+    if ((rest ?? []).length === 0) {
+      await admin.from('expenses').update({ reconciled_at: null }).eq('id', expenseId)
+    }
+    await autoMatchExpenses()
+  }
+  revalidatePath('/owner/invoices-reconcile')
+  revalidatePath('/owner/bank')
+}
+
 export async function manuallyMatchExpense(
   expenseId: string,
   bankTransactionId: string,
