@@ -38,6 +38,7 @@ export const REPORTS: Record<string, Report> = {
 
   // Stock
   'stock-levels': { kind: 'sql', fn: 'nesty_stock_levels', params: 'search', about: 'Stock on hand and where it is' },
+  'run-outs': { kind: 'sql', fn: 'nesty_run_outs', params: 'none', about: 'Things the till has sold out, or sold more of than the iPad had (open, and closed in the last day)' },
   wastage: { kind: 'sql', fn: 'nesty_wastage', params: 'range', about: 'Wastage logged, by reason and cost' },
   'shopping-list': { kind: 'sql', fn: 'nesty_shopping_list', params: 'include-done', about: 'The shopping list' },
 

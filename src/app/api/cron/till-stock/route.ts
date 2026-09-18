@@ -2,16 +2,21 @@ import { NextResponse } from 'next/server'
 import { bearerMatches } from '@/lib/nesty/access'
 import { syncTillStock } from '@/lib/till/stock'
 import { applyTillUsage } from '@/lib/till/usage'
+import { pushoverConfigured } from '@/lib/alerts/long-shifts'
+import { pushRunOuts } from '@/lib/alerts/stock'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 /**
- * Keeps the stock take and the till in step. Two jobs, in this order:
+ * Keeps the stock take and the till in step. Three jobs, in this order:
  *
  * 1. Till items and names come here (src/lib/till/stock.ts), so a new till item
  *    is ready to count before its sales arrive.
- * 2. What the till sold comes off the shelves (src/lib/till/usage.ts).
+ * 2. What the till sold comes off the shelves (src/lib/till/usage.ts):
+ *    café first, then kitchen, then storage.
+ * 3. Anything that selling ran out is pushed to the owner's phone
+ *    (src/lib/alerts/stock.ts), once per run-out.
  *
  * Vercel Cron calls this every 15 minutes (vercel.json) with
  * `Authorization: Bearer $CRON_SECRET`.
@@ -35,7 +40,16 @@ export async function GET(request: Request) {
     // next run picks up these sales as well.
     errors.push(`usage: ${e instanceof Error ? e.message : String(e)}`)
   }
-  return json({ items, usage, errors }, errors.length ? 207 : 200)
+  let runOuts = null
+  if (pushoverConfigured()) {
+    try {
+      runOuts = await pushRunOuts()
+      for (const name of runOuts.failed) errors.push(`run-out push failed: ${name}`)
+    } catch (e) {
+      errors.push(`run-outs: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return json({ items, usage, runOuts, errors }, errors.length ? 207 : 200)
 }
 
 function json(body: unknown, status = 200) {
