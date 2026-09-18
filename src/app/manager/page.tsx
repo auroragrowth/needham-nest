@@ -202,6 +202,12 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
+          href="/invoices"
+          title="📄 Invoice"
+          subtitle="Photograph supplier invoices and send them in"
+          cta="Open →"
+        />
+        <Card
           href="/shopping-list"
           title="Shopping list"
           subtitle="Shared list — everyone can add"

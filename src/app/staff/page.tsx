@@ -200,10 +200,10 @@ export default async function StaffHub({
             }}
           >
             <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
-              📄 Upload invoices
+              📄 Invoice
             </h2>
             <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
-              Photograph the supplier&apos;s invoice
+              Photograph the supplier&apos;s invoice and send it in
             </p>
           </Link>
         <HubTile
