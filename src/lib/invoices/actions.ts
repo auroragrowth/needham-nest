@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { isReconciledRow, isSameReceipt, signatureOf } from './dedupe'
 import { autoMatchExpenses } from './match'
-import { markPaidInCash } from './cash'
+import { markPaidInCash, unmarkPaidInCash } from './cash'
 
 async function requireOwner() {
   const session = await getSession()
@@ -42,6 +42,20 @@ export async function markExpenseAsPaidInCash(
   const session = await requireOwner()
   await markPaidInCash(expenseId, session.profileId)
   revalidatePath('/owner/invoices-reconcile')
+  revalidatePath('/manager/cash')
+}
+
+/**
+ * It wasn't paid in cash after all: give the till its money back and check the
+ * invoice against the bank instead, straight away.
+ */
+export async function undoPaidInCash(expenseId: string): Promise<void> {
+  const session = await requireOwner()
+  if (await unmarkPaidInCash(expenseId, session.name)) {
+    await autoMatchExpenses()
+  }
+  revalidatePath('/owner/invoices-reconcile')
+  revalidatePath('/owner/bank')
   revalidatePath('/manager/cash')
 }
 

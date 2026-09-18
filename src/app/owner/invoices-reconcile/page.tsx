@@ -5,6 +5,7 @@ import {
   manuallyMatchExpense,
   markExpenseAsDirectorPaid,
   markExpenseAsPaidInCash,
+  undoPaidInCash,
   mergeIntoExpense,
   runAutoMatch,
 } from '@/lib/invoices/actions'
@@ -474,6 +475,15 @@ export default async function ReconcilePage({
                       👁{arr.length > 1 ? ` p${i + 1}` : ''}
                     </a>
                   ))}
+                  <form action={undoPaidInCash.bind(null, e.id)}>
+                    <button
+                      type="submit"
+                      className="text-xs text-brand-teal-deep hover:underline"
+                      title="Give the till its cash back and match this against the bank instead"
+                    >
+                      Not cash — paid by bank
+                    </button>
+                  </form>
                   <DeleteReceiptButton
                     expenseId={e.id}
                     vendor={e.vendor}

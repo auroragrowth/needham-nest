@@ -43,3 +43,40 @@ export async function markPaidInCash(expenseId: string, byProfileId: string): Pr
     .eq('id', expenseId)
   return true
 }
+
+/**
+ * Undo `markPaidInCash`: it wasn't cash after all (6813 was marked cash but
+ * went by bank transfer). Removes the till's cash-out entry, so the till's
+ * balance gets the amount back, and leaves the expense unmatched for the bank,
+ * with a note of what changed and who asked.
+ */
+export async function unmarkPaidInCash(expenseId: string, byName: string): Promise<boolean> {
+  const admin = createAdminClient()
+  const { data: e } = await admin
+    .from('expenses')
+    .select('id, amount, notes, paid_in_cash, cash_movement_id')
+    .eq('id', expenseId)
+    .maybeSingle()
+  if (!e || !e.paid_in_cash) return false
+
+  if (e.cash_movement_id) {
+    await admin.from('cash_movements').delete().eq('id', e.cash_movement_id)
+  }
+  const when = new Date().toLocaleDateString('en-GB', {
+    timeZone: 'Europe/London',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+  const audit = `[${when}, ${byName}: was marked paid in cash (£${Number(e.amount).toFixed(2)} out of the till) — not cash after all. Cash entry removed, left for the bank.]`
+  await admin
+    .from('expenses')
+    .update({
+      paid_in_cash: false,
+      cash_movement_id: null,
+      reconciled_at: null,
+      notes: [audit, e.notes].filter(Boolean).join(' '),
+    })
+    .eq('id', expenseId)
+  return true
+}
