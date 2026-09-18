@@ -212,12 +212,6 @@ export default async function StaffHub({
           accent="off"
         />
         <HubTile
-          href="/invoices"
-          title="Invoice capture"
-          status="Photograph supplier invoices at the back door"
-          accent="off"
-        />
-        <HubTile
           href="/staff/receipts"
           title="Snap a receipt"
           status="Upload a photo, AI reads it"
