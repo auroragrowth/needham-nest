@@ -111,6 +111,7 @@ export default async function GoodsInPage({
         locations={locations.map((l) => ({ id: l.id, name: l.name, area: AREA[l.zone] ?? 'Other' }))}
         regulars={items.filter((i) => i.regular_delivery).map((i) => i.id)}
         fallbackLocation={fallback?.id ?? null}
+        categories={[...new Set(items.map((i) => i.category).filter((c): c is string => Boolean(c)))].sort()}
       />
 
       <section className="mt-8">

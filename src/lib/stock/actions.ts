@@ -7,6 +7,7 @@ import { requireStaffFeature, requireStockControl } from '@/lib/permissions'
 import { parseWastage } from '@/lib/stock/wastage'
 import { getShiftWaste } from '@/lib/stock/waste-confirm'
 import { getClosingStatus } from '@/lib/checklist/closing'
+import { cleanItemName, cleanUnit, findOrCreateItem } from '@/lib/stock/new-item'
 
 
 /**
@@ -204,4 +205,21 @@ export async function confirmMyWaste(formData: FormData) {
       ? '/staff/clock?action=clock-out&notice=Waste+confirmed'
       : '/staff/wastage?notice=Waste+confirmed+for+your+shift',
   )
+}
+
+/**
+ * Waste for something that isn't in the list yet: add it as a stock item (or
+ * reuse one with the same name) and go to its waste form.
+ */
+export async function wasteNewItem(formData: FormData) {
+  await requireStaffFeature('wastage')
+  const admin = createAdminClient()
+  const item = await findOrCreateItem(admin, {
+    name: cleanItemName(formData.get('new_name')),
+    unit: cleanUnit(formData.get('new_unit')),
+    category: 'Other',
+  })
+  if ('error' in item) redirect(`/staff/wastage?error=${encodeURIComponent(item.error)}`)
+  revalidatePath('/stock')
+  redirect(`/staff/wastage/${item.id}`)
 }

@@ -4,16 +4,16 @@ import { requireStaffFeature } from '@/lib/permissions'
 import { confirmMyWaste } from '@/lib/stock/actions'
 import { formatWastedAt, REASON_LABEL } from '@/lib/stock/wastage'
 import { getShiftWaste } from '@/lib/stock/waste-confirm'
+import { WastePicker } from './WastePicker'
 
 export default async function WastageListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; error?: string; clockout?: string; q?: string }>
+  searchParams: Promise<{ notice?: string; error?: string; clockout?: string }>
 }) {
   const session = await requireStaffFeature('wastage')
   const params = await searchParams
   const admin = createAdminClient()
-  const search = (params.q ?? '').trim()
 
   const [{ data: allItems }, shiftWaste] = await Promise.all([
     admin
@@ -24,10 +24,7 @@ export default async function WastageListPage({
       .order('name'),
     getShiftWaste(session.profileId),
   ])
-  const needle = search.toLowerCase()
-  const items = (allItems ?? []).filter(
-    (i) => !needle || i.name.toLowerCase().includes(needle) || (i.category ?? '').toLowerCase().includes(needle),
-  )
+  const items = allItems ?? []
   const { shift, confirmed, mine } = shiftWaste
   const clockout = params.clockout === '1'
 
@@ -99,45 +96,28 @@ export default async function WastageListPage({
         </section>
       )}
 
-      <form className="mt-6 flex gap-2">
-        <input
-          type="search"
-          name="q"
-          defaultValue={search}
-          placeholder="Search items"
-          className="w-full rounded-xl border border-brand-sage/60 bg-white px-3 py-3 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
-        />
-        <button
-          type="submit"
-          className="rounded-xl border border-brand-sage/60 px-4 py-3 text-sm font-medium text-brand-forest hover:bg-brand-sage/10"
-        >
-          Search
-        </button>
-      </form>
+      <WastePicker items={items} />
 
-      <h2 className="mt-6 text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
-        Log waste{search && ` — ${items.length} match${items.length === 1 ? '' : 'es'}`}
-      </h2>
-      <ul className="mt-2 space-y-2">
-        {items.length === 0 && (
-          <li className="rounded-xl border border-brand-sage/40 bg-white p-5 text-center text-sm text-brand-slate">
-            {search ? 'No items match that search.' : 'No stock items configured yet.'}
-          </li>
-        )}
-        {items.map((it) => (
-          <li key={it.id}>
-            <Link
-              href={`/staff/wastage/${it.id}`}
-              className="block rounded-2xl border border-brand-sage/40 bg-white p-4 transition active:scale-[0.98] hover:border-brand-teal/60 hover:bg-brand-teal/5"
-            >
-              <p className="font-medium text-brand-forest">{it.name}</p>
-              <p className="mt-0.5 text-xs text-brand-slate">
-                {it.category ?? '—'} · per {it.unit}
-              </p>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <details className="mt-6">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
+          Or browse every item
+        </summary>
+        <ul className="mt-2 space-y-2">
+          {items.map((it) => (
+            <li key={it.id}>
+              <Link
+                href={`/staff/wastage/${it.id}`}
+                className="block rounded-2xl border border-brand-sage/40 bg-white p-4 transition active:scale-[0.98] hover:border-brand-teal/60 hover:bg-brand-teal/5"
+              >
+                <p className="font-medium text-brand-forest">{it.name}</p>
+                <p className="mt-0.5 text-xs text-brand-slate">
+                  {it.category ?? '—'} · per {it.unit}
+                </p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </details>
     </main>
   )
 }

@@ -6,6 +6,7 @@ import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStockControl } from '@/lib/permissions'
 import { parseCounts } from '@/lib/stock/counts'
+import { cleanItemName, cleanUnit, findOrCreateItem } from '@/lib/stock/new-item'
 
 /**
  * Every change to how much stock is where. stock_placements (item × location ×
@@ -260,6 +261,54 @@ export async function receiveStock(formData: FormData) {
       back,
       'notice',
       item && place ? `Added ${qty} ${item.unit} ${item.name} to ${place.name}` : `Added ${qty}`,
+    ),
+  )
+}
+
+/**
+ * Goods In for something that isn't in the list yet: add it as a stock item
+ * (or reuse one with the same name), then book the delivery in as usual.
+ */
+export async function receiveNewStock(formData: FormData) {
+  const session = await requireSignedIn()
+  const back = backTo(formData)
+  const name = cleanItemName(formData.get('new_name'))
+  const unit = cleanUnit(formData.get('new_unit'))
+  const category = String(formData.get('new_category') ?? '').trim() || 'Other'
+  const locationId = String(formData.get('location_id') ?? '').trim()
+  const qty = toNumber(formData.get('quantity'))
+
+  if (!locationId || !Number.isFinite(qty) || qty <= 0) {
+    redirect(withParam(back, 'error', 'Say how many arrived and where it’s going'))
+  }
+
+  const admin = createAdminClient()
+  const item = await findOrCreateItem(admin, { name, unit, category })
+  if ('error' in item) redirect(withParam(back, 'error', item.error))
+
+  const res = await upsertPlacement(admin, item.id, locationId, qty, session.profileId)
+  if ('error' in res) redirect(withParam(back, 'error', res.error))
+
+  await admin.from('stock_location_moves').insert({
+    stock_item_id: item.id,
+    from_location_id: null,
+    to_location_id: locationId,
+    quantity: qty,
+    kind: 'receive',
+    previous_quantity: res.previous,
+    new_quantity: res.next,
+    notes: item.created ? `Goods in — new item added by ${session.name}` : 'Goods in',
+    moved_by: session.profileId,
+  })
+
+  const { data: place } = await admin.from('stock_locations').select('name').eq('id', locationId).maybeSingle()
+  revalidatePath('/stock')
+  revalidatePath('/stock/goods-in')
+  redirect(
+    withParam(
+      back,
+      'notice',
+      `${item.created ? 'New item added: ' : 'Added '}${qty} ${item.unit} ${item.name}${place ? ` to ${place.name}` : ''}`,
     ),
   )
 }

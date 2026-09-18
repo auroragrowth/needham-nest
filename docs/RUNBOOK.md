@@ -173,8 +173,10 @@ location × count). Nothing else stores stock, and every change is logged in
 at the top of `/stock`). Staff search for what arrived, type how many, pick where it's going
 (it defaults to where most of that item already is), and tap Add. Each line is a `receive`
 move in `stock_location_moves` with the note "Goods in", and the page lists everything booked
-in today with who and when. An item that isn't in the list needs a manager to add it on
-`/stock` first.
+in today with who and when. If what arrived isn't in the list, the dropdown offers "➕ Add … as a new item": it's
+created there and then (or an item with the same name is reused), and managers tidy its
+category and unit on `/stock`. The waste page has the same live dropdown and "log waste for a
+new item".
 
 ### Waste
 
