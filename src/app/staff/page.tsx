@@ -106,29 +106,13 @@ export default async function StaffHub({
         <span className="text-2xl text-brand-amber">→</span>
       </Link>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <Group title="My shift">
         {hasPermission(session.role, perms, 'clock') && (
           <HubTile
             href="/staff/clock"
             title="Clock in/out"
             status={isOnShift ? 'On shift' : 'Off shift'}
             accent={isOnShift ? 'on' : 'off'}
-          />
-        )}
-        {hasPermission(session.role, perms, 'temperatures') && (
-          <HubTile
-            href="/staff/temperatures"
-            title="Temperatures"
-            status={
-              totalAppliances === 0
-                ? 'No appliances'
-                : tempsRemaining === 0
-                  ? 'All logged today'
-                  : `${tempsRemaining}/${totalAppliances} to log`
-            }
-            accent={
-              totalAppliances === 0 || tempsRemaining === 0 ? 'off' : 'pending'
-            }
           />
         )}
         {hasPermission(session.role, perms, 'checklist') && (
@@ -147,46 +131,95 @@ export default async function StaffHub({
             }
           />
         )}
-        <Link
-          href="/stock"
-          className="block rounded-2xl border-2 p-5 transition active:scale-[0.98]"
-          style={{
-            backgroundColor: '#efd9f1',
-            borderColor: '#a066a3',
-            color: '#3a1f42',
-          }}
-        >
-          <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
-            📦 Stock
-          </h2>
-          <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
-            What we&apos;ve got and where — count, move and add stock
-          </p>
-        </Link>
-        <Link
-          href="/stock/goods-in"
-          className="block rounded-2xl border-2 p-5 transition active:scale-[0.98]"
-          style={{
-            backgroundColor: '#efd9f1',
-            borderColor: '#a066a3',
-            color: '#3a1f42',
-          }}
-        >
-          <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
-            📥 Goods In
-          </h2>
-          <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
-            A delivery has arrived — book it in
-          </p>
-        </Link>
+        {hasPermission(session.role, perms, 'temperatures') && (
+          <HubTile
+            href="/staff/temperatures"
+            title="Temperatures"
+            status={
+              totalAppliances === 0
+                ? 'No appliances'
+                : tempsRemaining === 0
+                  ? 'All logged today'
+                  : `${tempsRemaining}/${totalAppliances} to log`
+            }
+            accent={
+              totalAppliances === 0 || tempsRemaining === 0 ? 'off' : 'pending'
+            }
+          />
+        )}
         {hasPermission(session.role, perms, 'wastage') && (
           <HubTile
             href="/staff/wastage"
             title="Wastage"
-            status="Tap to log waste"
+            status="Log it before you clock out"
             accent="off"
           />
         )}
+      </Group>
+
+      <Group title="Stock">
+          <Link
+            href="/stock"
+            className="block rounded-2xl border-2 p-5 transition active:scale-[0.98]"
+            style={{
+              backgroundColor: '#efd9f1',
+              borderColor: '#a066a3',
+              color: '#3a1f42',
+            }}
+          >
+            <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
+              📦 Stock
+            </h2>
+            <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
+              What we&apos;ve got and where — count, move and add stock
+            </p>
+          </Link>
+          <Link
+            href="/stock/goods-in"
+            className="block rounded-2xl border-2 p-5 transition active:scale-[0.98]"
+            style={{
+              backgroundColor: '#efd9f1',
+              borderColor: '#a066a3',
+              color: '#3a1f42',
+            }}
+          >
+            <h2 className="text-lg font-semibold" style={{ color: '#3a1f42' }}>
+              📥 Goods In
+            </h2>
+            <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
+              A delivery has arrived — book it in
+            </p>
+          </Link>
+        <HubTile
+          href="/shopping-list"
+          title="Shopping list"
+          status="Add what we need"
+          accent="off"
+        />
+      </Group>
+
+      <Group title="Food & safety">
+        <HubTile
+          href="/staff/allergens"
+          title="Allergens"
+          status="Tap a dish, see what's in it"
+          accent="off"
+        />
+        <HubTile
+          href="/staff/accident"
+          title="Accident report"
+          status="Slip, burn, customer trip — log it"
+          accent="off"
+        />
+        <HubTile
+          href="/risk-assessments"
+          title="Risk assessments"
+          status="Fire · manual handling · slips · COSHH"
+          accent="off"
+        />
+      </Group>
+
+      <Group title="Me">
         <HubTile
           href="/staff/rota"
           title="Your shifts"
@@ -200,9 +233,9 @@ export default async function StaffHub({
           accent="off"
         />
         <HubTile
-          href="/staff/allergens"
-          title="Allergens"
-          status="Tap a dish, see what's in it"
+          href="/staff/leave"
+          title="Leave"
+          status="Request holiday / sick"
           accent="off"
         />
         <HubTile
@@ -212,43 +245,29 @@ export default async function StaffHub({
           accent="off"
         />
         <HubTile
-          href="/staff/receipts"
-          title="Snap a receipt"
-          status="Upload a photo, AI reads it"
-          accent="off"
-        />
-        <HubTile
-          href="/staff/accident"
-          title="Accident report"
-          status="Slip, burn, customer trip — log it"
-          accent="off"
-        />
-        <HubTile
-          href="/staff/leave"
-          title="Leave"
-          status="Request holiday / sick"
-          accent="off"
-        />
-        <HubTile
           href="/handbook"
           title="Handbook"
           status="Crib sheets + manuals"
           accent="off"
         />
         <HubTile
-          href="/risk-assessments"
-          title="Risk assessments"
-          status="Fire · manual handling · slips · COSHH"
+          href="/staff/receipts"
+          title="Snap a receipt"
+          status="Upload a photo, AI reads it"
           accent="off"
         />
-        <HubTile
-          href="/shopping-list"
-          title="Shopping list"
-          status="Add what we need"
-          accent="off"
-        />
-      </div>
+      </Group>
     </main>
+  )
+}
+
+/** A labelled block of tiles, so the hub reads as a few groups rather than one long list. */
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-6">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">{title}</h2>
+      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+    </section>
   )
 }
 

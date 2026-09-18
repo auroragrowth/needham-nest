@@ -140,49 +140,7 @@ export default async function ManagerDashboard() {
         <span className="text-2xl text-brand-amber">→</span>
       </Link>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <Card
-          href="/manager/timesheets"
-          title="Timesheets"
-          subtitle={`${onShiftNow ?? 0} on shift · ${shiftsToday ?? 0} shifts today`}
-          cta="Open →"
-        />
-        <Card
-          href="/owner/clock-qr?download=1"
-          title="📱 Clock QR posters"
-          subtitle="Printable codes: clock in / out, break start / end"
-          cta="Download PDF →"
-        />
-        <Card
-          href="/me/profile"
-          title="My profile"
-          subtitle="Update your own details / bank / uniform"
-          cta="Open →"
-        />
-        <Card
-          href="/manager/staffing-cost"
-          title="Staffing cost"
-          subtitle="PAYE baseline + rostered hourly, by day"
-          cta="Open →"
-        />
-        <Card
-          href="/manager/rota"
-          title="Rota"
-          subtitle="Weekly grid + publish to staff"
-          cta="Open →"
-        />
-        <Card
-          href="/manager/availability"
-          title="Staff availability"
-          subtitle="Month overview — who's free each day"
-          cta="Open →"
-        />
-        <Card
-          href="/manager/leave"
-          title="Leave"
-          subtitle="Approve holiday / sick / unpaid"
-          cta="Open →"
-        />
+      <Group title="Today">
         <Card
           href="/manager/compliance"
           title="Temperatures"
@@ -207,12 +165,6 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
-          href="/manager/cash"
-          title="Cash"
-          subtitle="End-of-day count + petty cash"
-          cta="Open →"
-        />
-        <Card
           href="/manager/wastage"
           title="Wastage"
           subtitle={
@@ -222,6 +174,21 @@ export default async function ManagerDashboard() {
           }
           cta="Open →"
         />
+        <Card
+          href="/manager/cash"
+          title="Cash"
+          subtitle="End-of-day count + petty cash"
+          cta="Open →"
+        />
+        <Card
+          href="/staff"
+          title="Tablet tasks"
+          subtitle="Clock in/out, temperatures, checklist, stock — same as staff"
+          cta="Open →"
+        />
+      </Group>
+
+      <Group title="Stock">
         <Card
           href="/stock"
           title="📦 Stock"
@@ -235,27 +202,51 @@ export default async function ManagerDashboard() {
           cta="Open →"
         />
         <Card
-          href="/staff"
-          title="Tablet tasks"
-          subtitle="Clock in/out, temperatures, checklist, stock — same as staff"
+          href="/shopping-list"
+          title="Shopping list"
+          subtitle="Shared list — everyone can add"
+          cta="Open →"
+        />
+      </Group>
+
+      <Group title="People & rota">
+        <Card
+          href="/manager/rota"
+          title="Rota"
+          subtitle="Weekly grid + publish to staff"
           cta="Open →"
         />
         <Card
-          href="/admin/checklist"
-          title="Checklist admin"
-          subtitle="Build + reorder start-up / close-down lists"
+          href="/manager/timesheets"
+          title="Timesheets"
+          subtitle={`${onShiftNow ?? 0} on shift · ${shiftsToday ?? 0} shifts today`}
           cta="Open →"
         />
+        <Card
+          href="/manager/availability"
+          title="Staff availability"
+          subtitle="Month overview — who's free each day"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/leave"
+          title="Leave"
+          subtitle="Approve holiday / sick / unpaid"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/staffing-cost"
+          title="Staffing cost"
+          subtitle="PAYE baseline + rostered hourly, by day"
+          cta="Open →"
+        />
+      </Group>
+
+      <Group title="Training & handbook">
         <Card
           href="/admin/training"
           title="Training"
           subtitle="Add records + upload certificates"
-          cta="Open →"
-        />
-        <Card
-          href="/shopping-list"
-          title="Shopping list"
-          subtitle="Shared list — everyone can add"
           cta="Open →"
         />
         <Card
@@ -264,8 +255,40 @@ export default async function ManagerDashboard() {
           subtitle="Crib sheets + manuals"
           cta="Open →"
         />
-      </div>
+      </Group>
+
+      <Group title="Set-up">
+        <Card
+          href="/admin/checklist"
+          title="Checklist admin"
+          subtitle="Build + reorder start-up / close-down lists"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/clock-qr?download=1"
+          title="📱 Clock QR posters"
+          subtitle="Printable codes: clock in / out, break start / end"
+          cta="Download PDF →"
+        />
+        <Card
+          href="/me/profile"
+          title="My profile"
+          subtitle="Update your own details / bank / uniform"
+          cta="Open →"
+        />
+      </Group>
+
     </main>
+  )
+}
+
+/** A titled block of cards, so the dashboard reads as a few groups rather than one long list. */
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">{title}</h2>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">{children}</div>
+    </section>
   )
 }
 

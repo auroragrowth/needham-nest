@@ -134,61 +134,47 @@ export default async function OwnerDashboard({
         <span className="text-2xl text-brand-amber">→</span>
       </Link>
 
-      <Link
-        href="/stock"
-        className="mt-4 flex items-center justify-between rounded-2xl border-2 p-5 transition"
-        style={{
-          backgroundColor: '#efd9f1',
-          borderColor: '#a066a3',
-          color: '#3a1f42',
-        }}
-      >
-        <span className="flex items-center gap-3">
-          <span className="text-3xl" aria-hidden>📦</span>
-          <span>
-            <span className="block text-lg font-semibold">Stock</span>
-            <span className="block text-sm" style={{ color: '#6a4670' }}>
-              What we&apos;ve got and where — count, move, add stock and items
+      <Group title="Stock & food">
+        <Link
+          href="/stock"
+          className="flex items-center justify-between rounded-2xl border-2 p-5 transition"
+          style={{
+            backgroundColor: '#efd9f1',
+            borderColor: '#a066a3',
+            color: '#3a1f42',
+          }}
+        >
+          <span className="flex items-center gap-3">
+            <span className="text-3xl" aria-hidden>📦</span>
+            <span>
+              <span className="block text-lg font-semibold">Stock</span>
+              <span className="block text-sm" style={{ color: '#6a4670' }}>
+                What we&apos;ve got and where — count, move, add stock and items
+              </span>
             </span>
           </span>
-        </span>
-        <span className="text-2xl" style={{ color: '#a066a3' }}>→</span>
-      </Link>
-
-      <Link
-        href="/stock/goods-in"
-        className="mt-3 flex items-center justify-between rounded-2xl border-2 p-4 transition"
-        style={{
-          backgroundColor: '#efd9f1',
-          borderColor: '#a066a3',
-          color: '#3a1f42',
-        }}
-      >
-        <span className="flex items-center gap-3">
-          <span className="text-2xl" aria-hidden>📥</span>
-          <span className="block text-base font-semibold">Goods In — book in a delivery</span>
-        </span>
-        <span className="text-2xl" style={{ color: '#a066a3' }}>→</span>
-      </Link>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <span className="text-2xl" style={{ color: '#a066a3' }}>→</span>
+        </Link>
+        <Link
+          href="/stock/goods-in"
+          className="flex items-center justify-between rounded-2xl border-2 p-5 transition"
+          style={{
+            backgroundColor: '#efd9f1',
+            borderColor: '#a066a3',
+            color: '#3a1f42',
+          }}
+        >
+          <span className="flex items-center gap-3">
+            <span className="text-2xl" aria-hidden>📥</span>
+            <span className="block text-base font-semibold">Goods In — book in a delivery</span>
+          </span>
+          <span className="text-2xl" style={{ color: '#a066a3' }}>→</span>
+        </Link>
         <Card
-          href="/owner/staff"
-          title="People"
-          subtitle={`${staffCount ?? 0} active staff`}
-          cta="Manage →"
-        />
-        <Card
-          href="/owner/appliances"
-          title="Appliances"
-          subtitle={`${applianceCount ?? 0} active fridges, freezers, hot-holds`}
-          cta="Manage →"
-        />
-        <Card
-          href="/admin/checklist"
-          title="Daily checklist"
-          subtitle={`${taskCount ?? 0} active tasks`}
-          cta="Manage →"
+          href="/shopping-list"
+          title="Shopping list"
+          subtitle="Anyone can add — shared between all"
+          cta="Open →"
         />
         <Card
           href="/owner/menu"
@@ -202,17 +188,98 @@ export default async function OwnerDashboard({
           subtitle="Printable menu × allergen matrix"
           cta="Open →"
         />
+      </Group>
+
+      <Group title="People & rota">
         <Card
-          href="/handbook"
-          title="Handbook"
-          subtitle="Crib sheets + manuals (everyone reads)"
+          href="/owner/staff"
+          title="People"
+          subtitle={`${staffCount ?? 0} active staff`}
+          cta="Manage →"
+        />
+        <Card
+          href="/manager/rota"
+          title="Rota"
+          subtitle="Plan shifts, see availability, publish to staff"
           cta="Open →"
         />
         <Card
-          href="/handbook/files"
-          title="Uploaded files"
-          subtitle="Every PDF / image you've attached to a handbook article"
+          href="/manager/availability"
+          title="Staff availability"
+          subtitle="Month overview of who's free each day"
           cta="Open →"
+        />
+        <Card
+          href="/manager/leave"
+          title="Leave"
+          subtitle="Approve holiday / sick / unpaid"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/timesheets"
+          title="Timesheets"
+          subtitle="Hours from clock in/out"
+          cta="Open →"
+        />
+      </Group>
+
+      <Group title="Pay & payroll">
+        <Card
+          href="/owner/payslips"
+          title="Payslips"
+          subtitle="Per-staff shift list + gross totals (printable)"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/payroll-runs"
+          title="🏦 Payroll runs + HMRC pot"
+          subtitle="Track weekly + monthly Sage runs. What to put aside."
+          cta="Open →"
+        />
+        <Card
+          href="/owner/wages"
+          title="Wages"
+          subtitle="Generate gross wages from clock-ins"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/tips"
+          title="Tips (tronc)"
+          subtitle="Pool + auto-distribute by hours"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/staff-costs/week"
+          title="Weekly staff costs"
+          subtitle="Matrix: each person × each day, week + running totals"
+          cta="Open →"
+        />
+        <Card
+          href="/manager/staffing-cost/history"
+          title="Staffing cost history"
+          subtitle="Day-by-day totals with running cumulative"
+          cta="Open →"
+        />
+      </Group>
+
+      <Group title="Food safety & compliance">
+        <Card
+          href="/admin/checklist"
+          title="Daily checklist"
+          subtitle={`${taskCount ?? 0} active tasks`}
+          cta="Manage →"
+        />
+        <Card
+          href="/owner/appliances"
+          title="Appliances"
+          subtitle={`${applianceCount ?? 0} active fridges, freezers, hot-holds`}
+          cta="Manage →"
+        />
+        <Card
+          href="/owner/compliance/pack"
+          title="EHO compliance pack"
+          subtitle="Printable PDF for inspectors"
+          cta="Generate →"
         />
         <Card
           href="/risk-assessments"
@@ -239,77 +306,20 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
-          href="/manager/rota"
-          title="Rota"
-          subtitle="Plan shifts, see availability, publish to staff"
+          href="/handbook"
+          title="Handbook"
+          subtitle="Crib sheets + manuals (everyone reads)"
           cta="Open →"
         />
         <Card
-          href="/manager/availability"
-          title="Staff availability"
-          subtitle="Month overview of who's free each day"
+          href="/handbook/files"
+          title="Uploaded files"
+          subtitle="Every PDF / image you've attached to a handbook article"
           cta="Open →"
         />
-        <Card
-          href="/manager/leave"
-          title="Leave"
-          subtitle="Approve holiday / sick / unpaid"
-          cta="Open →"
-        />
-        <Card
-          href="/manager/timesheets"
-          title="Timesheets"
-          subtitle="Hours from clock in/out"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/payslips"
-          title="Payslips"
-          subtitle="Per-staff shift list + gross totals (printable)"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/payroll-runs"
-          title="🏦 Payroll runs + HMRC pot"
-          subtitle="Track weekly + monthly Sage runs. What to put aside."
-          cta="Open →"
-        />
-        <Card
-          href="/manager/staffing-cost/history"
-          title="Staffing cost history"
-          subtitle="Day-by-day totals with running cumulative"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/staff-costs/week"
-          title="Weekly staff costs"
-          subtitle="Matrix: each person × each day, week + running totals"
-          cta="Open →"
-        />
-        <Card
-          href="/shopping-list"
-          title="Shopping list"
-          subtitle="Anyone can add — shared between all"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/compliance/pack"
-          title="EHO compliance pack"
-          subtitle="Printable PDF for inspectors"
-          cta="Generate →"
-        />
-        <Card
-          href="/owner/clock-qr?download=1"
-          title="📱 Clock QR posters"
-          subtitle="Printable codes: clock in / out, break start / end"
-          cta="Download PDF →"
-        />
-      </div>
+      </Group>
 
-      <h2 className="mt-8 text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
-        Finance
-      </h2>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+      <Group title="Money">
         <Card
           href="/owner/takings"
           title="Takings"
@@ -323,15 +333,15 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
-          href="/owner/payees"
-          title="Payees"
-          subtitle="Suppliers + vendors"
-          cta="Manage →"
+          href="/owner/pl"
+          title="Profit & Loss"
+          subtitle="Period view: takings vs expenses, net after CT"
+          cta="Open →"
         />
         <Card
-          href="/owner/director-loan"
-          title="Director's loan"
-          subtitle="DL account balance + entries"
+          href="/owner/bank"
+          title="Bank"
+          subtitle="Monzo CSV import + reconciliation"
           cta="Open →"
         />
         <Card
@@ -341,21 +351,9 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
-          href="/owner/invoices"
-          title="Invoices"
-          subtitle="B2B catering + function bookings"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/customers"
-          title="Customers"
-          subtitle="Invoice recipients"
-          cta="Manage →"
-        />
-        <Card
-          href="/owner/bank"
-          title="Bank"
-          subtitle="Monzo CSV import + reconciliation"
+          href="/owner/director-loan"
+          title="Director's loan"
+          subtitle="DL account balance + entries"
           cta="Open →"
         />
         <Card
@@ -377,22 +375,31 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
-          href="/owner/pl"
-          title="Profit & Loss"
-          subtitle="Period view: takings vs expenses, net after CT"
+          href="/owner/invoices"
+          title="Invoices"
+          subtitle="B2B catering + function bookings"
           cta="Open →"
         />
         <Card
-          href="/owner/wages"
-          title="Wages"
-          subtitle="Generate gross wages from clock-ins"
-          cta="Open →"
+          href="/owner/customers"
+          title="Customers"
+          subtitle="Invoice recipients"
+          cta="Manage →"
         />
         <Card
-          href="/owner/tips"
-          title="Tips (tronc)"
-          subtitle="Pool + auto-distribute by hours"
-          cta="Open →"
+          href="/owner/payees"
+          title="Payees"
+          subtitle="Suppliers + vendors"
+          cta="Manage →"
+        />
+      </Group>
+
+      <Group title="Set-up">
+        <Card
+          href="/owner/onboarding"
+          title="Company settings"
+          subtitle={onboarded ? 'Set up' : 'Not yet configured'}
+          cta="Edit →"
         />
         <Card
           href="/owner/integrations/sumup"
@@ -401,13 +408,24 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
-          href="/owner/onboarding"
-          title="Company settings"
-          subtitle={onboarded ? 'Set up' : 'Not yet configured'}
-          cta="Edit →"
+          href="/owner/clock-qr?download=1"
+          title="📱 Clock QR posters"
+          subtitle="Printable codes: clock in / out, break start / end"
+          cta="Download PDF →"
         />
-      </div>
+      </Group>
+
     </main>
+  )
+}
+
+/** A titled block of cards, so the dashboard reads as a few groups rather than one long list. */
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">{title}</h2>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">{children}</div>
+    </section>
   )
 }
 
