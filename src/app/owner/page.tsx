@@ -50,8 +50,8 @@ export default async function OwnerDashboard({
       .eq('active', true),
     admin.from('expenses').select('amount').gte('date', since90),
     admin.from('takings').select('amount').gte('date', since90),
-    // The till's count of captured invoices nobody has checked yet. Null when
-    // the till cannot be reached — the rest of the dashboard carries on.
+    // Photos in the till not yet read into expenses. Null when the till cannot
+    // be reached — the rest of the dashboard carries on.
     capturePendingCount(),
   ])
 
@@ -362,22 +362,22 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
-          href="/owner/receipts"
-          title="📸 Snap a receipt"
-          subtitle="One photo, auto-scanned, auto-reconciled"
-          cta="Open →"
-        />
-        <Card
           href="/invoices"
-          title="Upload invoices"
+          title="📄 Invoice"
           subtitle={
             invoicesPending === null
-              ? 'Till unavailable'
+              ? 'Invoices and receipts · till unavailable'
               : invoicesPending === 0
-                ? 'Nothing waiting to be checked'
-                : `${invoicesPending} ${invoicesPending === 1 ? 'invoice' : 'invoices'} waiting to be checked`
+                ? 'Invoices and receipts · all read into the books'
+                : `${invoicesPending} waiting to be read into the books`
           }
           cta="Upload →"
+        />
+        <Card
+          href="/owner/receipts"
+          title="Receipts"
+          subtitle="What's been read, and whether the bank has matched it"
+          cta="Open →"
         />
         <Card
           href="/owner/invoices-reconcile"

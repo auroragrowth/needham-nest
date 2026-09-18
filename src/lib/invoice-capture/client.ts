@@ -83,6 +83,9 @@ export async function captureUpload(
   form.append('file', file, file.name)
   if (supplierId) form.append('supplier_id', supplierId)
   if (capturedBy) form.append('captured_by', capturedBy)
+  // The café app reads it straight away (src/lib/invoices/ingest.ts), so it
+  // goes in already claimed and the catch-up leaves it alone.
+  form.append('state', 'extracting')
 
   const response = await fetch(endpoint('upload'), {
     method: 'POST',
@@ -101,4 +104,74 @@ export async function captureUpload(
     }
   }
   return { invoice_id: body.invoice_id, status: 200 }
+}
+
+export type WaitingInvoice = {
+  id: string
+  state: string
+  file_name: string | null
+  captured_by: string | null
+  captured_at: string
+  supplier: string | null
+  /** Signed, good for ten minutes. */
+  url: string | null
+}
+
+async function post(action: string, body: unknown): Promise<Record<string, unknown>> {
+  const response = await fetch(endpoint(action), {
+    method: 'POST',
+    headers: { 'x-capture-key': key(), 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  })
+  const data = (await response.json().catch(() => null)) as Record<string, unknown> | null
+  if (!response.ok || !data || data.error) {
+    throw new Error(String(data?.error ?? `The till answered ${response.status}.`))
+  }
+  return data
+}
+
+/** Invoices in the till nobody has read into the books yet, oldest first. */
+export async function captureWaiting(): Promise<WaitingInvoice[]> {
+  const response = await fetch(endpoint('waiting'), {
+    headers: { 'x-capture-key': key() },
+    cache: 'no-store',
+  })
+  const body = (await response.json().catch(() => null)) as
+    | { invoices?: WaitingInvoice[]; error?: string }
+    | null
+  if (!response.ok || !body || body.error) {
+    throw new Error(body?.error ?? `The till answered ${response.status}.`)
+  }
+  return body.invoices ?? []
+}
+
+/** Take one for reading. False when another reader already has it. */
+export async function captureClaim(id: string): Promise<boolean> {
+  return (await post('claim', { id })).claimed === true
+}
+
+/**
+ * Report how the read went. `confirmed` takes it off the waiting count and
+ * records what was read; `failed` leaves it waiting for the next catch-up.
+ * Totals in pence, as the till keeps them.
+ */
+export async function captureResult(
+  id: string,
+  outcome:
+    | {
+        state: 'confirmed'
+        invoice_no: string | null
+        invoice_date: string | null
+        total_gross: number | null
+        total_net: number | null
+        reviewed_by: string
+      }
+    | { state: 'failed' },
+): Promise<void> {
+  await post('result', { id, ...outcome })
+}
+
+export function toPence(pounds: number | null | undefined): number | null {
+  return pounds == null || !Number.isFinite(pounds) ? null : Math.round(pounds * 100)
 }

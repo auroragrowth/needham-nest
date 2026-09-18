@@ -204,7 +204,7 @@ export default async function ManagerDashboard() {
         <Card
           href="/invoices"
           title="📄 Invoice"
-          subtitle="Photograph supplier invoices and send them in"
+          subtitle="An invoice or a receipt — photo it and send it in"
           cta="Open →"
         />
         <Card

@@ -42,7 +42,7 @@ when touching live data, so you don't have to repeat them every time.
 | Manager | `/manager/*` — rota, timesheets, compliance, cash, staffing cost |
 | Owner (you) | `/owner/*` — people, payslips, expenses, P&L, menu |
 | Stock | `/stock` — one page for what we've got and where: Overall · Café · Kitchen · Storage. Everyone signed in counts, moves and adds stock; you and managers (May) edit items and locations. Old stock addresses redirect here |
-| Invoice capture | `/invoices` — anyone signed in photographs supplier invoices at the back door. Files go to the till's `invoice-capture` function (project `sirmwnwllnarqdaqpzhy`) through `/api/invoices/upload`, which holds the shared key (`TILL_CAPTURE_KEY`). Capture only — reading and costing come later |
+| Invoices and receipts | `/invoices` — the one upload, the **Invoice** button on every home screen. Each file goes to the till's `invoice-capture` function (project `sirmwnwllnarqdaqpzhy`, for costing later) and is read with Claude straight into `expenses` (for the bank). `/api/invoices/upload` holds the shared key (`TILL_CAPTURE_KEY`). The old *Snap a receipt* and bulk-upload addresses redirect here |
 | Checklist admin | `/admin/checklist` |
 
 **How Claude reaches the data:** the Supabase connector, as you. The service-role key is
@@ -271,8 +271,10 @@ Staffing cost = actual timesheets, not the planned rota. Salaried people are spr
 
 ### Uploading receipts and invoices
 
-Owner → Invoices → Upload (staff: Receipts) takes PDFs or photos, reads each with Claude,
-and makes **one expense per supplier invoice number**:
+One way in: the **Invoice** button (`/invoices`). Pick who it's from, add photos or PDFs,
+Upload. Each file is saved in the till and read with Claude as it arrives, and its row says
+what the books now hold (*"Ritchie's Fruit and Veg £42.10"*, *"Added as a page of …"*,
+*"Already in the books"*). It makes **one expense per supplier invoice number**:
 
 - **A multi-page invoice photographed page by page** becomes one expense: the page with the
   total makes the row and the other pages are attached to it, in whatever order they arrive.
@@ -281,8 +283,14 @@ and makes **one expense per supplier invoice number**:
   the receipt and enter the amount"* in its notes — never silently as £0.00.
 - **Two receipts with the same invoice number but different totals** both stay, flagged
   *"⚠ … check both"*. Nothing guesses which is right.
-- The upload notice counts all of it: *"Uploaded 21 receipts, 2 pages added to existing
-  receipts, 1 duplicate skipped, 1 needs checking."*
+- **Pages of one invoice sent together** are read side by side; the later rows fold
+  themselves into the first a moment after landing, so the result is the same.
+
+**"Waiting to be read into the books"** (on `/invoices`, the owner dashboard and Invoice
+reconciliation) counts files in the till not yet turned into an expense: a read that failed,
+or a phone that closed the page mid-read. A cron (`/api/cron/invoices`, every 15 minutes)
+reads them; **Read N waiting** on Invoice reconciliation does it now. The till records each
+read's invoice number, date and totals (pence) against its copy.
 
 Receipts with no invoice number (till slips) fall back to the old check: same vendor and
 total within 3 days of an already-reconciled receipt. One limit: a page with no total

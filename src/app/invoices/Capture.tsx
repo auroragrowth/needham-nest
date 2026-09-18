@@ -21,9 +21,26 @@ const LANES = 3
 
 const STATUS_TEXT: Record<QueueState, string> = {
   waiting: 'waiting',
-  sending: 'sending…',
+  sending: 'sending and reading…',
   done: 'saved',
   failed: 'failed — press Upload to try again',
+}
+
+type ReadResult = {
+  kind: 'new' | 'page' | 'duplicate'
+  vendor: string | null
+  amount: number | null
+  warning: string | null
+}
+
+/** What the books now hold for a saved file, in a few words. */
+function describeRead(read: ReadResult | null | undefined): string {
+  if (!read) return 'Saved — it will be read in the next few minutes'
+  const who = read.vendor ?? 'Unknown supplier'
+  const money = read.amount ? ` £${read.amount.toFixed(2)}` : ''
+  if (read.kind === 'duplicate') return `Already in the books — ${who}${money}`
+  if (read.kind === 'page') return `Added as a page of ${who}${money}`
+  return `${who}${money}${read.warning ? ' — total needs checking' : ''}`
 }
 
 let nextKey = 1
@@ -119,7 +136,10 @@ export function Capture({
 
         const body = new FormData()
         body.append('file', await shrink(item.file))
-        if (item.supplierId) body.append('supplier_id', item.supplierId)
+        if (item.supplierId) {
+          body.append('supplier_id', item.supplierId)
+          body.append('supplier_name', item.supplierName)
+        }
 
         try {
           const response = await fetch('/api/invoices/upload', { method: 'POST', body })
@@ -134,13 +154,15 @@ export function Capture({
             continue
           }
 
-          const data = (await response.json().catch(() => null)) as { error?: string } | null
-          if (!response.ok || data?.error) {
+          const data = (await response.json().catch(() => null)) as
+            | { error?: string; read?: ReadResult | null }
+            | null
+          if (!response.ok || !data || data.error) {
             failed++
             mark(item.key, 'failed', data?.error)
           } else {
             saved++
-            mark(item.key, 'done')
+            mark(item.key, 'done', describeRead(data.read))
           }
         } catch {
           failed++
@@ -166,7 +188,7 @@ export function Capture({
     <>
       <section className="mt-6">
         <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
-          Who are these from?
+          Who is it from?
         </h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {[...suppliers, { id: '', name: 'Someone else' }].map((s) => {
@@ -196,7 +218,7 @@ export function Capture({
 
       <section className="mt-8">
         <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">
-          Add the invoices
+          Add the invoice or receipt
         </h2>
 
         <label
@@ -291,8 +313,14 @@ export function Capture({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-brand-forest">{item.file.name}</span>
-                  {item.state === 'failed' && item.detail && (
-                    <span className="block text-xs text-brand-amber">{item.detail}</span>
+                  {item.detail && item.state !== 'sending' && (
+                    <span
+                      className={`block text-xs ${
+                        item.state === 'failed' ? 'text-brand-amber' : 'text-brand-teal-deep'
+                      }`}
+                    >
+                      {item.detail}
+                    </span>
                   )}
                 </span>
                 <span className="shrink-0 text-xs text-brand-slate">
@@ -325,8 +353,8 @@ export function Capture({
 
       <p className="mt-8 border-t border-brand-sage/40 pt-4 text-sm text-brand-slate">
         {pending === 0
-          ? 'Nothing waiting to be checked'
-          : `${pending} ${pending === 1 ? 'invoice' : 'invoices'} waiting to be checked`}
+          ? 'Everything uploaded has been read into the books'
+          : `${pending} waiting to be read into the books`}
       </p>
     </>
   )

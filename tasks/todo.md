@@ -1,3 +1,32 @@
+# One upload for invoices and receipts (18 Sep 2026)
+
+Paul: "why do we have invoices and receipts? Surely we need one source." One button, `/invoices`,
+feeds both the till (costing, later) and the café's expenses (bank reconciliation, now).
+
+## Till edge function `invoice-capture` (backwards compatible)
+- [x] `upload` takes optional `state=extracting` when the caller reads it straight away
+- [x] `GET a=waiting`: captured / failed / extracting older than 15 min, with a short signed URL
+- [x] `POST a=claim {id}`: captured|failed|stale → extracting, only if nobody else has it
+- [x] `POST a=result {id, state, invoice_no, invoice_date, total_gross, total_net, reviewed_by}`
+
+## Café app
+- [x] `src/lib/invoices/ingest.ts`: one file → café bucket → Claude read → expense (same dedupe as
+      before: duplicate / extra page / fill-in / conflict), then settle the race when pages of one
+      invoice land in parallel lanes. Extraction failure → no expense, till keeps it waiting
+- [x] `/api/invoices/upload`: till (extracting) → ingest → till result (confirmed with totals, or failed)
+- [x] Catch-up: `readWaitingInvoices()` — cron every 15 min, plus an owner button on reconciliation.
+      Picks up the 5 already captured
+- [x] Page: "Invoice or receipt", row says what was read, "Your recent uploads"
+- [x] Retire: `/staff/receipts` and `/owner/invoices-upload` redirect to `/invoices`; "Snap a
+      receipt" tile, ReceiptUploadForm and `uploadAndExtractInvoices` go
+- [x] RUNBOOK
+
+## Verify
+- [ ] Deploy the till function (needs Paul's OK — auto mode blocks production deploys)
+- [x] tsc, eslint on touched files, clean-worktree build
+- [ ] Edge function: old calls unchanged, new calls against the live function
+- [ ] After deploy: the 5 waiting invoices become expenses and the count drops
+
 # Invoice capture at the back door (18 Sep 2026)
 
 Brief: `~/Desktop/invoice-capture-brief.md`. Capture only — no extraction, no review, no costing.

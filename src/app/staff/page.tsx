@@ -203,15 +203,9 @@ export default async function StaffHub({
               📄 Invoice
             </h2>
             <p className="mt-1 text-sm" style={{ color: '#6a4670' }}>
-              Photograph the supplier&apos;s invoice and send it in
+              An invoice or a receipt — photo it and send it in
             </p>
           </Link>
-        <HubTile
-          href="/staff/receipts"
-          title="🧾 Snap a receipt"
-          status="Bought something? Photo the receipt"
-          accent="off"
-        />
         <HubTile
           href="/shopping-list"
           title="Shopping list"

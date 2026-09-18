@@ -8,9 +8,13 @@ import {
   mergeIntoExpense,
   runAutoMatch,
 } from '@/lib/invoices/actions'
+import { capturePendingCount } from '@/lib/invoice-capture/client'
+import { readWaitingNow } from '@/lib/invoice-capture/actions'
 import { DeleteReceiptButton } from './DeleteReceiptButton'
 
 export const dynamic = 'force-dynamic'
+// The "Read waiting" button reads each photo with Claude, one at a time.
+export const maxDuration = 300
 
 type Expense = {
   id: string
@@ -55,7 +59,7 @@ export default async function ReconcilePage({
   const sp = await searchParams
   const admin = createAdminClient()
 
-  const [{ data: expensesRaw }, { data: txnsRaw }] = await Promise.all([
+  const [{ data: expensesRaw }, { data: txnsRaw }, waitingInTill] = await Promise.all([
     admin
       .from('expenses')
       .select(
@@ -68,6 +72,8 @@ export default async function ReconcilePage({
       .select('id, date, description, amount, matched_expense_id')
       .order('date', { ascending: false })
       .limit(5000),
+    // Photos in the till not yet read into expenses. Null if the till is down.
+    capturePendingCount(),
   ])
 
   const expenses = (expensesRaw ?? []) as Expense[]
@@ -139,11 +145,22 @@ export default async function ReconcilePage({
         </div>
         <div className="flex gap-2">
           <Link
-            href="/owner/invoices-upload"
+            href="/invoices"
             className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
           >
             + Upload more
           </Link>
+          {waitingInTill ? (
+            <form action={readWaitingNow}>
+              <button
+                type="submit"
+                className="rounded-lg border border-brand-amber px-4 py-2 text-sm font-medium text-brand-forest hover:bg-brand-amber/10"
+                title="Photos saved at the back door that haven't been read into expenses yet"
+              >
+                Read {waitingInTill} waiting
+              </button>
+            </form>
+          ) : null}
           <form
             action={async () => {
               'use server'

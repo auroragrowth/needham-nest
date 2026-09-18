@@ -1,9 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ReceiptUploadForm } from '../../staff/receipts/ReceiptUploadForm'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
 
 function fmtMoney(n: number | null): string {
   if (n == null) return '—'
@@ -62,11 +60,11 @@ export default async function ReceiptsPage({
         ← Dashboard
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
-        Snap a receipt
+        Receipts
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        Take a photo or pick a file. The system reads the supplier and
-        amount, then checks the bank statement automatically.
+        Everything uploaded through the Invoice button, as read into the books,
+        and whether the bank has matched it yet.
       </p>
 
       {sp.notice && (
@@ -80,15 +78,12 @@ export default async function ReceiptsPage({
         </p>
       )}
 
-      {/* Auto-submits as soon as a file is picked — single-tap flow. */}
-      <ReceiptUploadForm />
-
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href="/invoices"
-          className="rounded-lg border border-brand-sage/60 px-3 py-1.5 text-xs text-brand-forest hover:bg-brand-sage/10"
+          className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
         >
-          Upload supplier invoices →
+          📄 Upload an invoice or receipt
         </Link>
         <Link
           href="/owner/invoices-reconcile"

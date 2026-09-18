@@ -89,3 +89,46 @@ export function decideUpload(extracted: Extraction, match: InvoiceRow | null): U
   // Both have totals and they differ: never guess which is right.
   return { kind: 'insert', warning: CONFLICT_WARNING }
 }
+
+/**
+ * Receipts with no invoice number fall back to this: the same vendor and total
+ * within 3 days of an already-reconciled receipt is the same receipt.
+ */
+export type DupeSignature = {
+  vendor_norm: string
+  amount_cents: number
+  date_bucket: string // ISO date the receipt falls on (we allow ±3 days when comparing)
+}
+
+export function signatureOf(e: {
+  vendor: string | null
+  amount: number | string | null
+  date: string
+}): DupeSignature {
+  return {
+    vendor_norm: normalize(e.vendor ?? ''),
+    amount_cents: Math.round(Number(e.amount ?? 0) * 100),
+    date_bucket: e.date,
+  }
+}
+
+export function isSameReceipt(a: DupeSignature, b: DupeSignature): boolean {
+  if (a.amount_cents !== b.amount_cents) return false
+  if (a.amount_cents === 0) return false // nothing to dedupe against
+  if (!a.vendor_norm || !b.vendor_norm) return false
+  if (a.vendor_norm !== b.vendor_norm) return false
+  // ±3 days
+  const ms = Math.abs(
+    new Date(a.date_bucket + 'T00:00:00Z').getTime() -
+      new Date(b.date_bucket + 'T00:00:00Z').getTime(),
+  )
+  return ms <= 3 * 24 * 60 * 60 * 1000
+}
+
+export function isReconciledRow(row: {
+  paid_in_cash: boolean | null
+  director_loan_id: string | null
+  matched: boolean
+}): boolean {
+  return row.matched || row.paid_in_cash === true || row.director_loan_id !== null
+}

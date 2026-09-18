@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
 import { captureUpload } from '@/lib/invoice-capture/client'
+import { readIntoBooks } from '@/lib/invoice-capture/read'
 
 export const dynamic = 'force-dynamic'
-// One photo per request, but a poor back-door signal makes even one slow.
-export const maxDuration = 60
+// One photo per request, but a poor back-door signal makes even one slow, and
+// reading it with Claude takes another 5–20 seconds.
+export const maxDuration = 120
 
 /**
- * The browser's way in to the till's invoice-capture function. The shared key
- * stays here; the browser only ever sends the file and which supplier it is
- * from. Who photographed it comes from the session, not the request, so it
- * cannot be spoofed.
+ * The one way paperwork comes in. The file goes to the till's invoice-capture
+ * function (costing, later) and is then read into the café's expenses (bank
+ * reconciliation, now) — see src/lib/invoice-capture/read.ts.
  *
- * POST multipart: `file`, optional `supplier_id`. Returns { invoice_id }.
+ * The shared key stays here; the browser only ever sends the file and which
+ * supplier it is from. Who photographed it comes from the session, not the
+ * request, so it cannot be spoofed.
+ *
+ * POST multipart: `file`, optional `supplier_id`, optional `supplier_name`.
+ * Returns { invoice_id, read } — `read` says what the books now hold, or
+ * `read_error` when it couldn't be read (it stays waiting and is retried).
  */
 export async function POST(request: Request) {
   const session = await getSession()
@@ -35,16 +42,43 @@ export async function POST(request: Request) {
   const supplierRaw = form.get('supplier_id')
   const supplierId = typeof supplierRaw === 'string' && supplierRaw.trim() ? supplierRaw.trim() : null
 
+  const supplierNameRaw = form.get('supplier_name')
+  const supplierName =
+    typeof supplierNameRaw === 'string' && supplierNameRaw.trim() ? supplierNameRaw.trim() : null
+
+  let invoiceId: string
   try {
     const result = await captureUpload(file, supplierId, session.name)
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: result.status })
+    if (result.error || !result.invoice_id) {
+      return NextResponse.json(
+        { error: result.error ?? 'The till did not say it was saved.' },
+        { status: result.error ? result.status : 502 },
+      )
     }
-    return NextResponse.json({ invoice_id: result.invoice_id })
+    invoiceId = result.invoice_id
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Could not reach the till.' },
       { status: 502 },
     )
   }
+
+  // Saved in the till: from here on the upload has worked, whatever the read does.
+  const outcome = await readIntoBooks({
+    tillInvoiceId: invoiceId,
+    bytes: await file.arrayBuffer(),
+    fileName: file.name,
+    contentType: file.type,
+    profileId: session.profileId,
+    readerName: session.name,
+    supplierHint: supplierName,
+  })
+  if (!outcome.ok) {
+    return NextResponse.json({ invoice_id: invoiceId, read: null, read_error: outcome.error })
+  }
+  const r = outcome.result
+  return NextResponse.json({
+    invoice_id: invoiceId,
+    read: { kind: r.kind, vendor: r.vendor, amount: r.amount, warning: r.warning },
+  })
 }
