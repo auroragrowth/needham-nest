@@ -37,7 +37,9 @@ export default async function StaffReceiptsPage({
   const { data: receipts } = await admin
     .from('expenses')
     .select('id, date, vendor, amount, reference, ai_extracted, created_at')
-    .eq('user_id', session.authUserId ?? '00000000-0000-0000-0000-000000000000')
+    // user_id is the uploader's profile id (uploadAndExtractInvoices). Staff
+    // sign in with a PIN and have no auth user, so the auth id never matched.
+    .eq('user_id', session.profileId)
     .order('created_at', { ascending: false })
     .limit(10)
 

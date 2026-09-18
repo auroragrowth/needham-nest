@@ -191,6 +191,12 @@ export default async function StaffHub({
             </p>
           </Link>
         <HubTile
+          href="/staff/receipts"
+          title="🧾 Snap a receipt"
+          status="Bought something? Photo the receipt"
+          accent="off"
+        />
+        <HubTile
           href="/shopping-list"
           title="Shopping list"
           status="Add what we need"
@@ -248,12 +254,6 @@ export default async function StaffHub({
           href="/handbook"
           title="Handbook"
           status="Crib sheets + manuals"
-          accent="off"
-        />
-        <HubTile
-          href="/staff/receipts"
-          title="Snap a receipt"
-          status="Upload a photo, AI reads it"
           accent="off"
         />
       </Group>
