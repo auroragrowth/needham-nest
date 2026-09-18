@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
-import { isReconciledRow, isSameReceipt, normalize, signatureOf } from './dedupe'
+import { isReconciledRow, isSameReceipt, signatureOf } from './dedupe'
+import { autoMatchExpenses } from './match'
 
 async function requireOwner() {
   const session = await getSession()
@@ -13,83 +14,20 @@ async function requireOwner() {
   return session
 }
 
-function describeMatch(
-  vendor: string | null,
-  description: string,
-): boolean {
-  if (!vendor) return false
-  const v = normalize(vendor)
-  const d = normalize(description)
-  if (!v || !d) return false
-  if (d.includes(v)) return true
-  // Compare first word of vendor against description as a fallback —
-  // suppliers often appear truncated on bank statements.
-  const head = v.split(' ')[0]
-  return head.length >= 3 && d.includes(head)
-}
-
 /**
- * For every expense with no bank_transaction match yet, look across the
- * full bank_transactions table for: exact amount AND a supplier-text
- * resemblance to the description. Date is ignored per Paul's rule.
+ * Match unmatched expenses to bank lines (see src/lib/invoices/match.ts).
+ * This also runs by itself after every invoice is read and every bank import;
+ * the button on Invoice reconciliation is for after a manual change.
  */
 export async function runAutoMatch(): Promise<{
   matched: number
   unmatched: number
 }> {
   await requireOwner()
-  const admin = createAdminClient()
-
-  // Pull unmatched expenses and all unmatched bank_transactions.
-  const { data: txns } = await admin
-    .from('bank_transactions')
-    .select('id, amount, description, matched_expense_id')
-    .is('matched_expense_id', null)
-
-  // We need the inverse: expenses not yet matched by any txn. Easier to
-  // fetch the matched_expense_id list and exclude.
-  const { data: alreadyMatchedRows } = await admin
-    .from('bank_transactions')
-    .select('matched_expense_id')
-    .not('matched_expense_id', 'is', null)
-  const alreadyMatched = new Set(
-    (alreadyMatchedRows ?? []).map((r) => r.matched_expense_id),
-  )
-
-  const { data: expenses } = await admin
-    .from('expenses')
-    .select('id, vendor, amount, director_loan_id, paid_in_cash')
-    .is('director_loan_id', null)
-    .eq('paid_in_cash', false)
-
-  const candidateExpenses = (expenses ?? []).filter(
-    (e) => !alreadyMatched.has(e.id),
-  )
-
-  let matched = 0
-  for (const e of candidateExpenses) {
-    if (!e.amount) continue
-    const expectedDebit = -Math.abs(Number(e.amount))
-    const txn = (txns ?? []).find(
-      (t) =>
-        Number(t.amount) === expectedDebit &&
-        describeMatch(e.vendor, t.description),
-    )
-    if (!txn) continue
-    await admin
-      .from('bank_transactions')
-      .update({ matched_expense_id: e.id })
-      .eq('id', txn.id)
-    await admin
-      .from('expenses')
-      .update({ reconciled_at: new Date().toISOString() })
-      .eq('id', e.id)
-    matched += 1
-  }
-  const unmatched = candidateExpenses.length - matched
+  const result = await autoMatchExpenses()
   revalidatePath('/owner/invoices-reconcile')
   revalidatePath('/owner/bank')
-  return { matched, unmatched }
+  return result
 }
 
 /**

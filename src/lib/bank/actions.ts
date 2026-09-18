@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { parseMonzoCsv } from './csv'
+import { autoMatchExpenses } from '@/lib/invoices/match'
 
 async function requireFinanceRole() {
   const session = await getSession()
@@ -117,8 +118,15 @@ export async function importMonzoCsv(formData: FormData) {
     redirect(`/owner/bank/upload?error=${encodeURIComponent(error.message)}`)
   }
 
+  // Invoices already in the books check themselves off against the new lines.
+  const { matched } = await autoMatchExpenses()
+
   revalidatePath('/owner/bank')
+  revalidatePath('/owner/invoices-reconcile')
   redirect(
-    `/owner/bank?notice=Imported+${rows.length}+transaction${rows.length === 1 ? '' : 's'}`,
+    `/owner/bank?notice=${encodeURIComponent(
+      `Imported ${rows.length} transaction${rows.length === 1 ? '' : 's'}` +
+        (matched ? `, ${matched} invoice${matched === 1 ? '' : 's'} matched` : ''),
+    )}`,
   )
 }

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ingestInvoice, type IngestResult } from '@/lib/invoices/ingest'
+import { autoMatchExpenses } from '@/lib/invoices/match'
 import {
   captureClaim,
   captureResult,
@@ -22,7 +23,10 @@ import {
  * the cron every 15 minutes, or the owner's button on Invoice reconciliation.
  */
 
-/** Read one file into the books and tell the till. Never throws. */
+/**
+ * Read one file into the books, tell the till, then check the books against
+ * the bank. Never throws.
+ */
 export async function readIntoBooks(input: {
   tillInvoiceId: string
   bytes: ArrayBuffer
@@ -32,21 +36,56 @@ export async function readIntoBooks(input: {
   readerName: string
   supplierHint: string | null
 }): Promise<{ ok: true; result: IngestResult } | { ok: false; error: string }> {
+  let result: IngestResult
   try {
-    const result = await ingestInvoice(input)
-    const x = result.extracted
-    await captureResult(input.tillInvoiceId, {
-      state: 'confirmed',
-      invoice_no: x.reference,
-      invoice_date: x.date,
-      total_gross: toPence(x.amount),
-      total_net: toPence(x.amount_net),
-      reviewed_by: input.readerName,
-    }).catch((e) => console.error('invoice-capture: result not recorded in the till', e))
-    return { ok: true, result }
+    result = await ingestInvoice(input)
   } catch (e) {
     await captureResult(input.tillInvoiceId, { state: 'failed' }).catch(() => {})
     return { ok: false, error: e instanceof Error ? e.message : 'Could not read it.' }
+  }
+
+  // The till holds one record per supplier invoice number (a unique index), so
+  // only the file that made the expense carries the number and totals. Extra
+  // pages and repeat photos are confirmed bare: they're read, nothing to wait on.
+  const x = result.extracted
+  const confirmed =
+    result.kind === 'new'
+      ? {
+          state: 'confirmed' as const,
+          invoice_no: x.reference,
+          invoice_date: x.date,
+          total_gross: toPence(x.amount),
+          total_net: toPence(x.amount_net),
+          reviewed_by: input.readerName,
+        }
+      : bare(input.readerName)
+  try {
+    await captureResult(input.tillInvoiceId, confirmed)
+  } catch (e) {
+    // Most likely the same invoice number is already on another till record
+    // (say, a repeat photo filed under a different supplier). Still confirm it,
+    // or it would be read again every 15 minutes.
+    console.error('invoice-capture: result not recorded in the till, confirming bare', e)
+    await captureResult(input.tillInvoiceId, bare(input.readerName)).catch((e2) =>
+      console.error('invoice-capture: bare confirm failed too', e2),
+    )
+  }
+
+  // Check it off against the bank straight away if the statement is already in.
+  if (result.kind !== 'duplicate') {
+    await autoMatchExpenses().catch((e) => console.error('invoice-capture: auto-match failed', e))
+  }
+  return { ok: true, result }
+}
+
+function bare(readerName: string) {
+  return {
+    state: 'confirmed' as const,
+    invoice_no: null,
+    invoice_date: null,
+    total_gross: null,
+    total_net: null,
+    reviewed_by: readerName,
   }
 }
 
