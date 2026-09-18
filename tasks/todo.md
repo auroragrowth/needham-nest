@@ -22,9 +22,9 @@ feeds both the till (costing, later) and the café's expenses (bank reconciliati
 - [x] RUNBOOK
 
 ## Verify
-- [ ] Deploy the till function (needs Paul's OK — auto mode blocks production deploys)
+- [x] Deploy the till function (Paul pasted it in the dashboard: version 5)
 - [x] tsc, eslint on touched files, clean-worktree build
-- [ ] Edge function: old calls unchanged, new calls against the live function
+- [x] Edge function: bootstrap unchanged; waiting lists the 5 with working signed URLs; claim/result refuse bad input; wrong key refused
 - [ ] After deploy: the 5 waiting invoices become expenses and the count drops
 
 # Invoice capture at the back door (18 Sep 2026)
