@@ -1,24 +1,21 @@
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { receiveStock } from '@/lib/stock-locations/actions'
+import { GoodsInForm } from './GoodsInForm'
 import { londonParts } from '@/lib/stock/wastage'
 
 /**
- * Goods In: log a delivery as it's put away. Search for what arrived, say how
- * many and where it's going, and it's added to that location (a 'receive' move
- * in stock_location_moves, the same as "Add new stock here" on /stock).
- * Anyone signed in can use it.
+ * Goods In: log a delivery as it's put away. Pick what arrived (type for a live
+ * dropdown, or tap one of the regular bakes), say how many and where it's going,
+ * and it's added to that location (a 'receive' move in stock_location_moves, the
+ * same as "Add new stock here" on /stock). Anyone signed in can use it.
  */
 
-type Item = { id: string; name: string; category: string | null; unit: string }
+type Item = { id: string; name: string; category: string | null; unit: string; regular_delivery: boolean }
 type Location = { id: string; name: string; zone: string; sort_order: number }
 
 const AREA: Record<string, string> = { cafe: 'Café', kitchen: 'Kitchen', storage: 'Storage', other: 'Other' }
 const AREA_ORDER = ['cafe', 'kitchen', 'storage', 'other']
-
-const input =
-  'w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30'
 
 function qty(n: number): string {
   return Number(n.toFixed(3)).toString()
@@ -41,16 +38,15 @@ function startOfUkToday(): string {
 export default async function GoodsInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; notice?: string; error?: string }>
+  searchParams: Promise<{ notice?: string; error?: string }>
 }) {
   const session = await getSession()
   const params = await searchParams
-  const search = (params.q ?? '').trim()
   const admin = createAdminClient()
 
   const [{ data: itemRows }, { data: locationRows }, { data: placementRows }, { data: todayRows }, { data: people }] =
     await Promise.all([
-      admin.from('stock_items').select('id, name, category, unit').eq('active', true).order('name'),
+      admin.from('stock_items').select('id, name, category, unit, regular_delivery').eq('active', true).order('name'),
       admin.from('stock_locations').select('id, name, zone, sort_order').eq('active', true).order('sort_order'),
       admin.from('stock_placements').select('stock_item_id, location_id, quantity').gt('quantity', 0),
       admin
@@ -81,12 +77,6 @@ export default async function GoodsInPage({
   }
   const fallback = locations.find((l) => l.zone === 'storage') ?? locations[0]
 
-  const needle = search.toLowerCase()
-  const matches = needle
-    ? items.filter((i) => i.name.toLowerCase().includes(needle) || (i.category ?? '').toLowerCase().includes(needle)).slice(0, 30)
-    : []
-
-  const back = `/stock/goods-in${search ? `?q=${encodeURIComponent(search)}` : ''}`
   const home = session?.role === 'owner' ? '/owner' : session?.role === 'staff' ? '/staff' : '/manager'
 
   return (
@@ -96,7 +86,7 @@ export default async function GoodsInPage({
       </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">📥 Goods In</h1>
       <p className="mt-1 text-sm text-brand-slate">
-        A delivery or shopping trip: find each item, say how many came and where it&apos;s going.
+        A delivery or shopping trip: pick each item, say how many came and where it&apos;s going.
       </p>
 
       {params.notice && (
@@ -110,87 +100,18 @@ export default async function GoodsInPage({
         </p>
       )}
 
-      <form className="mt-5 flex gap-2">
-        <input
-          type="search"
-          name="q"
-          defaultValue={search}
-          autoFocus={!search}
-          placeholder="What's arrived? e.g. milk, bacon, cups"
-          className={`${input} py-3 text-base`}
-        />
-        <button
-          type="submit"
-          className="rounded-xl bg-brand-forest px-5 py-3 text-sm font-semibold text-brand-cream transition active:scale-[0.98] hover:bg-brand-olive"
-        >
-          Search
-        </button>
-      </form>
-
-      {search && (
-        <section className="mt-4 space-y-2">
-          {matches.length === 0 && (
-            <p className="rounded-xl border border-brand-sage/40 bg-white p-4 text-sm text-brand-slate">
-              Nothing matches &ldquo;{search}&rdquo;. Try a shorter word, or ask a manager to add it as a new item on the
-              Stock page.
-            </p>
-          )}
-          {matches.map((item) => {
-            const home = homeByItem.get(item.id)?.location ?? fallback?.id
-            return (
-              <form
-                key={item.id}
-                action={receiveStock}
-                className="rounded-xl border border-brand-sage/40 bg-white p-3"
-              >
-                <input type="hidden" name="stock_item_id" value={item.id} />
-                <input type="hidden" name="back" value={back} />
-                <input type="hidden" name="notes" value="Goods in" />
-                <p className="font-medium text-brand-forest">
-                  {item.name}
-                  <span className="ml-2 text-xs text-brand-slate">
-                    {item.category ?? 'Other'} · counted in {item.unit}
-                  </span>
-                </p>
-                <div className="mt-2 grid grid-cols-[6rem_1fr_auto] items-center gap-2">
-                  <input
-                    name="quantity"
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    min={0}
-                    required
-                    placeholder={item.unit}
-                    aria-label={`How many ${item.name} arrived`}
-                    className={input}
-                  />
-                  <select name="location_id" defaultValue={home} aria-label="Where it's going" className={input}>
-                    {AREA_ORDER.map((zone) => {
-                      const here = locations.filter((l) => l.zone === zone)
-                      if (here.length === 0) return null
-                      return (
-                        <optgroup key={zone} label={AREA[zone]}>
-                          {here.map((l) => (
-                            <option key={l.id} value={l.id}>
-                              {l.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )
-                    })}
-                  </select>
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-semibold text-brand-cream transition active:scale-[0.98] hover:bg-brand-olive"
-                  >
-                    Add
-                  </button>
-                </div>
-              </form>
-            )
-          })}
-        </section>
-      )}
+      <GoodsInForm
+        items={items.map((i) => ({
+          id: i.id,
+          name: i.name,
+          category: i.category,
+          unit: i.unit,
+          home: homeByItem.get(i.id)?.location ?? null,
+        }))}
+        locations={locations.map((l) => ({ id: l.id, name: l.name, area: AREA[l.zone] ?? 'Other' }))}
+        regulars={items.filter((i) => i.regular_delivery).map((i) => i.id)}
+        fallbackLocation={fallback?.id ?? null}
+      />
 
       <section className="mt-8">
         <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-brand-teal-deep">Goods in today</h2>
