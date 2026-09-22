@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Deno edge function deployed to the till's Supabase project, not part of this app.
     "supabase/till/**",
+    "supabase/functions/**",
   ]),
 ]);
 

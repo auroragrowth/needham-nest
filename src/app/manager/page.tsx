@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { HandbookSignoffBanner } from '@/components/shared/HandbookSignoffBanner'
 
 function startOfTodayIso(): string {
   const d = new Date()
@@ -123,6 +124,8 @@ export default async function ManagerDashboard() {
         </span>
         <span className="text-2xl">→</span>
       </Link>
+
+      {session && <HandbookSignoffBanner profileId={session.profileId} />}
 
       <Link
         href="/pick-mix"
@@ -253,6 +256,12 @@ export default async function ManagerDashboard() {
           href="/admin/training"
           title="Training"
           subtitle="Add records + upload certificates"
+          cta="Open →"
+        />
+        <Card
+          href="/handbook/sign-offs"
+          title="Handbook sign-offs"
+          subtitle="Who has read and signed the handbook"
           cta="Open →"
         />
         <Card

@@ -311,6 +311,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/handbook/sign-offs"
+          title="Handbook sign-offs"
+          subtitle="Who has read and signed the handbook"
+          cta="Open →"
+        />
+        <Card
           href="/handbook"
           title="Handbook"
           subtitle="Crib sheets + manuals (everyone reads)"

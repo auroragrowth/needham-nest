@@ -59,6 +59,14 @@ export default async function HandbookListPage({
           >
             All files →
           </Link>
+          {(session.role === 'owner' || session.role === 'manager') && (
+            <Link
+              href="/handbook/sign-offs"
+              className="rounded-lg border border-brand-sage/60 bg-white px-4 py-2 text-sm font-medium text-brand-forest hover:bg-brand-sage/10"
+            >
+              Who&apos;s signed →
+            </Link>
+          )}
           {session.role === 'owner' && (
             <Link
               href="/handbook/new"

@@ -8,6 +8,7 @@ import {
   publishArticle,
   signedAttachmentUrls,
 } from '@/lib/handbook/actions'
+import { recordRead, SIGNOFF_PATH } from '@/lib/handbook/signoff'
 
 function formatSize(bytes: number | null): string {
   if (!bytes) return ''
@@ -39,7 +40,19 @@ export default async function HandbookArticlePage({
   if (!a.active && session.role !== 'owner') notFound()
 
   const isOwner = session.role === 'owner'
-  const attachments = await signedAttachmentUrls(id)
+  const [attachments, signoff] = await Promise.all([
+    signedAttachmentUrls(id),
+    a.active ? recordRead(session.profileId, id) : Promise.resolve(null),
+  ])
+  const signoffStrip =
+    signoff && !signoff.row.signed_at
+      ? (() => {
+          const read = signoff.articles.filter((x) => signoff.readIds.has(x.id)).length
+          const total = signoff.articles.length
+          const nextUnread = signoff.articles.find((x) => !signoff.readIds.has(x.id))
+          return { read, total, nextUnread }
+        })()
+      : null
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -84,11 +97,36 @@ export default async function HandbookArticlePage({
         </p>
       )}
 
+      {signoffStrip && (
+        <p className="mt-4 rounded-xl border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
+          ✓ Ticked off for your handbook sign-off ({signoffStrip.read} of {signoffStrip.total} read).
+        </p>
+      )}
+
       <article className="mt-6 whitespace-pre-wrap rounded-xl border border-brand-sage/40 bg-white p-6 text-brand-forest">
         {a.body || (
           <span className="text-brand-slate">No content yet.</span>
         )}
       </article>
+
+      {signoffStrip && (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          {signoffStrip.nextUnread && (
+            <Link
+              href={`/handbook/${signoffStrip.nextUnread.id}`}
+              className="flex-1 rounded-xl bg-brand-forest px-4 py-3 text-center font-medium text-brand-cream hover:bg-brand-olive"
+            >
+              Next: {signoffStrip.nextUnread.title} →
+            </Link>
+          )}
+          <Link
+            href={SIGNOFF_PATH}
+            className="flex-1 rounded-xl border-2 border-brand-amber px-4 py-3 text-center font-medium text-brand-forest hover:bg-brand-amber/10"
+          >
+            {signoffStrip.nextUnread ? 'Back to my sign-off list' : 'All read. Go and sign →'}
+          </Link>
+        </div>
+      )}
 
       {attachments.length > 0 && (
         <section className="mt-6">

@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth/session'
 import { hasPermission } from '@/lib/permissions'
 import { FeedbackBanner } from '@/components/shared/FeedbackBanner'
 import { BreakBanner } from '@/components/shared/BreakBanner'
+import { HandbookSignoffBanner } from '@/components/shared/HandbookSignoffBanner'
 
 function startOfTodayIso(): string {
   const d = new Date()
@@ -87,6 +88,8 @@ export default async function StaffHub({
       )}
 
       <BreakBanner profileId={session.profileId} />
+
+      <HandbookSignoffBanner profileId={session.profileId} />
 
       <FeedbackBanner />
 
