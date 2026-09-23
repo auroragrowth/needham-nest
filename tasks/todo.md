@@ -4,16 +4,26 @@ Agent 9, item 1 of "still to build". The P&L's sales must come from the till, an
 always right about sales. `pl_sales_daily` was backfilled by hand; this keeps it current, and
 re-reads the last seven days so a late void or refund is picked up.
 
-- [ ] Till: `GET /api/hub/report/pl-sales-daily?from=&to=` reads `v_pl_sales_daily` (pounds,
+- [x] Till: `GET /api/hub/report/pl-sales-daily?from=&to=` reads `v_pl_sales_daily` (pounds,
       London days, completed orders only) behind the existing read token. Read-only, like the
       rest of that endpoint
-- [ ] Café app: `src/lib/finance/pl-sales.ts` reads that feed and upserts `pl_sales_daily` on
+- [x] Café app: `src/lib/finance/pl-sales.ts` reads that feed and upserts `pl_sales_daily` on
       (day, order_type, payment_type); a combination that has disappeared from a day (all of it
       voided) is deleted, so a stale row can't linger
-- [ ] Café app: `/api/cron/pl-sales` behind `CRON_SECRET`, default last 7 days, `?from=&to=` to
+- [x] Café app: `/api/cron/pl-sales` behind `CRON_SECRET`, default last 7 days, `?from=&to=` to
       backfill; `vercel.json` cron at 01:30 UTC (the brief's `30 1 * * *`)
-- [ ] Verify: call the till feed with the read token; run the sync against the live database and
+- [~] Verify: call the till feed with the read token; run the sync against the live database and
       check every day in `v_pl_summary` still ties to the till, August £16,167.92 included
+
+Done so far (23 Sep 2026): both deployed. The till feed answers live and its shape is right
+(20 Sept: have-in card £212.95, have-in cash £30.18 after a £1.12 discount, staff tab £7.60,
+takeaway card). Unknown report names still 404; the cron route answers 401 without the secret.
+Every backfilled day already ties to the till exactly, June to August included (August
+£16,167.92). The one difference is today, 23 Sept: 6 rows, £395.86, which the first run adds.
+
+Left to prove: the write path. Neither repo's `.env.local` holds a service key, so the sync
+can't be run from a laptop. Either trigger `/api/cron/pl-sales` once from Vercel (Cron Jobs →
+Run), or let it run at 01:30 UTC and check `pl_sales_daily` has 23 Sept the next morning.
 
 # Receipts to find (18 Sep 2026)
 
