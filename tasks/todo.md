@@ -1,3 +1,20 @@
+# Nightly P&L sales sync (23 Sep 2026)
+
+Agent 9, item 1 of "still to build". The P&L's sales must come from the till, and the till is
+always right about sales. `pl_sales_daily` was backfilled by hand; this keeps it current, and
+re-reads the last seven days so a late void or refund is picked up.
+
+- [ ] Till: `GET /api/hub/report/pl-sales-daily?from=&to=` reads `v_pl_sales_daily` (pounds,
+      London days, completed orders only) behind the existing read token. Read-only, like the
+      rest of that endpoint
+- [ ] Café app: `src/lib/finance/pl-sales.ts` reads that feed and upserts `pl_sales_daily` on
+      (day, order_type, payment_type); a combination that has disappeared from a day (all of it
+      voided) is deleted, so a stale row can't linger
+- [ ] Café app: `/api/cron/pl-sales` behind `CRON_SECRET`, default last 7 days, `?from=&to=` to
+      backfill; `vercel.json` cron at 01:30 UTC (the brief's `30 1 * * *`)
+- [ ] Verify: call the till feed with the read token; run the sync against the live database and
+      check every day in `v_pl_summary` still ties to the till, August £16,167.92 included
+
 # Receipts to find (18 Sep 2026)
 
 Paul: a by-supplier, by-location list of bank payments with no invoice, "like Amazon", to upload
