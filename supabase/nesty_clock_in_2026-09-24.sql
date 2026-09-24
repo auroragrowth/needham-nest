@@ -1,0 +1,4 @@
+-- Applied 24 Sep 2026 (migration nesty_ids_for_clocking).
+-- Nesty needs the shift id to clock someone out, and the person's id to clock
+-- them in, so both reports now carry an id. Function bodies are in
+-- supabase/nesty_read_functions.sql, which stays the source of truth.

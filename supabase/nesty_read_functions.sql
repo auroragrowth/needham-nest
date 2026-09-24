@@ -41,6 +41,7 @@ $$;
 create or replace function public.nesty_clocked_in_now()
 returns jsonb language sql stable as $$
   select coalesce(jsonb_agg(jsonb_build_object(
+           'time_log_id', t.id,
            'name', p.name,
            'clocked_in', nesty_local(t.clock_in),
            'on_break', t.break_start_at is not null,
@@ -294,6 +295,7 @@ $$;
 create or replace function public.nesty_staff_list(p_include_inactive boolean default false)
 returns jsonb language sql stable as $$
   select coalesce(jsonb_agg(jsonb_build_object(
+           'staff_id', id,
            'name', name, 'role', role::text, 'active', active,
            'employment_type', employment_type,
            'on_rota', on_rota, 'payroll_included', payroll_included, 'manager_access', manager_access,

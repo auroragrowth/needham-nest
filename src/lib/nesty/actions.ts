@@ -213,6 +213,50 @@ export const ACTIONS: Record<string, Action> = {
   },
 
   /**
+   * Clocks someone in, for an owner standing at the till with a member of staff
+   * whose phone or the tablet won't play ball. Mirrors clockIn
+   * (src/lib/time-logs/actions.ts): one open shift per person, nothing else.
+   * The time is UK wall-clock today, never in the future.
+   */
+  'time-log-clock-in': async (admin, _ownerId, params) => {
+    const staffId = id(params, 'staff_id')
+    const asked = hhmm(params, 'clock_in')
+
+    const { data: person } = await admin
+      .from('profiles')
+      .select('id, name, active')
+      .eq('id', staffId)
+      .maybeSingle()
+    if (!person) throw new ActionError('That person is not on the staff list.')
+    if (!person.active) throw new ActionError(`${person.name} is not an active member of staff.`)
+
+    const { data: open } = await admin
+      .from('time_logs')
+      .select('id, clock_in')
+      .eq('user_id', staffId)
+      .is('clock_out', null)
+      .maybeSingle()
+    if (open) throw new ActionError(`${person.name} is already clocked in, since ${londonStamp(open.clock_in)}.`)
+
+    const now = new Date()
+    const clockIn = asked ? londonInstant(londonParts(now).day, asked) : now
+    if (clockIn.getTime() > now.getTime() + 60_000) throw new ActionError(`${asked} hasn't happened yet.`)
+    if (now.getTime() - clockIn.getTime() > TWELVE_HOURS_MS) {
+      throw new ActionError('That is more than 12 hours ago. Add the shift in the café app instead.')
+    }
+
+    const at = londonParts(clockIn).time
+    const note = `Clocked in at ${at} via Nesty. Approved by Paul, ${stamp()}.`
+    const { data: made, error } = await admin
+      .from('time_logs')
+      .insert({ user_id: staffId, clock_in: clockIn.toISOString(), notes: note })
+      .select('id, clock_in')
+      .single()
+    if (error || !made) throw new Error(error?.message ?? 'the clock-in did not save')
+    return `${person.name} clocked in at ${londonParts(new Date(made.clock_in)).time}.`
+  },
+
+  /**
    * Corrects a shift's hours: clock-in, clock-out and break, in any combination.
    * The owner fixing a timesheet, as they would by hand, so it does not run the
    * closing-list check in clockOut (src/lib/time-logs/actions.ts). Only the parts
@@ -302,6 +346,7 @@ export const ACTIONS: Record<string, Action> = {
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 const TEN_HOURS_MS = 10 * 60 * 60 * 1000
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000
 const FOURTEEN_HOURS_MS = 14 * 60 * 60 * 1000
 
 /** An optional HH:MM time, UK wall-clock. */
