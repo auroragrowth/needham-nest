@@ -15,17 +15,10 @@ export default async function OwnerDashboard({
 
   const admin = createAdminClient()
 
-  const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10)
-
   const [
     { data: settings },
-    { count: staffCount },
     { count: applianceCount },
     { count: taskCount },
-    { data: expenses90 },
-    { data: takings90 },
     invoicesPending,
   ] = await Promise.all([
     session.authUserId
@@ -36,11 +29,6 @@ export default async function OwnerDashboard({
           .maybeSingle()
       : Promise.resolve({ data: null } as { data: null }),
     admin
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', 'staff')
-      .eq('active', true),
-    admin
       .from('appliances')
       .select('*', { count: 'exact', head: true })
       .eq('active', true),
@@ -48,21 +36,10 @@ export default async function OwnerDashboard({
       .from('cleaning_tasks')
       .select('*', { count: 'exact', head: true })
       .eq('active', true),
-    admin.from('expenses').select('amount').gte('date', since90),
-    admin.from('takings').select('amount').gte('date', since90),
     // Photos in the till not yet read into expenses. Null when the till cannot
     // be reached — the rest of the dashboard carries on.
     capturePendingCount(),
   ])
-
-  const expenseTotal90 = (expenses90 ?? []).reduce(
-    (a, r) => a + Number(r.amount ?? 0),
-    0,
-  )
-  const takingsTotal90 = (takings90 ?? []).reduce(
-    (a, r) => a + Number(r.amount ?? 0),
-    0,
-  )
 
   const onboarded = Boolean(settings?.company_name)
   const { data: ownerProfile } = await admin
@@ -199,7 +176,7 @@ export default async function OwnerDashboard({
         <Card
           href="/owner/staff"
           title="People"
-          subtitle={`${staffCount ?? 0} active staff`}
+          subtitle="Add, edit and sign in staff"
           cta="Manage →"
         />
         <Card
@@ -218,51 +195,6 @@ export default async function OwnerDashboard({
           href="/manager/leave"
           title="Leave"
           subtitle="Approve holiday / sick / unpaid"
-          cta="Open →"
-        />
-        <Card
-          href="/manager/timesheets"
-          title="Timesheets"
-          subtitle="Hours from clock in/out"
-          cta="Open →"
-        />
-      </Group>
-
-      <Group title="Pay & payroll">
-        <Card
-          href="/owner/payslips"
-          title="Payslips"
-          subtitle="Per-staff shift list + gross totals (printable)"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/payroll-runs"
-          title="🏦 Payroll runs + HMRC pot"
-          subtitle="Track weekly + monthly Sage runs. What to put aside."
-          cta="Open →"
-        />
-        <Card
-          href="/owner/wages"
-          title="Wages"
-          subtitle="Generate gross wages from clock-ins"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/tips"
-          title="Tips (tronc)"
-          subtitle="Pool + auto-distribute by hours"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/staff-costs/week"
-          title="Weekly staff costs"
-          subtitle="Matrix: each person × each day, week + running totals"
-          cta="Open →"
-        />
-        <Card
-          href="/manager/staffing-cost/history"
-          title="Staffing cost history"
-          subtitle="Day-by-day totals with running cumulative"
           cta="Open →"
         />
       </Group>
@@ -332,44 +264,26 @@ export default async function OwnerDashboard({
 
       <Group title="Money">
         <Card
-          href="/owner/takings"
-          title="Takings"
-          subtitle={`£${takingsTotal90.toFixed(2)} (90d)`}
-          cta="Open →"
-        />
-        <Card
-          href="/owner/expenses"
-          title="Expenses"
-          subtitle={`£${expenseTotal90.toFixed(2)} (90d)`}
-          cta="Open →"
-        />
-        <Card
           href="/owner/pl"
           title="Profit & Loss"
-          subtitle="Period view: takings vs expenses, net after CT"
+          subtitle="Month by month: sales, costs, wages, profit"
           cta="Open →"
         />
         <Card
           href="/owner/bank"
           title="Bank"
-          subtitle="Monzo CSV import + reconciliation"
+          subtitle="Monzo import and matching"
           cta="Open →"
         />
         <Card
-          href="/owner/tax-pot"
-          title="Tax pot"
-          subtitle="CT estimate + allocations"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/director-loan"
-          title="Director's loan"
-          subtitle="DL account balance + entries"
+          href="/owner/expenses"
+          title="Expenses"
+          subtitle="Everything we've spent, with receipts"
           cta="Open →"
         />
         <Card
           href="/invoices"
-          title="📄 Invoice"
+          title="📄 Upload invoices & receipts"
           subtitle={
             invoicesPending === null
               ? 'Invoices and receipts · till unavailable'
@@ -380,40 +294,10 @@ export default async function OwnerDashboard({
           cta="Upload →"
         />
         <Card
-          href="/owner/receipts"
-          title="Receipts"
-          subtitle="What's been read, and whether the bank has matched it"
-          cta="Open →"
-        />
-        <Card
           href="/owner/receipts-to-find"
           title="Receipts to find"
           subtitle="Bank payments with no receipt, by supplier and place"
           cta="Open →"
-        />
-        <Card
-          href="/owner/invoices-reconcile"
-          title="Invoice reconciliation"
-          subtitle="Flag unmatched, post to director's loan"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/invoices"
-          title="Invoices"
-          subtitle="B2B catering + function bookings"
-          cta="Open →"
-        />
-        <Card
-          href="/owner/customers"
-          title="Customers"
-          subtitle="Invoice recipients"
-          cta="Manage →"
-        />
-        <Card
-          href="/owner/payees"
-          title="Payees"
-          subtitle="Suppliers + vendors"
-          cta="Manage →"
         />
       </Group>
 
@@ -435,6 +319,18 @@ export default async function OwnerDashboard({
           title="📱 Clock QR posters"
           subtitle="Printable codes: clock in / out, break start / end"
           cta="Download PDF →"
+        />
+        <Card
+          href="/owner/director-loan"
+          title="Director's loan"
+          subtitle="Balance and entries"
+          cta="Open →"
+        />
+        <Card
+          href="/owner/payees"
+          title="Payees"
+          subtitle="Supplier list, used for bank matching"
+          cta="Manage →"
         />
       </Group>
 
