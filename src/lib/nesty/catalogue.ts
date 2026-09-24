@@ -51,6 +51,8 @@ export const REPORTS: Record<string, Report> = {
   expenses: { kind: 'sql', fn: 'nesty_expenses', params: 'range', about: 'Expenses by category and entry' },
   'invoices-outstanding': { kind: 'sql', fn: 'nesty_invoices_outstanding', params: 'none', about: 'Unpaid and overdue invoices' },
   pl: { kind: 'sql', fn: 'nesty_pl', params: 'range', about: 'Profit and loss as the P&L page works it out' },
+  'pl-summary': { kind: 'sql', fn: 'nesty_pl_summary', params: 'range', about: "The P&L month by month: sales, gross profit, wages, overheads, operating profit and how much is still unclassified (agent 09). Wages are a total; no individual's pay" },
+  'pl-review-queue': { kind: 'sql', fn: 'nesty_pl_review_queue', params: 'none', about: 'Bank and cash lines no rule could place, waiting for an owner to categorise them' },
   cash: { kind: 'sql', fn: 'nesty_cash', params: 'range', about: 'Cash counts and movements' },
   tips: { kind: 'sql', fn: 'nesty_tips', params: 'range', about: 'Tip pools and shares' },
   'payroll-runs': { kind: 'sql', fn: 'nesty_payroll_runs', params: 'optional-range', about: 'Payroll run totals' },
