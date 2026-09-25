@@ -65,7 +65,7 @@ export default async function TimesheetsPage() {
     admin
       .from('profiles')
       .select('id, name, active')
-      .eq('role', 'staff')
+      .or('role.eq.staff,on_rota.eq.true') // staff, plus an owner or manager who works shifts
       .order('active', { ascending: false })
       .order('name'),
     admin

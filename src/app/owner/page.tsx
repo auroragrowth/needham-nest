@@ -4,6 +4,15 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { capturePendingCount } from '@/lib/invoice-capture/client'
 
+/** How long since clocking in, e.g. "2h 15m". */
+function onShiftFor(clockIn: string): string {
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(clockIn).getTime()) / 60000))
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h === 0) return `${m}m`
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
 export default async function OwnerDashboard({
   searchParams,
 }: {
@@ -42,12 +51,25 @@ export default async function OwnerDashboard({
   ])
 
   const onboarded = Boolean(settings?.company_name)
-  const { data: ownerProfile } = await admin
-    .from('profiles')
-    .select('pin_hash')
-    .eq('id', session.profileId)
-    .maybeSingle()
+  const [{ data: ownerProfile }, { data: myOpenShift }] = await Promise.all([
+    admin
+      .from('profiles')
+      .select('pin_hash, on_rota')
+      .eq('id', session.profileId)
+      .maybeSingle(),
+    admin
+      .from('time_logs')
+      .select('clock_in')
+      .eq('user_id', session.profileId)
+      .is('clock_out', null)
+      .maybeSingle(),
+  ])
   const hasPin = Boolean(ownerProfile?.pin_hash)
+  // An owner who works shifts (on the rota) clocks in like everyone else.
+  // Anyone already clocked in sees the button too, so they can clock out.
+  const isOnShift = Boolean(myOpenShift)
+  const showClock = Boolean(ownerProfile?.on_rota) || isOnShift
+  const shiftLength = isOnShift ? onShiftFor(myOpenShift!.clock_in) : ''
 
   return (
     <main className="mx-auto max-w-4xl">
@@ -62,6 +84,28 @@ export default async function OwnerDashboard({
         <p className="mt-4 rounded border border-brand-teal/40 bg-brand-teal/10 p-3 text-sm text-brand-teal-deep">
           {params.notice}
         </p>
+      )}
+
+      {showClock && (
+        <Link
+          href="/staff/clock"
+          className={`mt-6 flex items-center justify-between rounded-2xl border-2 p-5 transition ${
+            isOnShift
+              ? 'border-brand-teal-deep bg-brand-teal/10 text-brand-teal-deep hover:bg-brand-teal/20'
+              : 'border-brand-forest bg-brand-forest/5 text-brand-forest hover:bg-brand-forest/10'
+          }`}
+        >
+          <span className="flex items-center gap-3">
+            <span className="text-3xl" aria-hidden>⏱️</span>
+            <span>
+              <span className="block text-lg font-semibold">{isOnShift ? 'Clock out' : 'Clock in'}</span>
+              <span className="block text-sm text-brand-slate">
+                {isOnShift ? `On shift · ${shiftLength}` : 'Tap to start your shift'}
+              </span>
+            </span>
+          </span>
+          <span className="text-2xl">→</span>
+        </Link>
       )}
 
       {!hasPin && (

@@ -35,7 +35,7 @@ export default async function ManagerLeavePage({
       .from('profiles')
       .select('id, name, annual_leave_days')
       .eq('active', true)
-      .neq('role', 'owner')
+      .or('role.neq.owner,on_rota.eq.true') // an owner on the rota takes leave like staff
       .order('name'),
   ])
 

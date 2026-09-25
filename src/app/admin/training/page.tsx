@@ -55,7 +55,7 @@ export default async function TrainingAdminPage({
       .from('profiles')
       .select('id, name, role')
       .eq('active', true)
-      .neq('role', 'owner')
+      .or('role.neq.owner,on_rota.eq.true') // an owner on the rota needs the same training
       .order('name'),
   ])
 

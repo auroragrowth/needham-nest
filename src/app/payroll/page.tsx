@@ -23,7 +23,7 @@ export default async function PayrollDashboard() {
     .select('*', { count: 'exact', head: true })
     .eq('active', true)
     .eq('payroll_included', true)
-    .neq('role', 'owner')
+    .or('role.neq.owner,on_rota.eq.true') // an owner on the rota is paid like staff
     .neq('role', 'payroll')
 
   const { count: payslipsThisYear } = await admin
