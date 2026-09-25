@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { postFacebook, postInstagram, socialConfigured, uploadImage, type Image, type Platform, type Posted } from '@/lib/nesty/social'
 
 /**
  * Changes Nesty may make, only after the owner clicks Apply on a card in Nesty.
@@ -341,6 +342,55 @@ export const ACTIONS: Record<string, Action> = {
     if (!clockOut) return `${who} is still clocked in, now from ${londonParts(clockIn).time}.`
     const hours = (clockOut.getTime() - clockIn.getTime()) / 3_600_000 - (after.break_minutes_total ?? 0) / 60
     return `${who}: ${londonParts(clockIn).time}–${londonParts(clockOut).time}, ${after.break_minutes_total ?? 0} min break — ${hours.toFixed(2)}h after breaks.`
+  },
+  /**
+   * The Social and marketing agent's post (Hub agents/social.md). Nesty sends the
+   * caption, where it goes and the photo once the owner has approved the card.
+   * request_id is the card's id: the same card never posts twice.
+   */
+  'social-post': async (admin, ownerId, params) => {
+    const caption = text(params, 'caption', { min: 5, max: 2200 })!
+    const requestId = text(params, 'request_id', { min: 8, max: 80 })!
+    const raw = Array.isArray(params.platforms) ? params.platforms : []
+    const platforms = [...new Set(raw.filter((p): p is Platform => p === 'facebook' || p === 'instagram'))]
+    if (!platforms.length) throw new ActionError('Say where it goes: facebook, instagram or both.')
+    const image = params.image as Image | undefined
+    if (image && (typeof image.base64 !== 'string' || !['image/jpeg', 'image/png'].includes(image.mimetype))) {
+      throw new ActionError('The photo must be a JPEG or PNG.')
+    }
+    if (platforms.includes('instagram') && !image) throw new ActionError('Instagram needs a photo. Add one, or post to Facebook only.')
+    for (const p of platforms) {
+      const missing = socialConfigured(p)
+      if (missing) throw new ActionError(`The café app isn't set up to post to ${p} yet (${missing}).`)
+    }
+
+    const { data: earlier } = await admin.from('social_posts').select('status, facebook_url, instagram_url').eq('request_id', requestId).maybeSingle()
+    if (earlier) throw new ActionError(`This card was already sent (${earlier.status}). Check ${earlier.facebook_url ?? earlier.instagram_url ?? 'the Page'} before making a new one.`)
+    const { data: row, error } = await admin
+      .from('social_posts')
+      .insert({ request_id: requestId, caption, platforms, approved_by: ownerId })
+      .select('id')
+      .single()
+    if (error || !row) throw new Error(error?.message ?? 'could not record the post')
+
+    const imageUrl = image ? await uploadImage(admin, image) : null
+    const results: Posted[] = []
+    if (platforms.includes('facebook')) results.push(await postFacebook(caption, imageUrl))
+    if (platforms.includes('instagram')) results.push(await postInstagram(caption, imageUrl!))
+
+    const fb = results.find(r => r.platform === 'facebook')
+    const ig = results.find(r => r.platform === 'instagram')
+    const okCount = results.filter(r => r.ok).length
+    const status = okCount === results.length ? 'posted' : okCount ? 'partly posted' : 'failed'
+    const detail = results.map(r => (r.ok && r.url ? `${r.detail} ${r.url}` : r.detail)).join(' ')
+    await admin.from('social_posts').update({
+      image_url: imageUrl, status, detail,
+      facebook_post_id: fb?.id ?? null, facebook_url: fb?.url ?? null,
+      instagram_media_id: ig?.id ?? null, instagram_url: ig?.url ?? null,
+      posted_at: okCount ? new Date().toISOString() : null,
+    }).eq('id', row.id)
+    if (!okCount) throw new ActionError(detail)
+    return detail
   },
 }
 

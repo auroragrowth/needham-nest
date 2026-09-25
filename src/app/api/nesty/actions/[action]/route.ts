@@ -4,6 +4,8 @@ import { bearerMatches } from '@/lib/nesty/access'
 import { ACTIONS, ActionError, ownerProfileId } from '@/lib/nesty/actions'
 
 export const dynamic = 'force-dynamic'
+// Posting to Facebook and Instagram can take a minute.
+export const maxDuration = 120
 
 /**
  * Applies one change the owner approved in Nesty. POST only, and only with
