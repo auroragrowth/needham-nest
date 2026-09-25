@@ -360,7 +360,7 @@ export const ACTIONS: Record<string, Action> = {
     }
     if (platforms.includes('instagram') && !image) throw new ActionError('Instagram needs a photo. Add one, or post to Facebook only.')
     for (const p of platforms) {
-      const missing = socialConfigured(p)
+      const missing = socialConfigured()
       if (missing) throw new ActionError(`The café app isn't set up to post to ${p} yet (${missing}).`)
     }
 
