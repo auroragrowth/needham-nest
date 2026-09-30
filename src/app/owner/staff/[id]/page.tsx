@@ -37,7 +37,7 @@ export default async function EditStaffPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary, photo_path, bio, email, pronouns, allergies, address_line_1, address_line_2, address_city, address_postcode, ni_number, bank_sort_code, bank_account_number, probation_end_date, notice_period_weeks, uniform_size, payroll_included, paid_in_cash, on_rota',
+        'id, name, till_name, role, active, auth_user_id, permissions, phone, emergency_contact_name, emergency_contact_phone, right_to_work_ref, start_date, date_of_birth, hourly_rate, contracted_weekly_hours, colour_index, employment_type, annual_salary, photo_path, bio, email, pronouns, allergies, address_line_1, address_line_2, address_city, address_postcode, ni_number, bank_sort_code, bank_account_number, probation_end_date, notice_period_weeks, uniform_size, payroll_included, paid_in_cash, on_rota',
       )
       .eq('id', id)
       .maybeSingle(),
@@ -178,6 +178,21 @@ export default async function EditStaffPage({
               className="w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
             />
           </div>
+          <div className="w-40">
+            <label
+              htmlFor="till_name"
+              className="block text-xs text-brand-slate"
+            >
+              Name on the till
+            </label>
+            <input
+              id="till_name"
+              name="till_name"
+              type="text"
+              defaultValue={person.till_name ?? ''}
+              className="mt-1 w-full rounded-md border border-brand-sage/60 bg-white px-3 py-2 text-brand-forest outline-none focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/30"
+            />
+          </div>
           <button
             type="submit"
             className="rounded-lg bg-brand-forest px-4 py-2 text-sm font-medium text-brand-cream hover:bg-brand-olive"
@@ -185,6 +200,11 @@ export default async function EditStaffPage({
             Update
           </button>
         </form>
+        <p className="mt-2 text-xs text-brand-slate">
+          Only needed when the till calls them something else — Natasha is
+          &ldquo;Tash&rdquo; on the till. It&apos;s what credits the cashing up
+          to the right person.
+        </p>
       </section>
 
       {person.role !== 'owner' && !isSelf && (

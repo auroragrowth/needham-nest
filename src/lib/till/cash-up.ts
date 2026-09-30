@@ -110,10 +110,14 @@ export async function syncCashUpTick(fallbackProfileId: string): Promise<TillCas
 }
 
 /**
- * The profile behind a till name. The till signs people on by first name
- * ("Taylor") where the rota carries the whole one ("Taylor Cutting"), so the
- * first name is matched against the start of ours — but only when it picks out
- * exactly one person. Two Taylors and nobody is credited by guesswork.
+ * The profile behind a till name.
+ *
+ * The till signs people on by what everyone calls them ("Taylor") where the
+ * rota carries the whole name ("Taylor Cutting"), because payslips and
+ * right-to-work checks need the whole one. So: `till_name` if the person has
+ * been given one, otherwise the till name matched against the start of ours —
+ * and only when that picks out exactly one person. Two Taylors and nobody is
+ * credited by guesswork.
  */
 async function profileNamed(tillName: string): Promise<string | null> {
   const name = tillName.trim()
@@ -121,6 +125,15 @@ async function profileNamed(tillName: string): Promise<string | null> {
   const admin = createAdminClient()
   // % and _ are wildcards in ilike; a name is a name, not a pattern.
   const escaped = name.replace(/([%_\\])/g, '\\$1')
+
+  // Set by hand on the staff page for anyone the till knows by another name.
+  const { data: named } = await admin
+    .from('profiles')
+    .select('id')
+    .ilike('till_name', escaped)
+    .limit(2)
+  if (named?.length === 1) return named[0].id
+
   const { data } = await admin
     .from('profiles')
     .select('id')

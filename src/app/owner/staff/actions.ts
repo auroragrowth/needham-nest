@@ -103,11 +103,13 @@ export async function updateStaffName(profileId: string, formData: FormData) {
   if (!name) {
     redirect(`/owner/staff/${profileId}?error=Name+is+required`)
   }
+  // What the till calls them, when it isn't the start of the name above.
+  const till_name = String(formData.get('till_name') ?? '').trim() || null
 
   const admin = createAdminClient()
   const { error } = await admin
     .from('profiles')
-    .update({ name })
+    .update({ name, till_name })
     .eq('id', profileId)
 
   if (error) {
