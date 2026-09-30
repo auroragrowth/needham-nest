@@ -97,22 +97,34 @@ export async function syncCashUpTick(fallbackProfileId: string): Promise<TillCas
     .maybeSingle()
   if (!task) return state
 
-  let userId = fallbackProfileId
-  if (state.by) {
-    const { data: person } = await admin
-      .from('profiles')
-      .select('id')
-      .ilike('name', state.by.trim())
-      .maybeSingle()
-    if (person) userId = person.id
-  }
+  const matched = state.by ? await profileNamed(state.by) : null
 
   await admin.from('cleaning_log').insert({
     task_id: task.id,
-    user_id: userId,
+    user_id: matched ?? fallbackProfileId,
     completed_at: state.at ?? new Date().toISOString(),
     notes: state.by ? `Counted on the till by ${state.by}` : 'Counted on the till',
   })
   // A duplicate means it is already ticked off, which is the point.
   return state
+}
+
+/**
+ * The profile behind a till name. The till signs people on by first name
+ * ("Taylor") where the rota carries the whole one ("Taylor Cutting"), so the
+ * first name is matched against the start of ours — but only when it picks out
+ * exactly one person. Two Taylors and nobody is credited by guesswork.
+ */
+async function profileNamed(tillName: string): Promise<string | null> {
+  const name = tillName.trim()
+  if (!name) return null
+  const admin = createAdminClient()
+  // % and _ are wildcards in ilike; a name is a name, not a pattern.
+  const escaped = name.replace(/([%_\\])/g, '\\$1')
+  const { data } = await admin
+    .from('profiles')
+    .select('id')
+    .ilike('name', `${escaped}%`)
+    .limit(2)
+  return data?.length === 1 ? data[0].id : null
 }
