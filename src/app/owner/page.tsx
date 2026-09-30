@@ -308,6 +308,12 @@ export default async function OwnerDashboard({
 
       <Group title="Money">
         <Card
+          href="/owner/insights"
+          title="Insights"
+          subtitle="Busy days and hours, best sellers, what's not selling, cost and margin"
+          cta="Open →"
+        />
+        <Card
           href="/owner/pl"
           title="Profit & Loss"
           subtitle="Month by month: sales, costs, wages, profit"
