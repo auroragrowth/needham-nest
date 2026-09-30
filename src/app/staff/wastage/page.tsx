@@ -73,9 +73,17 @@ export default async function WastageListPage({
             </ul>
           )}
           {confirmed ? (
-            <p className="mt-3 text-sm text-brand-teal-deep">
-              ✓ Confirmed. Log anything else here if more gets thrown away before you go.
-            </p>
+            <>
+              <p className="mt-3 text-sm text-brand-teal-deep">
+                ✓ Confirmed. Log anything else here if more gets thrown away before you go.
+              </p>
+              <Link
+                href="/staff/clock?action=clock-out"
+                className="mt-3 block w-full rounded-xl bg-brand-forest px-4 py-3 text-center text-sm font-semibold text-brand-cream transition active:scale-[0.98] hover:bg-brand-olive"
+              >
+                {clockout ? 'Carry on and clock out' : 'Done, go to clock out'}
+              </Link>
+            </>
           ) : (
             <form action={confirmMyWaste} className="mt-3">
               <input type="hidden" name="clockout" value={clockout ? '1' : ''} />

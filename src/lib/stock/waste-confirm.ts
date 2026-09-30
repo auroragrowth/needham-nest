@@ -35,7 +35,11 @@ export async function getShiftWaste(profileId: string): Promise<ShiftWaste> {
   if (!shift) return { shift: null, confirmed: false, mine: [] }
 
   const [{ data: confirmation }, { data: rows }] = await Promise.all([
-    admin.from('waste_confirmations').select('time_log_id').eq('time_log_id', shift.id).maybeSingle(),
+    admin
+      .from('waste_confirmations')
+      .select('confirmed_at')
+      .eq('time_log_id', shift.id)
+      .maybeSingle(),
     admin
       .from('stock_movements')
       .select('id, quantity, wastage_reason, notes, wasted_at, created_at, stock_items(name, unit)')
@@ -59,7 +63,13 @@ export async function getShiftWaste(profileId: string): Promise<ShiftWaste> {
     }
   })
 
-  return { shift, confirmed: Boolean(confirmation), mine }
+  // Waste logged after they confirmed (someone who ticked it early, then threw
+  // more away later) needs confirming again, so it isn't left out of the count.
+  const confirmedAt = confirmation?.confirmed_at ? new Date(confirmation.confirmed_at).getTime() : null
+  const loggedSince =
+    confirmedAt !== null && mine.some((w) => new Date(w.created_at).getTime() > confirmedAt)
+
+  return { shift, confirmed: confirmedAt !== null && !loggedSince, mine }
 }
 
 /** True when this person is clocked in and hasn't confirmed their waste yet. */
