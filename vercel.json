@@ -1,11 +1,37 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/cron/till-takings", "schedule": "30 23 * * *" },
-    { "path": "/api/cron/pl-sales", "schedule": "30 1 * * *" },
-    { "path": "/api/cron/long-shifts", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/breaks", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/till-stock", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/invoices", "schedule": "*/15 * * * *" }
+    {
+      "path": "/api/cron/till-takings",
+      "schedule": "30 23 * * *"
+    },
+    {
+      "path": "/api/cron/pl-sales",
+      "schedule": "30 1 * * *"
+    },
+    {
+      "path": "/api/cron/long-shifts",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/breaks",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/till-stock",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/invoices",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/invoice-lines",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/supplier-gaps",
+      "schedule": "45 6 * * 1"
+    }
   ]
 }

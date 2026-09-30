@@ -314,6 +314,12 @@ export default async function OwnerDashboard({
           cta="Open →"
         />
         <Card
+          href="/owner/costs"
+          title="Ingredient costs"
+          subtitle="Approve costs read off invoices, and map new lines once"
+          cta="Open →"
+        />
+        <Card
           href="/owner/pl"
           title="Profit & Loss"
           subtitle="Month by month: sales, costs, wages, profit"
