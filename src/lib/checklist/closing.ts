@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { syncCashUpTick } from '@/lib/till/cash-up'
 
 /**
  * Closing-up rules.
@@ -6,6 +7,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * The person who leaves last is the one closing up, so they're the only one
  * held to the closing list — anyone finishing mid-day (with colleagues still
  * on shift) clocks out freely.
+ *
+ * The cash-up job answers to the till: it is ticked off here the moment the
+ * drawer has been counted there, so it holds the last person back until it
+ * really has been (src/lib/till/cash-up.ts).
  */
 
 export type ClosingStatus = {
@@ -25,6 +30,10 @@ export async function getClosingStatus(
   profileId: string,
 ): Promise<ClosingStatus> {
   const admin = createAdminClient()
+
+  // Before deciding what's outstanding: if the till says the drawer has been
+  // counted, that job is done and the log should say so.
+  await syncCashUpTick(profileId)
 
   const [{ count: othersOnShift }, { data: closeTasks }, { data: logs }] =
     await Promise.all([

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { requireStaffFeature } from '@/lib/permissions'
+import { CASH_UP_PATH, tillCashUp } from '@/lib/till/cash-up'
 
 const VALID_FREQ = ['open', 'mid', 'close', 'daily'] as const
 type Frequency = (typeof VALID_FREQ)[number]
@@ -179,6 +180,20 @@ export async function completeTask(taskId: string) {
         'Log any waste from today, then confirm it at the top of this page. That ticks this job off.',
       )}`,
     )
+  }
+  // The cash-up ticks itself off the till's own count. If the till can be
+  // reached and says the drawer hasn't been counted, this can't be tapped
+  // instead; if it can't be reached, the tap stands, so a wifi drop never
+  // leaves someone unable to finish.
+  if (task?.link_href === CASH_UP_PATH) {
+    const state = await tillCashUp()
+    if (state.asked && !state.cashedUp) {
+      redirect(
+        `${CASH_UP_PATH}?error=${encodeURIComponent(
+          'Count the drawer on the till first. This job ticks itself off the moment you have.',
+        )}`,
+      )
+    }
   }
   const { error } = await admin.from('cleaning_log').insert({
     task_id: taskId,
