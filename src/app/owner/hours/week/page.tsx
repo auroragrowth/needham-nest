@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { buildStaffPayslip } from '@/lib/staffing/cost'
-import { PrintButton } from '../[id]/PrintButton'
-import { payDateFor, weekLabel } from '@/lib/payslips/week'
+import { buildStaffHours } from '@/lib/staffing/cost'
+import { PrintPageButton as PrintButton } from '@/components/shared/PrintPageButton'
+import { payDateFor, weekLabel } from '@/lib/payroll/week'
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -64,14 +64,14 @@ export default async function WeeklyHoursPage({
     .eq('active', true)
     .order('name')
 
-  const payslips = await Promise.all(
-    (staff ?? []).map((s) => buildStaffPayslip(s.id, from, to)),
+  const people = await Promise.all(
+    (staff ?? []).map((s) => buildStaffHours(s.id, from, to)),
   )
 
   // Show every active staff member, even with zero shifts this week —
   // Paul wants everyone visible so he can spot people who haven't been
   // clocking in. The 'No shifts this week' note tells him at a glance.
-  const withShifts = payslips.filter(
+  const withShifts = people.filter(
     (p): p is NonNullable<typeof p> => p !== null,
   )
 
@@ -86,10 +86,10 @@ export default async function WeeklyHoursPage({
   return (
     <main className="mx-auto max-w-4xl print:max-w-none">
       <Link
-        href="/owner/payslips"
+        href="/owner"
         className="text-sm text-brand-amber hover:underline print:hidden"
       >
-        ← Payslips
+        ← Dashboard
       </Link>
 
       <header className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
@@ -106,19 +106,19 @@ export default async function WeeklyHoursPage({
         </div>
         <div className="flex gap-2 print:hidden">
           <Link
-            href={`/owner/payslips/week?week=${isoDate(addDays(weekStart, -7))}`}
+            href={`/owner/hours/week?week=${isoDate(addDays(weekStart, -7))}`}
             className="rounded-lg border border-brand-sage/60 px-3 py-1.5 text-sm text-brand-forest hover:bg-brand-sage/10"
           >
             ← Prev
           </Link>
           <Link
-            href="/owner/payslips/week"
+            href="/owner/hours/week"
             className="rounded-lg border border-brand-sage/60 px-3 py-1.5 text-sm text-brand-forest hover:bg-brand-sage/10"
           >
             This week
           </Link>
           <Link
-            href={`/owner/payslips/week?week=${isoDate(addDays(weekStart, 7))}`}
+            href={`/owner/hours/week?week=${isoDate(addDays(weekStart, 7))}`}
             className="rounded-lg border border-brand-sage/60 px-3 py-1.5 text-sm text-brand-forest hover:bg-brand-sage/10"
           >
             Next →

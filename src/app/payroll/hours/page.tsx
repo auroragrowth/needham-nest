@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { buildStaffPayslip } from '@/lib/staffing/cost'
+import { buildStaffHours } from '@/lib/staffing/cost'
 import { taxWeek } from '@/lib/payroll/tax-week'
-import { payDateFor } from '@/lib/payslips/week'
+import { payDateFor } from '@/lib/payroll/week'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,10 +76,10 @@ export default async function PayrollWeeklyHours({
     (staff ?? []).filter((s) => s.paid_in_cash).map((s) => s.id),
   )
 
-  const payslips = await Promise.all(
-    (staff ?? []).map((s) => buildStaffPayslip(s.id, from, to)),
+  const people = await Promise.all(
+    (staff ?? []).map((s) => buildStaffHours(s.id, from, to)),
   )
-  const rows = payslips.filter((p): p is NonNullable<typeof p> => p !== null)
+  const rows = people.filter((p): p is NonNullable<typeof p> => p !== null)
 
   const totalHours = rows.reduce((a, r) => a + r.total_hours, 0)
   const totalGross = rows.reduce((a, r) => a + r.total_gross, 0)
@@ -211,14 +211,6 @@ export default async function PayrollWeeklyHours({
               </table>
             )}
 
-            <p className="mt-2 text-xs text-brand-slate">
-              <Link
-                className="text-brand-amber hover:underline"
-                href={`/payroll/payslips/generate?staff=${p.staff_id}&from=${from}&to=${to}`}
-              >
-                Generate payslip for this period →
-              </Link>
-            </p>
           </section>
         ))}
       </div>

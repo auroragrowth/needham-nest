@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { computeWeeklyStaffMatrix } from '@/lib/staffing/cost'
-import { PrintButton } from '../../payslips/[id]/PrintButton'
-import { payDateFor, weekLabel } from '@/lib/payslips/week'
+import { PrintPageButton as PrintButton } from '@/components/shared/PrintPageButton'
+import { payDateFor, weekLabel } from '@/lib/payroll/week'
 
 // Don't cache: clock-ins change throughout the day.
 export const dynamic = 'force-dynamic'

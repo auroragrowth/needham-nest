@@ -26,11 +26,6 @@ export default async function PayrollDashboard() {
     .or('role.neq.owner,on_rota.eq.true') // an owner on the rota is paid like staff
     .neq('role', 'payroll')
 
-  const { count: payslipsThisYear } = await admin
-    .from('payslips')
-    .select('*', { count: 'exact', head: true })
-    .gte('pay_date', `${new Date().getUTCFullYear()}-01-01`)
-
   const { from, to } = lastCompletedSunday(new Date())
 
   return (
@@ -39,7 +34,7 @@ export default async function PayrollDashboard() {
         Payroll
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
-        Read-only access to staff payroll data + the payslip generator.
+        Read-only access to staff details and hours. Payroll itself is run by the bureau.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -53,18 +48,6 @@ export default async function PayrollDashboard() {
           href={`/payroll/hours?from=${from}&to=${to}`}
           title="Weekly hours"
           subtitle={`Last completed week (Mon ${from} – Sun ${to})`}
-          cta="Open →"
-        />
-        <Card
-          href="/payroll/payslips"
-          title="Payslips"
-          subtitle={`${payslipsThisYear ?? 0} generated this year`}
-          cta="Open →"
-        />
-        <Card
-          href={`/payroll/payslips/generate?from=${from}&to=${to}`}
-          title="Generate slips"
-          subtitle="Pick a person + period, pre-fills from timesheet"
           cta="Open →"
         />
       </div>

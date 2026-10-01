@@ -415,7 +415,7 @@ export async function computeStaffingCostRange(
   return out
 }
 
-export type PayslipShift = {
+export type HoursShift = {
   date: string
   clock_in: string
   clock_out: string | null
@@ -424,13 +424,13 @@ export type PayslipShift = {
   cost: number
 }
 
-export type StaffPayslip = {
+export type StaffHours = {
   staff_id: string
   staff_name: string
   employment_type: string | null
   from: string
   to: string
-  shifts: PayslipShift[]
+  shifts: HoursShift[]
   total_hours: number
   total_gross: number
   paye_days: number
@@ -438,16 +438,16 @@ export type StaffPayslip = {
 }
 
 /**
- * Per-staff payslip for a date range. Returns every clocked shift,
+ * Per-staff hours and pay for a date range (for the payroll bureau). Returns every clocked shift,
  * sorted oldest first, with the rate that was effective at clock-in
  * (snapshotted on the row). For PAYE staff also returns the daily
  * salary spread × days in the period.
  */
-export async function buildStaffPayslip(
+export async function buildStaffHours(
   staffId: string,
   from: string,
   to: string,
-): Promise<StaffPayslip | null> {
+): Promise<StaffHours | null> {
   const admin = createAdminClient()
 
   const [{ data: profile }, { data: logs }] = await Promise.all([
@@ -474,7 +474,7 @@ export async function buildStaffPayslip(
   const now = Date.now()
   let total_hours = 0
   let total_gross = 0
-  const shifts: PayslipShift[] = []
+  const shifts: HoursShift[] = []
   for (const l of logs ?? []) {
     const startMs = new Date(l.clock_in).getTime()
     const stillOpen = !l.clock_out

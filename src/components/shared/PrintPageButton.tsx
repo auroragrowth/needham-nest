@@ -1,6 +1,6 @@
 'use client'
 
-export function PrintButton() {
+export function PrintPageButton() {
   return (
     <button
       type="button"

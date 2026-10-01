@@ -3,7 +3,7 @@
  *
  * Weekly periods run Mon–Sun and are paid on the Friday that follows the
  * period end — e.g. week ending Sun 19 Jul 2026 is paid Fri 24 Jul 2026,
- * which is the pattern the existing payslips (2026-W25, 2026-W29) follow.
+ * which is the pattern the bureau uses (2026-W25, 2026-W29).
  */
 
 function utcDay(d: Date): Date {

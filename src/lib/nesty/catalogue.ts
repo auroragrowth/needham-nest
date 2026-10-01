@@ -56,7 +56,6 @@ export const REPORTS: Record<string, Report> = {
   cash: { kind: 'sql', fn: 'nesty_cash', params: 'range', about: 'Cash counts and movements' },
   tips: { kind: 'sql', fn: 'nesty_tips', params: 'range', about: 'Tip pools and shares' },
   'payroll-runs': { kind: 'sql', fn: 'nesty_payroll_runs', params: 'optional-range', about: 'Payroll run totals' },
-  'payslip-totals': { kind: 'sql', fn: 'nesty_payslip_totals', params: 'range', about: 'Gross and net pay per person per period' },
   'wage-payments': { kind: 'sql', fn: 'nesty_wage_payments', params: 'range', about: 'Wages generated and paid' },
   'bank-unreconciled': { kind: 'sql', fn: 'nesty_bank_unreconciled', params: 'range', about: 'Bank lines not matched to an expense or takings' },
   'feedback-summary': { kind: 'sql', fn: 'nesty_feedback_summary', params: 'range', about: 'Staff feedback counts and average ratings (no comments)' },

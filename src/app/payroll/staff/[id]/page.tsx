@@ -144,14 +144,6 @@ export default async function PayrollStaffDetail({
         <Row label="Medication" value={p.medication} />
       </Section>
 
-      <div className="mt-6">
-        <Link
-          href={`/payroll/payslips/generate?staff=${id}`}
-          className="rounded-lg bg-brand-amber px-4 py-2 text-sm font-semibold text-brand-forest hover:bg-brand-amber/90"
-        >
-          Generate a payslip for {p.name} →
-        </Link>
-      </div>
     </main>
   )
 }
