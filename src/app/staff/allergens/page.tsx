@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { COMMON_ALLERGENS } from '@/lib/menu'
+import { CAFE_CODE, missionControlMenu } from '@/lib/mission-control/menu'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,19 +40,40 @@ export default async function StaffAllergensPage({
   const sp = await searchParams
   const q = (sp.q ?? '').trim().toLowerCase()
 
-  const admin = createAdminClient()
-  const { data: items } = await admin
-    .from('menu_items')
-    .select('id, name, category, allergens, description')
-    .eq('active', true)
-    .order('category')
-    .order('name')
+  // Mission Control is the master. The iPad switches to it once every dish on the menu
+  // has been signed off there; until then it keeps the list staff already use, so nothing
+  // goes blank in service.
+  const mc = await missionControlMenu()
+  const mcActive = (mc?.dishes ?? []).filter((d) => d.active)
+  const mcSigned = mcActive.filter((d) => d.allergens_signed_off).length
+  const fromMc = mc !== null && mcActive.length > 0 && mcSigned === mcActive.length
+
+  type Row = { id: string; name: string; category: string | null; allergens: string[]; mayContain: string[]; description: string | null }
+  let items: Row[]
+  if (fromMc) {
+    items = mcActive.map((d) => ({
+      id: d.id,
+      name: d.name,
+      category: d.section,
+      allergens: d.allergens.filter((m) => m.status === 'contains').map((m) => CAFE_CODE[m.code] ?? m.code),
+      mayContain: d.allergens.filter((m) => m.status === 'may_contain').map((m) => CAFE_CODE[m.code] ?? m.code),
+      description: null,
+    }))
+  } else {
+    const { data } = await createAdminClient()
+      .from('menu_items')
+      .select('id, name, category, allergens, description')
+      .eq('active', true)
+      .order('category')
+      .order('name')
+    items = (data ?? []).map((i) => ({ ...i, allergens: i.allergens ?? [], mayContain: [] }))
+  }
 
   const filtered = q
     ? (items ?? []).filter(
         (i) =>
           i.name.toLowerCase().includes(q) ||
-          (i.allergens ?? []).some((a: string) =>
+          [...i.allergens, ...i.mayContain].some((a: string) =>
             a.toLowerCase().includes(q),
           ),
       )
@@ -76,6 +98,16 @@ export default async function StaffAllergensPage({
         info. Tap an item to see what&apos;s in it. When in doubt, check
         with the kitchen.
       </p>
+      {fromMc ? (
+        <p className="mt-2 text-xs text-brand-slate">
+          From Mission Control: every dish checked against its labels and signed off.
+        </p>
+      ) : mc ? (
+        <p className="mt-2 rounded-lg border border-compliance bg-compliance-tint p-3 text-xs text-compliance-ink">
+          Allergens are moving to Mission Control. {mcSigned} of {mcActive.length} dishes signed off so far — this
+          list is used until they all are.
+        </p>
+      ) : null}
 
       {/* Search */}
       <form className="mt-4">
@@ -134,7 +166,7 @@ export default async function StaffAllergensPage({
               </h2>
               <ul className="mt-2 space-y-2">
                 {list.map((item) => {
-                  const allergenList = item.allergens ?? []
+                  const allergenList = item.allergens
                   return (
                     <li
                       key={item.id}
@@ -148,9 +180,19 @@ export default async function StaffAllergensPage({
                           {item.description}
                         </p>
                       )}
+                      {item.mayContain.length > 0 && (
+                        <p className="mt-2 text-xs font-semibold text-brand-forest">
+                          May contain:{' '}
+                          {item.mayContain.map((a) => ALLERGEN_META[a]?.label ?? a).join(', ')}
+                        </p>
+                      )}
                       {allergenList.length === 0 ? (
                         <p className="mt-2 text-xs italic text-brand-slate">
-                          No allergens marked — confirm with kitchen.
+                          {fromMc && item.mayContain.length === 0
+                            ? 'None of the 14 — checked and signed off.'
+                            : fromMc
+                              ? 'Nothing it definitely contains.'
+                              : 'No allergens marked — confirm with kitchen.'}
                         </p>
                       ) : (
                         <div className="mt-2 flex flex-wrap gap-2">
