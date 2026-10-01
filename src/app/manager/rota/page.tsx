@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { publishWeek } from '@/lib/rota/actions'
@@ -78,10 +79,11 @@ export default async function RotaPage({
     admin
       .from('profiles')
       .select(
-        'id, name, role, contracted_weekly_hours, date_of_birth, colour_index, employment_type',
+        'id, name, role, contracted_weekly_hours, date_of_birth, colour_index, employment_type, rota_group, rota_sort_order',
       )
       .eq('active', true)
       .eq('on_rota', true)
+      .order('rota_sort_order', { nullsFirst: false })
       .order('name'),
     admin
       .from('rota_shifts')
@@ -324,12 +326,26 @@ export default async function RotaPage({
             </tr>
           </thead>
           <tbody>
-            {(staff ?? []).map((s) => {
+            {(staff ?? []).map((s, i, arr) => {
               const scheduled = hoursByStaff.get(s.id) ?? 0
               const contracted = Number(s.contracted_weekly_hours ?? 0)
               const col = colourForProfile(s.id, s.colour_index)
+              const showGroupHeader =
+                s.rota_group &&
+                (i === 0 || arr[i - 1].rota_group !== s.rota_group)
               return (
-              <tr key={s.id} className="align-top">
+              <Fragment key={s.id}>
+              {showGroupHeader && (
+                <tr>
+                  <td
+                    colSpan={days.length + 2}
+                    className="border-b border-brand-sage/30 bg-brand-sage/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-brand-slate"
+                  >
+                    {s.rota_group}
+                  </td>
+                </tr>
+              )}
+              <tr className="align-top">
                 <td
                   className="border-b border-brand-sage/30 px-3 py-2 font-medium text-brand-forest"
                   style={{ borderLeft: `4px solid ${col.dot}` }}
@@ -445,6 +461,7 @@ export default async function RotaPage({
                   </span>
                 </td>
               </tr>
+              </Fragment>
               )
             })}
             {(staff?.length ?? 0) === 0 && (

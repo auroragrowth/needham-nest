@@ -98,6 +98,9 @@ export default async function CookedMeatsPage({
             }}
           />
           <datalist id="cooked-meat-suggestions">
+            <option value="Sausage rolls" />
+            <option value="Bacon" />
+            <option value="Sausages" />
             <option value="Sausages (raw bake — oven)" />
             <option value="Sausage roll (raw bake — oven)" />
             <option value="Sausage roll (reheat)" />

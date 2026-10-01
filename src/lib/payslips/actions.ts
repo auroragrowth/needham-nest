@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { isoWeekIdentifier } from '@/lib/payslips/week'
 
 async function requireOwner() {
   // Owner or payroll can generate / mark paid / delete. Payroll users
@@ -218,26 +219,4 @@ export async function unmarkPayslipPaid(
   redirect(
     `/owner/payslips/${staffId}/${payslipId}?notice=Marked+unpaid`,
   )
-}
-
-/** Returns the ISO-8601 week identifier for a date (e.g. '2026-W25'). */
-function isoWeekIdentifier(d: Date): string {
-  // Algorithm: shift to Thursday of the same ISO week, then count
-  // weeks from the first Thursday of the ISO year.
-  const target = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
-  )
-  const dayNum = (target.getUTCDay() + 6) % 7 // Mon=0..Sun=6
-  target.setUTCDate(target.getUTCDate() - dayNum + 3) // Thursday of ISO week
-  const firstThursday = new Date(
-    Date.UTC(target.getUTCFullYear(), 0, 4),
-  )
-  const firstThuDow = (firstThursday.getUTCDay() + 6) % 7
-  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThuDow + 3)
-  const week =
-    1 +
-    Math.round(
-      (target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000),
-    )
-  return `${target.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
 }

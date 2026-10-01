@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildStaffPayslip } from '@/lib/staffing/cost'
 import { PrintButton } from '../[id]/PrintButton'
+import { payDateFor, weekLabel } from '@/lib/payslips/week'
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -97,7 +98,10 @@ export default async function WeeklyHoursPage({
             Weekly staff hours
           </h1>
           <p className="mt-1 text-sm text-brand-slate">
-            {fmtDate(from)} – {fmtDate(to)}
+            {weekLabel(from, to)} · {fmtDate(from)} – {fmtDate(to)}
+          </p>
+          <p className="mt-1 text-sm font-medium text-brand-forest">
+            Pay date: {fmtDate(payDateFor(to))}
           </p>
         </div>
         <div className="flex gap-2 print:hidden">

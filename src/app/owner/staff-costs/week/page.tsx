@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { computeWeeklyStaffMatrix } from '@/lib/staffing/cost'
 import { PrintButton } from '../../payslips/[id]/PrintButton'
+import { payDateFor, weekLabel } from '@/lib/payslips/week'
 
 // Don't cache: clock-ins change throughout the day.
 export const dynamic = 'force-dynamic'
@@ -70,7 +71,11 @@ export default async function StaffCostsWeekPage({
             Staff cost — week overview
           </h1>
           <p className="mt-1 text-sm text-brand-slate">
-            {dayLabel(from).date} – {dayLabel(to).date} · UK time
+            {weekLabel(from, to)} · {dayLabel(from).date} – {dayLabel(to).date} ·
+            UK time
+          </p>
+          <p className="mt-1 text-sm font-medium text-brand-forest">
+            Pay date: {dayLabel(payDateFor(to)).date}
           </p>
         </div>
         <div className="flex gap-2 print:hidden">
