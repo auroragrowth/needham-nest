@@ -15,6 +15,21 @@
   --color-brand-cream: #f9f6ef;      /* off-white background */
   --color-brand-ink: #000000;
   --color-brand-graphite: #555555;
+
+  /*
+    Tablet sections. Each colour runs from hub tile to section bar to page.
+    Red is Compliance's alone — use it nowhere else, so an alert reads at a glance.
+    Solid hex tints, not /NN opacity: the café iPad runs iOS 15 Safari.
+  */
+  --color-people: #d4892f;
+  --color-people-tint: #fdf2e3;
+  --color-people-ink: #6b3f0b;
+  --color-compliance: #c62828;
+  --color-compliance-tint: #fdecea;
+  --color-compliance-ink: #7f1d1d;
+  --color-stock: #2f6fb5;
+  --color-stock-tint: #e8f0fa;
+  --color-stock-ink: #173f6b;
 }
 
 :root {

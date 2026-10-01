@@ -1,3 +1,54 @@
+# Staff iPad app redesign — Brief 1 (1 Oct 2026) — IN PROGRESS
+
+Redesign, not a rebuild. Nothing changed yet. Scope: `/staff` hub and the staff pages it links to.
+Brief 2 (Hub dashboard) is separate; this plan leaves `/owner` and `/manager` pages alone.
+
+**What's there now.** The staff hub has 4 groups and 17 tiles: My shift, Stock, Food & safety
+and Me. There is also a Pick & mix button in the header. Staff screens show no takings, covers or
+P&L. The only £ figures are the person's own invoice uploads (`/invoices`), the Pick & mix price
+and their own payslips. There are no handover notes. Staff see only their own shifts on the rota,
+not who's on today. The accident book and the EHO pack are owner-only; staff can only log an
+accident.
+
+## Plan
+- [x] Section colour tokens in `globals.css` (people/compliance/stock, solid hex for iOS 15).
+      `src/lib/sections.ts` maps each tablet page to its section
+- [x] `SectionBar` (in `RoleHeader`): coloured bar with ← Home · SECTION › page on every tablet page
+- [x] Red audit: break-due banners moved from red to People amber. Red is now Compliance only
+- [x] Hub regrouped: People (clock, today's rota, handover) · Compliance (allergens, fridge temps,
+      cleaning checklists, accident book, EHO pack) · Stock (counts, goods in, wastage, shopping
+      list, invoice/receipt). Personal links (availability, leave, profile, handbook) are one line at the bottom
+- [x] Pick & mix: off the hub and out of the header (the route still exists, unlinked)
+- [x] Cash-up: never was a hub tile. It's a closing-checklist job that points to the till and
+      shows no figures, so it is left as is
+- [x] Invoice/receipt: £ hidden for `staff` (recent list + upload result)
+- [x] Handover notes: `handover_notes` table (live, `supabase/handover_notes_2026-10-01.sql`), `/staff/handover`
+- [x] Today's rota: "On today" (published shifts, names + times) above "Your shifts"
+- [x] EHO pack read-only at `/staff/eho`: the shared `CompliancePack`. For staff there is no £ and
+      the accident log shows a count only. Risk assessments are linked from it
+- [x] Payroll is outsourced (Paul): Staffing cost is off the manager hub, `/manager/staffing-cost`
+      is owner-only, and manager-hub wastage shows counts with no £. Payslips were already owner-only
+- [x] Duplicate "← Hub/Tablet" links removed where the section bar now does it
+- [x] `tsc` clean, `next build` passes
+- [ ] Look at it on the iPad (needs a staff sign-in) — then commit + push (push = live)
+
+## Decisions (Paul, 1 Oct 2026)
+- Keep invoice/receipt photo and wastage. Drop cash-up and Pick & mix
+- Accident book: staff log only. EHO pack: staff can open it read-only (for an inspector)
+- Brief 2 (Hub dashboard) is built in `~/code/mission-control`
+
+# Mission Control, not a dashboard in this app (24 Sep 2026)
+
+Started putting the Hub dashboard at /owner/dashboard here, then Paul's diagram made the shape
+clear: Mission Control is one web app across every business (Needham Nest, Aurora Events, Flint
+Hall), fed by a shared Business Hub, with the desktop helper alongside. A dashboard inside this
+app can only ever show this business, so it was the wrong place.
+
+- Abandoned here: the `hub_snapshots` table (dropped) and `src/lib/hub/course.ts` (moved to the
+  new app). Kept: `nesty_pl_summary` and `nesty_pl_review_queue`, which Mission Control reads
+  through Nesty.
+- Built instead in `~/code/mission-control`, on its own Supabase project and Vercel project.
+
 # Nightly P&L sales sync (23 Sep 2026)
 
 Agent 9, item 1 of "still to build". The P&L's sales must come from the till, and the till is

@@ -15,8 +15,8 @@ export default async function RiskAssessmentsPage({
   const session = await getSession()
   if (!session) redirect('/login')
   const canEdit = session.role === 'owner'
-  const backHref = canEdit ? '/owner' : '/staff'
-  const backLabel = canEdit ? 'Dashboard' : 'Staff home'
+  const backHref = canEdit ? '/owner' : '/staff/eho'
+  const backLabel = canEdit ? 'Dashboard' : 'EHO pack'
 
   const params = await searchParams
   const admin = createAdminClient()

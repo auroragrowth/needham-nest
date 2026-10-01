@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -69,9 +68,6 @@ export default async function StaffAllergensPage({
 
   return (
     <main className="mx-auto max-w-3xl">
-      <Link href="/staff" className="text-sm text-brand-amber hover:underline">
-        ← Tablet
-      </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
         Allergens
       </h1>

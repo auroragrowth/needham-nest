@@ -33,9 +33,6 @@ export default async function StaffLeavePage({
   return (
     <main className="mx-auto max-w-md">
       <div className="flex items-start justify-between">
-        <Link href="/staff" className="text-sm text-brand-amber hover:underline">
-          ← Hub
-        </Link>
         <Link
           href="/staff/leave/new"
           className="rounded-lg bg-brand-forest px-3 py-1.5 text-sm font-medium text-brand-cream hover:bg-brand-olive"

@@ -59,6 +59,7 @@ export default async function InvoiceCapturePage({
 
   // What this person has sent in, as read into the books — confirmation it
   // worked, carried over from the old "Snap a receipt" page.
+  const showMoney = session.role !== 'staff'
   const { data: recent } = await createAdminClient()
     .from('expenses')
     .select('id, date, vendor, amount, reference')
@@ -81,7 +82,7 @@ export default async function InvoiceCapturePage({
       </h1>
       <p className="mt-1 text-sm text-brand-slate">
         Say who it&apos;s from, then add a photo or PDF — as many as you like. Each one
-        is read straight into the books, ready to match against the bank.
+        is read straight in for the office.
       </p>
 
       {error ? (
@@ -100,7 +101,12 @@ export default async function InvoiceCapturePage({
               </Link>
             </p>
           )}
-          <Capture suppliers={suppliers} pending={pending ?? 0} forPayment={forPayment} />
+          <Capture
+            suppliers={suppliers}
+            pending={pending ?? 0}
+            forPayment={forPayment}
+            showMoney={showMoney}
+          />
         </>
       )}
 
@@ -122,9 +128,11 @@ export default async function InvoiceCapturePage({
                   )}
                 </span>
                 <span className="shrink-0 text-xs text-brand-slate">{fmtDate(r.date)}</span>
-                <span className="shrink-0 font-mono text-sm text-brand-forest">
-                  £{Number(r.amount).toFixed(2)}
-                </span>
+                {showMoney && (
+                  <span className="shrink-0 font-mono text-sm text-brand-forest">
+                    £{Number(r.amount).toFixed(2)}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

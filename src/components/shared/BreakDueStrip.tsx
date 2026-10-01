@@ -43,7 +43,7 @@ export function BreakDueStrip() {
       role="status"
       className={`mt-4 w-full rounded-xl border-2 p-3 text-center text-sm font-medium ${
         overdue
-          ? 'border-red-600 bg-red-50 text-red-800'
+          ? 'border-people bg-people text-white'
           : 'border-brand-amber bg-brand-amber/10 text-brand-forest'
       }`}
     >

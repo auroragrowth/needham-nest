@@ -56,7 +56,7 @@ export default async function ManagerDashboard() {
       .gte('completed_at', startOfTodayIso()),
     admin
       .from('stock_movements')
-      .select('quantity, unit_cost')
+      .select('id')
       .not('wastage_reason', 'is', null)
       .gte('date', sevenDaysAgo),
     session
@@ -74,12 +74,6 @@ export default async function ManagerDashboard() {
     ? Date.now() - new Date(myOpenShift!.clock_in).getTime()
     : 0
 
-  const wastageCostWeek = (wastageWeek ?? []).reduce(
-    (a, r) =>
-      a +
-      (Number(r.quantity ?? 0) || 0) * (Number(r.unit_cost ?? 0) || 0),
-    0,
-  )
   const wastageEntriesWeek = wastageWeek?.length ?? 0
 
   const totalAppliances = appliances?.length ?? 0
@@ -173,7 +167,7 @@ export default async function ManagerDashboard() {
           subtitle={
             wastageEntriesWeek === 0
               ? 'No wastage in last 7 days'
-              : `£${wastageCostWeek.toFixed(2)} over ${wastageEntriesWeek} entr${wastageEntriesWeek === 1 ? 'y' : 'ies'} (7d)`
+              : `${wastageEntriesWeek} entr${wastageEntriesWeek === 1 ? 'y' : 'ies'} in the last 7 days`
           }
           cta="Open →"
         />
@@ -241,12 +235,6 @@ export default async function ManagerDashboard() {
           href="/manager/leave"
           title="Leave"
           subtitle="Approve holiday / sick / unpaid"
-          cta="Open →"
-        />
-        <Card
-          href="/manager/staffing-cost"
-          title="Staffing cost"
-          subtitle="PAYE baseline + rostered hourly, by day"
           cta="Open →"
         />
       </Group>

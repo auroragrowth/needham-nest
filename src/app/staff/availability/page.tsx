@@ -89,9 +89,6 @@ export default async function StaffAvailabilityPage({
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <Link href="/staff" className="text-sm text-brand-amber hover:underline">
-        ← Hub
-      </Link>
       <div className="mt-2 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-brand-forest">

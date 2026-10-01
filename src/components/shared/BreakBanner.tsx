@@ -21,7 +21,7 @@ export async function BreakBanner({ profileId }: { profileId: string }) {
     <section
       role="alert"
       className={`mt-4 rounded-2xl border-2 p-5 ${
-        due ? 'border-red-600 bg-red-50 text-red-800' : 'border-brand-amber bg-brand-amber/10 text-brand-forest'
+        due ? 'border-people bg-people text-white' : 'border-brand-amber bg-brand-amber/10 text-brand-forest'
       }`}
     >
       <p className="text-lg font-semibold">{due ? 'Break overdue' : 'Break due soon'}</p>
@@ -34,7 +34,7 @@ export async function BreakBanner({ profileId }: { profileId: string }) {
         <button
           type="submit"
           className={`w-full rounded-xl px-4 py-3 text-base font-semibold transition active:scale-[0.98] ${
-            due ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-brand-forest text-brand-cream hover:bg-brand-olive'
+            due ? 'bg-white text-people-ink' : 'bg-brand-forest text-brand-cream hover:bg-brand-olive'
           }`}
         >
           Go on break

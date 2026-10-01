@@ -1,6 +1,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { logout } from '@/lib/auth/actions'
+import { StockSearch } from '@/components/shared/StockSearch'
+import { SectionBar } from '@/components/shared/SectionBar'
 
 type Role = 'owner' | 'manager' | 'staff' | 'payroll'
 
@@ -20,7 +22,8 @@ const ROLE_LABEL: Record<Role, string> = {
 
 export function RoleHeader({ role, name }: { role: Role; name: string }) {
   return (
-    <header className="flex items-center justify-between bg-brand-forest px-6 py-3 text-brand-cream">
+    <header className="bg-brand-forest">
+      <div className="flex items-center justify-between px-6 py-3 text-brand-cream">
       <Link
         href="/"
         className="flex items-center gap-3 rounded-md px-1 py-1 transition-colors hover:bg-brand-olive"
@@ -42,13 +45,6 @@ export function RoleHeader({ role, name }: { role: Role; name: string }) {
         <span className="text-xs text-brand-cream/70">· Dashboard</span>
       </Link>
       <div className="flex items-center gap-3">
-        <Link
-          href="/pick-mix"
-          className="rounded-lg bg-brand-amber px-3 py-1.5 text-sm font-semibold text-brand-forest shadow-sm hover:bg-brand-amber/90"
-          title="Pick & mix calculator"
-        >
-          🍬 Pick &amp; mix
-        </Link>
         <span className="hidden text-sm text-brand-cream/90 sm:inline">{name}</span>
         <form action={logout}>
           <button
@@ -59,6 +55,11 @@ export function RoleHeader({ role, name }: { role: Role; name: string }) {
           </button>
         </form>
       </div>
+      </div>
+      <div className="border-t border-brand-olive/40 px-6 pb-3 pt-2">
+        <StockSearch />
+      </div>
+      <SectionBar />
     </header>
   )
 }

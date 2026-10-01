@@ -38,10 +38,10 @@ type ReadResult = {
 }
 
 /** What the books now hold for a saved file, in a few words. */
-function describeRead(read: ReadResult | null | undefined): string {
+function describeRead(read: ReadResult | null | undefined, showMoney: boolean): string {
   if (!read) return 'Saved — it will be read in the next few minutes'
   const who = read.vendor ?? 'Unknown supplier'
-  const money = read.amount ? ` £${read.amount.toFixed(2)}` : ''
+  const money = showMoney && read.amount ? ` £${read.amount.toFixed(2)}` : ''
   if (read.kind === 'duplicate') return `Already in the books — ${who}${money}`
   if (read.linked === 'linked') return `${who}${money} — matched to the bank payment`
   if (read.linked === 'taken') return `${who}${money} — that payment was already matched to something else`
@@ -92,10 +92,13 @@ export function Capture({
   suppliers,
   pending,
   forPayment = null,
+  showMoney = true,
 }: {
   suppliers: Supplier[]
   pending: number
   forPayment?: ForPayment | null
+  /** Staff logins see no £ on the tablet. */
+  showMoney?: boolean
 }) {
   const router = useRouter()
 
@@ -185,7 +188,7 @@ export function Capture({
             mark(
               item.key,
               'done',
-              describeRead(data.read) +
+              describeRead(data.read, showMoney) +
                 // The till doesn't keep the tick, so a later read can't know.
                 (item.paidCash && !data.read ? ' — tell Paul it was paid cash' : ''),
             )

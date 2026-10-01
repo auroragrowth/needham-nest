@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
@@ -45,12 +44,6 @@ export default async function ShoppingListPage({
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <Link
-        href="/"
-        className="text-sm text-brand-amber hover:underline"
-      >
-        ← Dashboard
-      </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
         Shopping list
       </h1>

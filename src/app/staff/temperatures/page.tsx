@@ -85,12 +85,6 @@ export default async function TemperaturesListPage({
 
   return (
     <main className="mx-auto max-w-md">
-      <Link
-        href="/staff"
-        className="text-sm text-brand-amber hover:underline"
-      >
-        ← Hub
-      </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
         Temperatures
       </h1>

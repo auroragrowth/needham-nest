@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
 import { addAccident } from '@/lib/compliance/actions'
@@ -23,12 +22,6 @@ export default async function StaffAccidentPage({
 
   return (
     <main className="mx-auto max-w-md">
-      <Link
-        href="/staff"
-        className="text-sm text-brand-amber hover:underline"
-      >
-        ← Tablet
-      </Link>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight text-brand-forest">
         Accident report
       </h1>
